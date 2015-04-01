@@ -1,0 +1,678 @@
+      SUBROUTINE F02FJF(N,EM,P,KM,EPS,IP,OP,INF,NOVECS,X,MN,D,WORK,
+     *                  LWORK,RWORK,LRWORK,IWORK,LIWORK,IFAIL)
+C     MARK 11 RELEASE. NAG COPYRIGHT 1983.
+C     MARK 11B REVISED. IER-458 (SEP 1984).
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 12A REVISED. IER-509 (AUG 1986).
+C
+C     **************************************************************
+C     *********
+C
+C     F02FJF - ITERATIVE COMPUTATION OF EIGENVALUES LARGEST IN
+C     MAGNI-
+C     TUDE AND CORRESPONDING EIGENVECTORS OF A REAL GENERAL-
+C     IZED SYMMETRIC MATRIX
+C
+C     PURPOSE
+C
+C     A REAL N-SQUARE MATRIX C IS B-SYMMETRIC RELATIVE TO AN
+C     N-SQUARE
+C     SYMMETRIC POSITIVE DEFINITE MATRIX B WHEN
+C     BC = ( C - TRANSPOSED )B.
+C     GIVEN AS OPTIONAL INPUT A SET OF P INITIAL APPROXIMATE
+C     EIGENVECTORS OF A REAL N-SQUARE B-SYMMETRIC MATRIX C CORRES-
+C     PONDING TO P EIGENVALUES OF C LARGEST IN MAGNITUDE, F02FJF
+C     COM-
+C     PUTES EM EIGENVALUES AND EM CORRESPONDING EIGENVECTORS TO A
+C     PRECISION DEPENDENT ON THE STRUCTURE OF B AND C AND ON A GIVEN
+C     TOLERANCE EPS.  THE MATRIX B IS PRESENTED TO F02FJF AS AN
+C     ALGO-
+C     RITHM FOR CALCULATING THE STANDARD INNER PRODUCT ( W, BZ ) =
+C     ( W - TRANSPOSED )BZ GIVEN COLUMN N-VECTORS W AND Z
+C     IMPLEMENTED
+C     AS A FORTRAN COMPATIBLE REAL FUNCTION SUBPROGRAM. THE MATRIX C
+C     IS PRESENTED AS A SUBROUTINE SUBPROGRAM WHICH GIVEN A COLUMN
+C     N-VECTOR Z CALCULATES ITS IMAGE W = CZ UNDER THE MATRIX C.
+C     DEPENDING ON THE CHOICE OF B AND C, F02FJF APPLIES TO A WIDE
+C     VARIETY OF SYMMETRIC EIGENPROBLEMS.
+C
+C     METHOD
+C
+C     F02FJF REPRESENTS RESULTS OF EXTENSIVE MODIFICATIONS AND TESTS
+C     OF SUBROUTINE RITZIT, AN ANSI FORTRAN TRANSLATION OF THE
+C     ALGOL 60 PROCEDURE OF THE SAME NAME.  THE BASIC RUTISHAUSER
+C     -REINSCH ALGORITHM IS PRESERVED.
+C
+C     PAUL J. NIKOLAI
+C     US AIR FORCE FLIGHT DYNAMICS LABORATORY
+C     AFFDL/FBR
+C     WRIGHT - PATTERSON AFB, OHIO 45433
+C     (513) - 255 - 5350
+C
+C     FURTHER MODIFIED AT NAG CENTRAL OFFICE BY SVEN.
+C     CALLS TO SVD ROUTINES REPLACE CALLS AT EACH ITERATION TO
+C     TRED2 AND IMTQL2. THIS AVOIDS FORMING R( R**T ).
+C     WORKSPACE ASSIGNED TO A VECTOR AND REDUCED SLIGHTLY.
+C     SOME MINOR MODIFICATIONS TO IMPROVE PERFORMANCE ON PAGED
+C     MACHINES
+C
+C     FOR A DESCRIPTION OF THE PARAMETERS AND USE OF THIS ROUTINE
+C     SEE THE
+C     NAG LIBRARY MANUAL. PARAMETER ASSOCIATION IS AS BELOW.
+C
+C     ROUTINE     DOCUMENT
+C     N            N
+C     EM            M
+C     P            K
+C     KM          NOITS
+C     EPS          TOL
+C     IP           DOT
+C     OP          IMAGE
+C     INF         MONIT
+C     NOVECS       NOVECS
+C     X            X
+C     MN           NRX
+C     D            D
+C     WORK         WORK
+C     LWORK        LWORK
+C     RWORK        RWORK
+C     LRWORK       LRWORK
+C     IWORK        IWORK
+C     LIWORK       LIWORK
+C     IFAIL        IFAIL
+C
+C     **************************************************************
+C     *********
+C
+C     INF, OP
+C
+C     THE LOCAL VARIABLE ARRAYS FROM RITZIT ARE ASSIGNED TO THE
+C     VARIABLE ARRAY WORK AS FOLLOWS
+C
+C     B  - WORK( I ), I = 1, ..., P**2.
+C     U  - WORK( I ), I = 1, ..., N.
+C     W  - WORK( I ), I = N + 1, ..., 2*N.
+C     CX - WORK( I ), I = CX1, ..., CX1 + P - 1
+C     WHERE  CX1 = MAX( P**2, 2*N ) + 1
+C     F  - WORK( I ), I = CX1 + P, ..., CX1 + 2*P - 1
+C     RQ - WORK( I ), I = CX1 + 2*P, ..., CX1 + 3*P - 1
+C
+C     V, R AND Q ARE NOT NEEDED.
+C
+C     TEST THE INPUT PARAMETERS.
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='F02FJF')
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  EPS
+      INTEGER           EM, IFAIL, KM, LIWORK, LRWORK, LWORK, MN, N,
+     *                  NOVECS, P
+C     .. Array Arguments ..
+      DOUBLE PRECISION  D(P), RWORK(LRWORK), WORK(LWORK), X(MN,P)
+      INTEGER           IWORK(LIWORK)
+C     .. Function Arguments ..
+      DOUBLE PRECISION  IP
+      EXTERNAL          IP
+C     .. Subroutine Arguments ..
+      EXTERNAL          INF, OP
+C     .. Arrays in Common ..
+      DOUBLE PRECISION  WMACH(15)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  E, E1, E2, EPSMCH, MT, S, T, TOL
+      INTEGER           CX1, CXP, F1, FP, G, H, I, IER, IERR, IFLAG, IG,
+     *                  IK, ISTATE, ITEMP, J, JK, JP, K, KS, L, L1, LF,
+     *                  LG, LH, M, M1, RQ1, RQP, Z1, Z2
+      LOGICAL           ORIG
+C     .. Local Arrays ..
+      DOUBLE PRECISION  TEMP(1)
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      DOUBLE PRECISION  DDOT, G05CAF
+      INTEGER           P01ABF
+      EXTERNAL          DDOT, G05CAF, P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          F01AJF, F01LZF, F06FGF, F06FDF, DSWAP, DSCAL,
+     *                  DCOPY, DAXPY, F02AMF, F02SZF, X02ZAZ
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS, MAX, MIN, LOG, EXP, DBLE, SQRT, INT
+C     .. Common blocks ..
+      COMMON            /AX02ZA/WMACH
+C     .. Save statements ..
+      SAVE              /AX02ZA/
+C     .. Executable Statements ..
+      ITEMP = MAX(P**2,2*N)
+      IF (N.GE.1 .AND. EM.GE.1 .AND. EM.LT.P .AND. P.LE.N .AND. MN.GE.
+     *    N .AND. LWORK.GE.(ITEMP+3*P) .AND. LRWORK.GE.1 .AND.
+     *    LIWORK.GE.1) GO TO 20
+      IFAIL = P01ABF(IFAIL,1,SRNAME,0,P01REC)
+      RETURN
+   20 CONTINUE
+      IF (KM.LT.0) KM = 100
+C
+      CALL X02ZAZ
+C
+      EPSMCH = WMACH(3)
+      TOL = EPS
+      IF (TOL.LT.EPSMCH .OR. TOL.GT.1.0D0) TOL = EPSMCH
+      IK = NOVECS + 1
+      IF (NOVECS.LT.0 .OR. NOVECS.GT.P) IK = 1
+C
+C     ASSIGN THE PARAMETERS THAT SPLIT UP THE WORKSPACE.
+C
+      CX1 = ITEMP + 1
+      CXP = ITEMP + P
+      F1 = CXP + 1
+      FP = CXP + P
+      RQ1 = FP + 1
+      RQP = FP + P
+C
+C     COMMENTS SUCH AS THE NEXT ONE REFER TO STATEMENT LABELS IN
+C     RITZIT.
+C     THE NEXT STATEMENT IS START.
+C
+      MT = WMACH(5)/EPSMCH
+      E = 0.0D0
+      G = 0
+      LG = 0
+      IG = 1
+      IERR = 0
+      JP = P - 1
+      H = 0
+      LH = 0
+      Z1 = 0
+      Z2 = 0
+      KS = 0
+      M = 1
+      IFLAG = 0
+      WORK(CXP) = 0.0D0
+      DO 40 L = F1, FP
+         WORK(L) = 4.0D0
+   40 CONTINUE
+      DO 60 L = RQ1, RQP
+         WORK(L) = 0.0D0
+   60 CONTINUE
+      IF (IK.GT.P) GO TO 120
+      DO 100 L = IK, P
+         DO 80 J = 1, N
+            X(J,L) = 2.0D0*G05CAF(0.0D0) - 1.0D0
+   80    CONTINUE
+  100 CONTINUE
+  120 CONTINUE
+      IK = 1
+      LF = IG
+      L1 = P
+C
+C     HERE AND ELSEWHERE - GO TO 1100 - IS EQUIVALENT TO
+C     - CALL ORTHOG - WHERE ORTHOG PERFORMS GRAM - SCHMIDT
+C     ORTHOGONALIZATION, WITH RESPECT TO B, OF THE COLUMNS OF X.
+C
+      GO TO 1100
+C
+C     RAYLEIGH - RITZ STEP
+C     STATEMENT 140 IS LOOP.
+C
+C     FIRST FORM Y = C*X( R ). Y IS OVERWRITTEN ON X.
+C
+  140 DO 160 K = IG, P
+         CALL OP(IFLAG,N,X(1,K),WORK,RWORK,LRWORK,IWORK,LIWORK)
+         IF (IFLAG.LT.0) GO TO 1460
+C
+         CALL DCOPY(N,WORK,1,X(1,K),1)
+C
+  160 CONTINUE
+      IK = 2
+      LF = IG
+      L1 = P
+C
+C     PERFORM GRAM - SCHMIDT OF Y SO THAT Y = UR. U IS OVERWRITTEN
+C     ON X
+C     AND R IS STORED IN THE LOWER TRIANGULAR PART OF WORK( 1 ),
+C     ...,
+C     WORK( P**2 ).
+C
+      GO TO 1100
+C
+  180 IF (KS.NE.0) GO TO 240
+C
+C     MEASURES AGAINST UNHAPPY CHOICE OF INITIAL VECTORS
+C
+      ITEMP = -P
+      DO 220 K = 1, P
+         ITEMP = ITEMP + P + 1
+         IF (WORK(ITEMP).NE.0.0D0) GO TO 220
+         DO 200 I = 1, N
+            X(I,K) = 2.0D0*G05CAF(0.0D0) - 1.0D0
+  200    CONTINUE
+         KS = 1
+  220 CONTINUE
+      IF (KS.NE.1) GO TO 240
+      IK = 1
+      LF = 1
+      L1 = P
+C
+C     COLUMNS OF Y ARE NOT ORTHOGONAL, SO PERFORM GRAM - SCHMIDT OF
+C     X. RETURN WILL BE TO LABEL 140.
+C
+      GO TO 1100
+C
+C     PERFORM SINGULAR VALUE DECOMPOSITION OF R**T VIA A SINGULAR
+C     VALUE DECOMPOSITION OF R. R**T = A*D*( B**T ). FORM
+C     X( R + 1 ) = U*B DURING THE DECOMPOSITION BY ACCUMULATING THE
+C     TRANSFORMATIONS ON U.
+C
+C     THE ELEMENTS REPRESENTING CX( G + 1 ), ..., CX( P ) OF WORK
+C     ARE
+C     USED AS WORKSPACE.
+C
+  240 IER = 0
+      ITEMP = G*P + IG
+      K = CX1 + G
+      CALL F01LZF(P-G,WORK(ITEMP),P,WORK(ITEMP),P,.FALSE.,WORK(RQ1)
+     *            ,.FALSE.,.TRUE.,X(1,IG),MN,N,.FALSE.,TEMP,1,1,D(IG)
+     *            ,WORK(K),WORK(RQ1),WORK(RQ1),IER)
+C
+      IER = 1
+      CALL F02SZF(P-G,D(IG),WORK(K),D(IG),.FALSE.,WORK(RQ1)
+     *            ,.TRUE.,X(1,IG),MN,N,.FALSE.,TEMP,1,1,WORK(K)
+     *            ,WORK(RQ1),WORK(RQ1),IER)
+      IF (IER.EQ.0) GO TO 260
+      IFAIL = P01ABF(IFAIL,5,SRNAME,0,P01REC)
+      RETURN
+  260 CONTINUE
+C
+      KS = KS + 1
+      E = MAX(D(P),E)
+C
+C     RANDOMIZATION ON THE FIRST THREE STEPS.
+C
+      IF (Z1.GT.3) GO TO 300
+      DO 280 J = 1, N
+         X(J,P) = 2.0D0*G05CAF(0.0D0) - 1.0D0
+  280 CONTINUE
+      IK = 3
+      LF = P
+      L1 = P
+C
+      GO TO 1100
+C
+C     COMPUTE CONTROL QUANTITIES CX( I ).
+C
+  300 ITEMP = CX1 + G - 1
+      DO 360 K = IG, JP
+         ITEMP = ITEMP + 1
+         S = (D(K)-E)*(D(K)+E)
+         IF (S.GT.0.0D0) GO TO 320
+         WORK(ITEMP) = 0.0D0
+         GO TO 360
+  320    IF (E.NE.0.0D0) GO TO 340
+         WORK(ITEMP) = 1.0D+3 + LOG(D(K))
+         GO TO 360
+  340    WORK(ITEMP) = LOG((D(K)+SQRT(S))/E)
+  360 CONTINUE
+C
+C     ACCEPTANCE TEST FOR EIGENVALUES INCLUDING ADJUSTMENT OF EM AND
+C     H SUCH THAT D( EM ).GT. E, D( H ).GT. E AND D( EM )DOES NOT
+C     OSCILLATE STRONGLY
+C
+      I = Z1 - 1
+      K = G
+  380 ITEMP = RQ1 + K
+      K = K + 1
+      IF (EM.LT.K) GO TO 420
+      IF (D(K).LE.E) GO TO 400
+      IF (I.LE.0) GO TO 380
+      IF (D(K).GT.0.999D0*WORK(ITEMP)) GO TO 380
+  400 CONTINUE
+      EM = K - 1
+      IERR = 2
+C
+C     STATEMENT 420 IS EX4.
+C
+  420 IF (EM.EQ.0) GO TO 1280
+      K = H
+      S = 1.0D0 + 0.1D0*TOL
+  440 ITEMP = RQ1 + K
+      K = K + 1
+      IF (D(K).EQ.0.0D0) GO TO 460
+      IF (D(K).LE.S*WORK(ITEMP)) GO TO 440
+  460 CONTINUE
+      H = K - 1
+      K = EM
+  480 K = K + 1
+      IF (K.GT.H) GO TO 500
+      IF (D(K).GT.E) GO TO 480
+      H = K - 1
+C
+C     ACCEPTANCE TEST FOR EIGENVECTORS
+C
+  500 L = G
+      E2 = 0.0D0
+      DO 620 K = IG, JP
+         IF (K.NE.(L+1)) GO TO 560
+C
+C        CHECK FOR NESTED EIGENVALUES
+C
+         L = K
+         L1 = K
+         S = 0.5D0/DBLE(KS)
+         T = 1.0D0/DBLE(KS*M)
+  520    ITEMP = CX1 + L
+         L = L + 1
+         IF (L.GT.JP) GO TO 540
+         IF ((WORK(ITEMP)*(WORK(ITEMP)+S)+T).GT.WORK(ITEMP-1)**2)
+     *       GO TO 520
+  540    CONTINUE
+         L = L - 1
+C
+C        THE NEXT STATEMENT IS EX5.
+C
+         IF (L.LE.H) GO TO 560
+         L = L1 - 1
+         GO TO 640
+  560    CALL OP(IFLAG,N,X(1,K),WORK,RWORK,LRWORK,IWORK,LIWORK)
+         IF (IFLAG.LT.0) GO TO 1460
+         S = 0.0D0
+         DO 580 J = 1, L
+            IF (ABS(D(J)-D(K)).GE.0.01D0*D(K)) GO TO 580
+            T = IP(IFLAG,N,WORK,X(1,J),RWORK,LRWORK,IWORK,LIWORK)
+            IF (IFLAG.LT.0) GO TO 1460
+C
+            CALL DAXPY(N,-T,X(1,J),1,WORK,1)
+C
+            S = S + T*T
+  580    CONTINUE
+         T = 1.0D0
+         IF (S.NE.0.0D0) T = IP(IFLAG,N,WORK,WORK,RWORK,LRWORK,IWORK,
+     *                       LIWORK)
+         IF (IFLAG.LT.0) GO TO 1460
+         E2 = MAX(E2,SQRT(T/(S+T)))
+         IF (K.NE.L) GO TO 620
+C
+C        TEST FOR ACCEPTANCE OF GROUP OF EIGENVECTORS
+C
+         ITEMP = F1 + EM - 1
+         IF (L.GE.EM .AND. D(EM)*WORK(ITEMP).LT.TOL*(D(EM)-E)) G = EM
+         ITEMP = F1 + L - 1
+         IF (E2.GE.WORK(ITEMP)) GO TO 600
+         ITEMP = F1 + L1 - 1
+         TEMP(1) = E2
+C
+         CALL DCOPY(L-L1+1,TEMP,0,WORK(ITEMP),1)
+C
+  600    IF (L.LE.EM .AND. D(L)*WORK(ITEMP).LT.TOL*(D(L)-E)) G = L
+  620 CONTINUE
+C
+C     ADJUST M.
+C     STATEMENT 640 IS EX6.
+C
+  640 IG = G + 1
+      IF (E.GT.0.04D0*D(1)) GO TO 660
+      M = 1
+      K = 1
+      GO TO 680
+  660 E2 = 2.0D0/E
+      E1 = 0.51D0*E2
+      K = 2*INT(4.0D0/MIN(WORK(CX1),4.0D0))
+      M = MIN(M,K)
+C
+C     REDUCE EM IF CONVERGENCE WOULD BE TOO SLOW.
+C
+  680 IK = F1 + EM - 1
+      IF (WORK(IK).EQ.0.0D0) GO TO 740
+      IF (10*KS.GE.9*KM) GO TO 740
+      ITEMP = CX1 + EM - 1
+      S = DBLE(K)*WORK(ITEMP)
+      IF (S.GE.0.05D0) GO TO 700
+      T = 0.5D0*S*WORK(ITEMP)
+      GO TO 720
+  700 T = WORK(ITEMP) + LOG(0.5D0+0.5D0*EXP(-2.0D0*S))/DBLE(K)
+  720 S = LOG(D(EM)*WORK(IK)/(TOL*(D(EM)-E)))
+C
+C     EM IS REDUCED HERE
+C
+      IF (S*DBLE(KS).LE.T*DBLE(KM-KS)*DBLE(KM)) GO TO 740
+      IERR = 3
+      EM = EM - 1
+C
+C     STATEMENT 740 IS EX2.
+C
+  740 ITEMP = RQ1 + G
+C
+      CALL DCOPY(JP-IG+1,D(IG),1,WORK(ITEMP),1)
+C
+      IF (KS.GE.KM) IERR = 4
+      IF (G.GE.EM .OR. KS.GE.KM) GO TO 1280
+      ISTATE = 0
+      IF (H.EQ.LH) GO TO 760
+      LH = H
+      ISTATE = 1
+  760 CONTINUE
+      IF (G.EQ.LG) GO TO 800
+      LG = G
+      IF (ISTATE.EQ.1) GO TO 780
+      ISTATE = 2
+      GO TO 800
+  780 CONTINUE
+      ISTATE = 3
+  800 CONTINUE
+      CALL INF(ISTATE,KS,H,G,P,WORK(F1),D)
+C
+C     STATEMENT 820 IS EX1.
+C
+  820 IF ((KS+M).LE.KM) GO TO 840
+      Z2 = -1
+      IF (M.GT.1) M = 2*((KM-KS+1)/2)
+  840 M1 = M
+C
+C     SHORTCUT LAST INTERMEDIATE BLOCK IF ALL F( I )ARE SUFFICIENTLY
+C     SMALL.
+C
+      IF (L.LT.EM) GO TO 880
+      ITEMP = F1 + EM - 1
+      S = D(EM)*WORK(ITEMP)/(TOL*(D(EM)-E))
+      T = (S+1.0D0)*(S-1.0D0)
+      IF (T.LE.0.0D0) GO TO 140
+      ITEMP = CX1 + EM - 1
+      I = CX1 + H
+      S = LOG(S+SQRT(T))/(WORK(ITEMP)-WORK(I))
+      M1 = 2*INT(0.5D0*S+1.01D0)
+      IF (M1.LE.M) GO TO 860
+      M1 = M
+      GO TO 880
+  860 Z2 = -1
+C
+C     CHEBYSHEV ITERATION
+C
+  880 IF (M.LT.1) GO TO 980
+      IF (M.GT.1) GO TO 920
+      DO 900 K = IG, P
+         CALL OP(IFLAG,N,X(1,K),WORK,RWORK,LRWORK,IWORK,LIWORK)
+         IF (IFLAG.LT.0) GO TO 1460
+C
+         CALL DCOPY(N,WORK,1,X(1,K),1)
+C
+  900 CONTINUE
+      GO TO 980
+  920 L1 = M1 - 4
+      DO 960 K = IG, P
+         CALL OP(IFLAG,N,X(1,K),WORK,RWORK,LRWORK,IWORK,LIWORK)
+         IF (IFLAG.LT.0) GO TO 1460
+C
+C        BEWARE THE NEXT STATEMENT IF PASS BY COPY EVER COMES.
+C
+         CALL F06FDF(N,E1,WORK,1,WORK(N+1),1)
+C
+         CALL OP(IFLAG,N,WORK(N+1),WORK,RWORK,LRWORK,IWORK,LIWORK)
+         IF (IFLAG.LT.0) GO TO 1460
+C
+         CALL DAXPY(N,-E2,WORK,1,X(1,K),1)
+C
+         CALL F06FGF(N,X(1,K),1)
+C
+         IF (L1.LT.0) GO TO 960
+         DO 940 J = 4, M1, 2
+            CALL OP(IFLAG,N,X(1,K),WORK,RWORK,LRWORK,IWORK,LIWORK)
+            IF (IFLAG.LT.0) GO TO 1460
+C
+C           BEWARE THE FOLLOWING STATEMENT IF PASS BY COPY EVER COMES.
+C
+            CALL DAXPY(N,-E2,WORK,1,WORK(N+1),1)
+C
+            CALL OP(IFLAG,N,WORK(N+1),WORK,RWORK,LRWORK,IWORK,LIWORK)
+            IF (IFLAG.LT.0) GO TO 1460
+C
+            CALL DAXPY(N,E2,WORK,1,X(1,K),1)
+C
+            CALL F06FGF(N,X(1,K),1)
+  940    CONTINUE
+  960 CONTINUE
+  980 IK = 4
+      LF = IG
+      L1 = P
+      GO TO 1100
+C
+C     DISCOUNTING THE ERROR QUANTITIES F
+C
+ 1000 IF (G.GE.H) GO TO 1080
+      IF (M.NE.1) GO TO 1040
+      ITEMP = F1 + G
+      DO 1020 K = IG, H
+         WORK(ITEMP) = WORK(ITEMP)*(D(H+1)/D(K))
+         ITEMP = ITEMP + 1
+ 1020 CONTINUE
+      GO TO 1080
+ 1040 ITEMP = CX1 + H
+      T = EXP(-DBLE(M1)*WORK(ITEMP))
+      I = CX1 + G
+      DO 1060 K = IG, H
+         S = EXP(-DBLE(M1)*(WORK(I)-WORK(ITEMP)))
+         J = I + P
+         WORK(J) = S*WORK(J)*(1.0D0+T*T)/(1.0D0+(S*T)**2)
+         I = I + 1
+ 1060 CONTINUE
+ 1080 KS = KS + M1
+      Z2 = Z2 - M1
+C
+C     POSSIBLE REPETITION OF INTERMEDIATE STEPS
+C
+      IF (Z2.GE.0) GO TO 820
+      Z1 = Z1 + 1
+      Z2 = 2*Z1
+      M = 2*M
+      GO TO 140
+C
+C     PERFORMS ORTHONORMALIZATION OF COLUMNS 1 THROUGH L1 OF ARRAY
+C     X ASSUMING THAT COLUMNS 1 THROUGH LF - 1 ARE ALREADY ORTHO -
+C     NORMAL
+C
+ 1100 DO 1260 K = LF, L1
+         ORIG = .TRUE.
+ 1120    T = 0.0D0
+         JK = K - 1
+         IF (JK.LE.0) GO TO 1180
+         DO 1160 I = 1, JK
+            S = IP(IFLAG,N,X(1,I),X(1,K),RWORK,LRWORK,IWORK,LIWORK)
+            IF (IFLAG.LT.0) GO TO 1460
+            IF ( .NOT. ORIG) GO TO 1140
+            ITEMP = (K-1)*P + I
+            WORK(ITEMP) = S
+ 1140       T = T + S*S
+C
+C           BEWARE THE FOLLOWING STATEMENT IF PASS BY COPY EVER COMES.
+C
+            CALL DAXPY(N,-S,X(1,I),1,X(1,K),1)
+C
+ 1160    CONTINUE
+ 1180    S = IP(IFLAG,N,X(1,K),X(1,K),RWORK,LRWORK,IWORK,LIWORK)
+         IF (IFLAG.LT.0) GO TO 1460
+         T = S + T
+         IF (S.LE.0.001D0*T) GO TO 1200
+         IF (T.GT.MT) GO TO 1220
+ 1200    ORIG = .FALSE.
+         IF (S.GT.MT) GO TO 1120
+         S = 0.0D0
+ 1220    S = SQRT(S)
+         ITEMP = (K-1)*P + K
+         WORK(ITEMP) = S
+         IF (S.EQ.0.0D0) GO TO 1240
+         S = 1.0D0/S
+C
+ 1240    CALL DSCAL(N,S,X(1,K),1)
+C
+ 1260 CONTINUE
+      GO TO (140,180,300,1000,1300) IK
+C
+C     STATEMENT 1280 IS EX.
+C
+ 1280 EM = G
+      ISTATE = 4
+      CALL INF(ISTATE,KS,H,G,P,WORK(F1),D)
+C
+C     SOLVE EIGENVALUE PROBLEM OF PROJECTION OF MATRIX C.
+C
+      IK = 5
+      LF = 1
+      L1 = JP
+      GO TO 1100
+ 1300 CONTINUE
+      DO 1340 K = 1, JP
+         CALL OP(IFLAG,N,X(1,K),X(1,P),RWORK,LRWORK,IWORK,LIWORK)
+         IF (IFLAG.LT.0) GO TO 1460
+         ITEMP = (K-1)*JP + K
+         DO 1320 I = K, JP
+            WORK(ITEMP) = IP(IFLAG,N,X(1,I),X(1,P)
+     *                    ,RWORK,LRWORK,IWORK,LIWORK)
+            IF (IFLAG.LT.0) GO TO 1460
+            ITEMP = ITEMP + 1
+ 1320    CONTINUE
+ 1340 CONTINUE
+C
+      CALL F01AJF(JP,MT,WORK,JP,D,WORK(CX1),WORK,JP)
+      IER = 1
+      CALL F02AMF(JP,EPSMCH,D,WORK(CX1),WORK,JP,IER)
+      IF (IER.EQ.0) GO TO 1360
+      IFAIL = P01ABF(IFAIL,5,SRNAME,0,P01REC)
+      RETURN
+ 1360 CONTINUE
+C
+C     ARRANGE EIGENVALUES IN ORDER OF DECREASING ABSOLUTE VALUE.
+C
+      DO 1400 J = 1, JP
+         K = J
+         DO 1380 I = J, JP
+            IF (ABS(D(I)).GT.ABS(D(K))) K = I
+ 1380    CONTINUE
+         IF (K.LE.J) GO TO 1400
+         T = D(K)
+         D(K) = D(J)
+         D(J) = T
+         ITEMP = (K-1)*JP + 1
+         IK = (J-1)*JP + 1
+C
+C        BEWARE THE FOLLOWING STATEMENT IF PASS BY COPY EVER COMES.
+C
+         CALL DSWAP(JP,WORK(ITEMP),1,WORK(IK),1)
+C
+ 1400 CONTINUE
+      DO 1440 J = 1, N
+C
+         CALL DCOPY(JP,X(J,1),MN,WORK(CX1),1)
+C
+         DO 1420 I = 1, JP
+            ITEMP = (I-1)*JP + 1
+C
+            X(J,I) = DDOT(JP,WORK(CX1),1,WORK(ITEMP),1)
+C
+ 1420    CONTINUE
+ 1440 CONTINUE
+      KM = KS
+      D(P) = E
+      IFLAG = IERR
+C
+ 1460 IFAIL = P01ABF(IFAIL,IFLAG,SRNAME,0,P01REC)
+      RETURN
+C
+C     END OF F02FJF.
+C
+      END

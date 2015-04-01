@@ -1,0 +1,47 @@
+      SUBROUTINE F04AJF(N,IR,A,IA,P,B,IB)
+C     MARK 2 RELEASE. NAG COPYRIGHT 1972
+C     MARK 4 REVISED.
+C     MARK 4.5 REVISED
+C     MARK 11 REVISED. VECTORISATION (JAN 1984).
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 12 REVISED. EXTENDED BLAS (JUNE 1986)
+C
+C     UNSYMSOL
+C     SOLVES AX=B, WHERE A IS AN UNSYMMETRIC MATRIX AND B IS AN
+C     N*IR
+C     MATRIX OF IR RIGHT-HAND SIDES. THE SUBROUTINE F04AJF MUST BY
+C     PRECEDED BY F03AFF IN WHICH L AND U ARE PRODUCED IN A(I,J),
+C     FROM A, AND THE RECORD OF THE INTERCHANGES IS PRODUCED IN
+C     P(I). AX=B IS SOLVED IN THREE STEPS, INTERCHANGE THE
+C     ELEMENTS OF B, LY=B AND UX=Y. THE MATRICES Y AND THEN X ARE
+C     OVERWRITTEN ON B.
+C     1ST AUGUST 1971
+C
+C     .. Scalar Arguments ..
+      INTEGER           IA, IB, IR, N
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(IA,N), B(IB,IR), P(N)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  X
+      INTEGER           I, I1, K
+C     .. External Subroutines ..
+      EXTERNAL          DTRSV
+C     .. Executable Statements ..
+C     INTERCHANGING ELEMENTS OF B
+      DO 40 I = 1, N
+         I1 = P(I) + 0.5D0
+         IF (I1.EQ.I) GO TO 40
+         DO 20 K = 1, IR
+            X = B(I,K)
+            B(I,K) = B(I1,K)
+            B(I1,K) = X
+   20    CONTINUE
+   40 CONTINUE
+      DO 60 K = 1, IR
+C        SOLUTION OF LY= B
+         CALL DTRSV('L','N','N',N,A,IA,B(1,K),1)
+C        SOLUTION OF UX= Y
+         CALL DTRSV('U','N','U',N,A,IA,B(1,K),1)
+   60 CONTINUE
+      RETURN
+      END

@@ -1,0 +1,32 @@
+#!/bin/bash
+clock_log=$1
+ps=${clock_log/.log/.ps}
+NZ=($(awk '{if($1==">")print substr($NF,3)}' $clock_log | minmax -C))
+NZ[0]=$[${NZ[0]}-1]
+NZ[1]=$[${NZ[1]}+1]
+
+NMIN=0
+NMAX=$(grep -v \> $clock_log | wc -l)
+((NMAX++))
+
+date=($(awk '{if($1!=">")printf "%s\n%s\n",$4,$5}' $clock_log | minmax -C))
+date[0]=$(echo ${date[0]} | awk '{print int($1/3600)*3600}' | gmtconvert -fi0t -fo0T --TIME_SYSTEM=UNIX)
+date[1]=$(echo ${date[1]} | awk '{print int($1/3600)*3600+3600}' | gmtconvert -fi0t -fo0T --TIME_SYSTEM=UNIX)
+
+gmtset HEADER_FONT_SIZE 16p ANOT_FONT_SIZE 12p ANNOT_FONT_SIZE_SECONDARY 12p LABEL_FONT_SIZE 12p TICK_LENGTH -0.2c HEADER_OFFSET 0.2c
+gmtset TIME_LANGUAGE br INPUT_DATE_FORMAT yyyy-mm-dd PLOT_DATE_FORMAT dd/mm/yy TIME_FORMAT_PRIMARY abbreviated
+
+psbasemap -X2c -Y2c -JX26cT/17c -R${date[0]}/${date[1]}/$NMIN/$NMAX --BASEMAP_FRAME_RGB=128/128/128  -Bsa1D/a1 -Bpa12hf6hg6h/a1 -K > $ps
+makecpt -Cwysiwyg -T${NZ[0]}/${NZ[1]}/0.5 > color.cpt
+awk -v n=0 'BEGIN{s=">"}{if($1==">"){s=$0}else{n++;printf "%s\n%s %d\n%s %d\n",s,$2,n,$3,n}}' $clock_log |\
+psxy -m -J -R -f0T,1f -W5p -Ccolor.cpt -K -O >> $ps
+awk -v n=0 '{if($1!=">"){n++;printf "'${date[0]}' %d 12 0 0 ML %s\n",n,$1}}' $clock_log |\
+pstext -J -R -O >> $ps
+
+# mostra o resultado
+ps2raster $ps -A -P -Tg
+if [[ -n $VIEWER_PNG ]] ; then
+    $VIEWER_PNG ${ps/.ps/.png}&
+else
+    echo "gerada a figura ${ps/.ps/.png}"
+fi

@@ -1,0 +1,106 @@
+See IMPORTANT NOTE at bottom.
+
+
+To run "rfemi" two inputs are required: the MT-1 data file, and a
+'clock set file' which tells the clock reset time, and a zero reference time.
+The program also asks for a short "station id" which it adds to the header 
+(this can be used for keeping track of stations in output files/plots
+of array processing programs), the name of the output file, and a comment or header line.
+The program prompts for the necessary information, which is read from standard
+input.  For routine use it is more convenient to make a file with all
+of the required information (e.g., called cf_rfemi) and use a redirect when running the
+program, e.g.:
+               rfemi < cf_rfemi
+
+Note that the program allows you to merge multiple input files in a single
+output file; record numbers are stored with blocks of data so subsequent programs
+will know if there is a gap in the merged time series.  Also, the file "cf_rfemi"
+can be set up to make a series of output files.
+
+Here is an annotated example of a "cf_rfemi" file used to translate four data files.
+Three fils are output; the first and third contain one input file each, while
+the second contains two input files ("s108092a_ts2" and "s108092b_ts2").
+
+There is another example of a cf_rfemi file in the directory test/DTEST.
+(Note that the annotation in the following should be removed before using the following
+as inputs to rfemi!)
+
+#########################    EXAMPLE cf_rfemi FILE ##################################
+S1           <--- station id
+5            <---- # of channels
+s108091_ts2.bin     <---- output data file
+Base station TS2     <---- comment
+s108091.ts2     <---- input (MT-1) data file name
+0809.clk        <---- clock reset file
+n        <-----NO, do not add another input data file to the end
+y         <----YES, translate another input file
+S1                 .
+5
+s108092_ts2.bin       .
+Base station TS2    .
+s108092a.ts2       .
+0809.clk           as above
+y           <-----YES, do add another input data file to the end
+s108092b.ts2     <---- name of second input data file, for output in same file
+0809.clk       <----name of clock file for second data file
+n             <-----NO do not add another input file
+y     < -----    YES, make another binary file  
+S4      etc., etc., etc........
+5
+s408091_ts2.bin
+Calero TS2
+s408091.ts2
+0809.clk
+n
+n       <------------ NO MORE FILES; done
+####################    END OF EXAMPLE cf_rfemi FILE ################################
+
+
+Here is the clock set up file (called 0809.clk)
+93 9 8 7 23    <----- time when clock was reset (year, month, day, hour, min)
+93 9 8 0 0      <---- time of "record number zero"
+                <--- two optional lines which can be used to account
+                                 for clock offsets, and linear clock drift
+
+NOTE: For the processing programs (especially multiple-station) all time samples
+must have a well defined record number, which in turn is used to define a unique
+"set number" to each Fourier transformed time segment.  This allows us to make sure all FFT 
+segments are alligned for all stations in an array, even if start times are
+different.  In the example above I am making the zero record number correspond to
+midnight before the external clock reset.  THIS ZERO TIME SHOULD BE BEFORE
+THE FIRST CLOCK RESET, so that all record numbers and all set nnumbers are positive.
+Negative record/set numbers will cause difficult to diagnose problems in subsequent
+processing programs.   Using something like midnight for record number zero makes it
+easy to translate the data record number into time of day (e.g., for 120 hz sampling
+record number 900000 corresponds to a time 900000/(10 hz * 3600 s/hr) = 25 hours 
+after 0:0 PDT 9/8/93 - 1:00 am on 9/9/93
+
+"rfemi" outputs:
+(1) a reformated (direct access binary data file, with absolute record numbers
+and a header (needed for my X-windows plotting programs), and
+(2) a system parameter file is used by my FFT program.   For EMI data files this
+system parameter file is used in conjunction with instrument calibration files
+(provided by EMI)  to convert all measured quantities to physical units.  The
+calibration files must be in a directory called "sensors" which should be in
+the directory that the Fourier TF program is run from.  (Or a link to the actual
+location of the /sensors directory should be provided in the run directory).
+Finally, note that there is a program in RF/FCOR called "sys_tbl_tf" which
+will read in the sp****** file, together with the appropriate /sensors files
+and make a frequency domain complex table combining all system responses,
+filter corrections, gains etc.  See README in RF/FCOR for details.
+
+CHANGED May, 1995:  New version of "rfemi"  is much faster.
+The new version differs in one key input routine which has been written in C.
+Old version, rfemi, is _really_ slow; both versions should give same output.
+
+IMPORTANT NOTE:  rfemi now links c reading routines with fortran main.
+The conventions for naming the c routines is platform dependent.
+Here, the fortran main program calls subroutine "rdblk".  For a Sun
+workstaton running solaris 2.x, this requires that the name of the
+corresponding c routine (which is in rdblk.c) be rdblk_  .  I.e., you
+have to add an underscore to the end of c procedure names (note that there
+is another procedure "file_open_c" in rdblk.c also.  This needs to
+have an underscore added also.)  Underscores are added to procedure names
+in rdblk.c , consistent with use on a Sun.  But some other
+platforms are different, and do not like the underscores, so you
+may have to change this.

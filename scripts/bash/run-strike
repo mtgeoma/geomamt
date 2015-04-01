@@ -1,0 +1,147 @@
+#!/bin/bash
+# check strike program
+STRIKE=strike01x100
+STRIKE=$(which $STRIKE 2> /dev/null)
+if [[ -z $STRIKE ]]
+then
+    echo "couldn't find program $STRIKE"
+    exit 1
+fi
+# for unknow reason, must remove path to run under opensuse11.1
+STRIKE=$(basename $STRIKE)
+
+# batch file
+STRIKEBAT=strike.bat
+
+# define defaults answers to strike program
+declare -A options
+# Expert mode (y/n)  [default: N ]
+options['MODE']=n
+# Site list (.dat or .edi for single site)?  [default: site.lis ]
+site=""
+# Give impedance relative error floor of maximum value (in %)  [default: 1.7500 ] 
+options['error']=3.5
+# Give normalization type (? for list)  [default: GAVSD2 ] >?
+#  L2          L2 unweighted normalization
+#  MAXSD       maximum s.d. weighted normalization
+#  GAVSD       geom. av. s.d. weighted normalization
+#  GAVSD2      geom. av. s.d. (Zxx,Zyy) & (Zxy,Zyx) weighted normalization
+#  SUMSQ       sqrt(sum squares s.d.) weighted normalization
+#  SUMSQ2      sqrt(sum squares s.d. (Zxx,Zyy) & (Zxy,Zyx)) weighted normalization
+options['norm']=GAVSD2
+# Enter minimum period?  [default: 0.10000E-03 ] >
+options['tmin']=6.0325371e-05
+# Enter maximum period?  [default: 10000. ] >
+options['tmax']=8.0816493E+03
+# Enter bandwidth (no. of period decades)?  [default: 6.9230 ] >
+options['logdt']=0.1505
+# Enter overlap   (no. of period decades)?  [default: 0.0 ] > 
+options['overlap']=0.0
+#   Regional azimuth bounds   -1080.0000         1080.0000
+#              Shear bounds   -45.000000         45.000000
+#              Twist bounds   -60.000000         60.000000
+# Change bounds from standard bounds (y/n)?  [default: N ] >Y
+options['BOUNDS']=Y
+# Give strike lower bound  [default: -1080.0 ] >
+# Give strike upper bound  [default: 1080.0 ] >
+# Give shear lower bound  [default: -45.000 ] >
+# Give shear upper bound  [default: 45.000 ] >
+# Give twist lower bound  [default: -60.000 ] >
+# Give twist upper bound  [default: 60.000 ] >
+options['azimmin']=-1080.0
+options['azimmax']=1080.0
+options['shmin']=-45.000
+options['shmax']=45.000
+options['twmin']=-60.000
+options['twmax']=60.000
+# Do statistics (y/n)  [default: N ] >
+options['STAT']=y
+# Give number of realizations (default is maximum permitted)  [default: 101 ] >
+options['n']=11
+
+usage ()
+# $1: script name
+{
+    echo "usage: $1 file [parameter=value]"
+    echo "file: format jones or edi"
+    echo "parameter could be:"
+    echo "error=impedance relative error floor of maximum value (in %) [${options['error']}]"
+    echo "norm=normalization type [${options['norm']}]"
+    echo "     L2     L2 unweighted normalization"
+    echo "     MAXSD  maximum s.d. weighted normalization"
+    echo "     GAVSD  geom. av. s.d. weighted normalization"
+    echo "     GAVSD2 geom. av. s.d. (Zxx,Zyy) & (Zxy,Zyx) weighted normalization"
+    echo "     SUMSQ  sqrt(sum squares s.d.) weighted normalization"
+    echo "     SUMSQ2 sqrt(sum squares s.d. (Zxx,Zyy) & (Zxy,Zyx)) weighted normalization"
+
+    echo "tmin=minimum period [${options['tmin']}]"
+    echo "tmax=maximum period [${options['tmax']}]"
+    echo "logdt=bandwidth (no. of period decades) [${options['logdt']}]"
+    echo "overlap=overlap (no. of period decades) [${options['overlap']}]"
+    echo "azimmin=strike lower bound [${options['azimmin']}]"
+    echo "azimmax=strike upper bound [${options['azimmax']}]"
+    echo "shmin=shear lower bound [${options['shmin']}]"
+    echo "shmax=shear upper bound [${options['shmax']}]"
+    echo "twmin=twist lower bound [${options['twmin']}]"
+    echo "twmax=twist upper bound [${options['twmax']}]"
+    echo "n=number of realizations [${options['n']}]"
+    exit 1
+}
+
+# check if there are input parameters:
+if [[ -z "$1" ]]
+then
+    usage $0
+fi
+
+# read input parameters
+until [[ -z "$1" ]]
+do
+    # parameters with "=" set options:
+    if [[ $(expr index "$1" "=") != 0 ]]
+    then
+        option=($(echo $1 | awk '{gsub("="," ");print $0}'))
+        if [[ ${#option[*]} -eq 2 ]] ; then
+        # check if is a valid option
+            if [[ -z ${options[${option[0]}]} ]] ; then
+		if [[ ${option[0]} == "sh" || ${option[0]} == "tw"
+			    || ${option[0]} == "azim" ]]
+		then
+                    options[${option[0]}min]=${option[1]}
+                    options[${option[0]}max]=${option[1]}
+		else
+                    echo "'${option[0]}' isn't a valid option"
+                    usage $0
+		fi
+            else
+                options[${option[0]}]=${option[1]}
+            fi
+        else
+            echo "error in option:$1"
+            usage $0
+        fi
+    else
+	site=$1
+    fi
+    shift
+done
+
+echo ${options['MODE']} > $STRIKEBAT
+echo $site >> $STRIKEBAT
+echo ${options['error']} >> $STRIKEBAT
+echo ${options['norm']} >> $STRIKEBAT
+echo ${options['tmin']} >> $STRIKEBAT
+echo ${options['tmax']} >> $STRIKEBAT
+echo ${options['logdt']} >> $STRIKEBAT
+echo ${options['overlap']} >> $STRIKEBAT
+echo ${options['BOUNDS']} >> $STRIKEBAT
+echo ${options['azimmin']} >> $STRIKEBAT
+echo ${options['azimmax']} >> $STRIKEBAT
+echo ${options['shmin']} >> $STRIKEBAT
+echo ${options['shmax']} >> $STRIKEBAT
+echo ${options['twmin']} >> $STRIKEBAT
+echo ${options['twmax']} >> $STRIKEBAT
+echo ${options['STAT']} >> $STRIKEBAT
+echo ${options['n']} >> $STRIKEBAT
+
+$STRIKE < $STRIKEBAT

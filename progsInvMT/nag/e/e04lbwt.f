@@ -1,0 +1,60 @@
+      SUBROUTINE E04LBW(HESD,LHD,BOUNDK,IFAIL,COND)
+C
+C     MARK 6 RELEASE NAG COPYRIGHT 1977
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 13 REVISED. USE OF MARK 12 X02 FUNCTIONS (APR 1988).
+C
+C     **************************************************************
+C
+C     E04LBW (HSDCND) CHECKS WHETHER ANY DIAGONAL ELEMENT OF THE
+C     CHOLESKY FACTORIZATION OF THE HESSIAN IS TOO SMALL OR NEGATIVE
+C     AND, IF NOT, RETURNS IN COND THE ESTIMATED CONDITION NUMBER OF
+C     THE MATRIX.
+C
+C     PHILIP E. GILL, WALTER MURRAY, SUSAN M. PICKEN, MARGARET H.
+C     WRIGHT AND ENID M. R. LONG, D.N.A.C., NATIONAL PHYSICAL
+C     LABORATORY, ENGLAND
+C
+C     **************************************************************
+C
+C
+C     A MACHINE-DEPENDENT CONSTANT IS SET HERE. EPSMCH IS THE
+C     SMALLEST POSITIVE REAL NUMBER SUCH THAT 1 + EPSMCH .GT. 1.
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  BOUNDK, COND
+      INTEGER           IFAIL, LHD
+C     .. Array Arguments ..
+      DOUBLE PRECISION  HESD(LHD)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  BIG, EPSMCH, HDI, SMALL
+      INTEGER           I
+C     .. External Functions ..
+      DOUBLE PRECISION  X02AJF
+      EXTERNAL          X02AJF
+C     .. Executable Statements ..
+      EPSMCH = X02AJF()
+      IFAIL = 0
+      COND = 1.0D+0
+      SMALL = HESD(1)
+      IF (SMALL.LT.EPSMCH) GO TO 80
+      IF (LHD.EQ.1) RETURN
+      BIG = SMALL
+      DO 40 I = 2, LHD
+         HDI = HESD(I)
+         IF (HDI.LT.EPSMCH) GO TO 80
+         IF (BIG.LT.HDI) GO TO 20
+         IF (SMALL.GT.HDI) SMALL = HDI
+         GO TO 40
+   20    BIG = HDI
+   40 CONTINUE
+      IF (SMALL.GT.1.0D+0) GO TO 60
+      IF (SMALL*BOUNDK.LT.BIG) GO TO 80
+   60 COND = BIG/SMALL
+      RETURN
+   80 IFAIL = 1
+      RETURN
+C
+C     END OF E04LBW (HSDCND)
+C
+      END

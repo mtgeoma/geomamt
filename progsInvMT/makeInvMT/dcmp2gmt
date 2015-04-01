@@ -1,0 +1,1 @@
+g++ dcmp2gmt.cpp le_dados.cpp tofirst.cpp -o ~/bin/dcmp2gmt

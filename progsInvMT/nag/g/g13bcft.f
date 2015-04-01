@@ -1,0 +1,45 @@
+      SUBROUTINE G13BCF(X,Y,NXY,NL,S,R0,R,STAT,IFAIL)
+C     MARK 10 RELEASE. NAG COPYRIGHT 1982.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     G13BCF CALCULATES CROSS CORRELATIONS BETWEEN TWO TIME SERIES
+C
+C     CONTRIBUTORS - G. TUNNICLIFFE WILSON,M. HURLEY (LANC. UNIV.)
+C     VALIDATOR    - T. LAMBERT ( NAG CENTRAL OFFICE )
+C
+C     USES NAG LIBRARY ROUTINES G13BCZ, P01AAF
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='G13BCF')
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  R0, S, STAT
+      INTEGER           IFAIL, NL, NXY
+C     .. Array Arguments ..
+      DOUBLE PRECISION  R(NL), X(NXY), Y(NXY)
+C     .. Local Scalars ..
+      INTEGER           IERROR
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      INTEGER           P01ABF
+      EXTERNAL          P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          G13BCZ
+C     .. Executable Statements ..
+      IERROR = 0
+C     CHECK LENGTH OF SERIES
+      IF (NXY.LE.1) GO TO 20
+C     CHECK NUMBER OF LAGS
+      IF (NL.LT.1 .OR. NL.GE.NXY) GO TO 20
+      CALL G13BCZ(X,Y,NXY,NL,S,R0,R,STAT,IERROR)
+      IF (IERROR.NE.0) GO TO 40
+C     SUCCESSFUL EXIT
+      IFAIL = 0
+      RETURN
+C     UNSUCCESSFUL EXIT
+C     ERROR IN USER SUPPLIED PARAMETER
+   20 IERROR = 1
+   40 IFAIL = P01ABF(IFAIL,IERROR,SRNAME,0,P01REC)
+      RETURN
+      END

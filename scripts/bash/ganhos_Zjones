@@ -1,0 +1,93 @@
+#!/bin/bash
+# script ganhos_Z
+# multiplica as componentes do tensor de impedância pelos ganhos dados
+# modo de usar:
+# ./ganhos_Z arquivo_formato_jones.dat ganhoZxx ganhoZxy ganhoZyx ganhoZyy > arquivo_formato_jones_com_ganhos.dat
+# ATENÇÃO: o programa é frágil, no sentido em que há poucos testes da consistência dos dados de entrada
+
+E_USAGE=64    # command line usage error
+E_NOINPUT=66  # cannot open input
+
+# função ganho
+ganho ()
+# $1=arquivo_jones.dat
+# $2=ganho (valor a ser multiplicado pela componente)
+# $3=NR (linha em que começa o bloco da componente)
+{
+    awk -v ganho=$2 -v nr=$3 '{
+      if(NR==nr) { # inicio do bloco. Imprime a identificação
+	print $0
+      }
+      if(NR==nr+1) { # linha seguinte identifica o no. de períodos
+        nT=$1
+	print $0
+      }
+      if(NR>nr+1&&NR<=nr+1+nT) { # imprime o bloco de dados com o ganho (note que se y=a*x;Sigma_y=a*Sigma_x)
+        if(ganho>0) {
+	  printf "%14.4e%14.4e%14.4e%14.4e%4d\n",$1,$2*ganho,$3*ganho,$4*ganho,$5
+        }
+        else {
+	  printf "%14.4e%14.4e%14.4e%14.4e%4d\n",$1,$2*ganho,$3*ganho,$4*-ganho,$5
+	}
+      }
+    }' $1
+}
+
+# começo do bloco principal
+if [[ $# != 5 ]]
+then
+    echo "Uso: $(basename $0) arquivo_formato_jones.dat ganhoZxx ganhoZxy ganhoZyx ganhoZyy > arquivo_formato_jones_com_ganhos.dat"
+    exit $E_USAGE
+else
+    arquivo_jones=$1
+    ganhoZxx=$2
+    ganhoZxy=$3
+    ganhoZyx=$4
+    ganhoZyy=$5
+fi
+
+# verifica se arquivo_jones.dat existe e se tem permissão de leitura
+if [[ !(-f $arquivo_jones && -r $arquivo_jones) ]]
+then
+    if [[ !(-f $arquivo_jones) ]]
+    then
+        echo "arquivo \"$arquivo_jones\" não exite"
+    else
+        echo "arquivo \"$arquivo_jones\" não tem permissão de leitura"
+    fi
+    exit $E_NOINPUT
+fi
+
+# # linha em que começa o bloco ZXX
+# NRZXX=$(grep -n ZXX $arquivo_jones | awk 'BEGIN{FS=":"}{print $1}')
+# # linha em que começa o bloco ZXY
+# NRZXY=$(grep -n ZXY $arquivo_jones | awk 'BEGIN{FS=":"}{print $1}')
+# # linha em que começa o bloco ZYX
+# NRZYX=$(grep -n ZYX $arquivo_jones | awk 'BEGIN{FS=":"}{print $1}')
+# # linha em que começa o bloco ZYY
+# NRZYY=$(grep -n ZYY $arquivo_jones | awk 'BEGIN{FS=":"}{print $1}')
+# # linha em que começa o bloco TZX
+# NRTZX=$(grep -n TZX $arquivo_jones | awk 'BEGIN{FS=":"}{print $1}')
+
+# encontra as linhas em que começam os blocos ZXX, ZXY, ZYX, ZYY e TZX:
+NRZXX=$(awk '{if($1=="ZXX")print NR}' $arquivo_jones)
+NRZXY=$(awk '{if($1=="ZXY")print NR}' $arquivo_jones)
+NRZYX=$(awk '{if($1=="ZYX")print NR}' $arquivo_jones)
+NRZYY=$(awk '{if($1=="ZYY")print NR}' $arquivo_jones)
+NRTZX=$(awk '{if($1=="TZX")print NR}' $arquivo_jones)
+
+# escreve o cabeçalho (assume que é qualquer coisa antes de NRZXX)
+awk -v nr=$NRZXX '{if(NR<nr)print $0}' $arquivo_jones
+
+# calcula o ganho para as componentes
+ganho $arquivo_jones $ganhoZxx $NRZXX
+ganho $arquivo_jones $ganhoZxy $NRZXY
+ganho $arquivo_jones $ganhoZyx $NRZYX
+ganho $arquivo_jones $ganhoZyy $NRZYY
+
+# escreve o tipper (assume que é qualquer coisa depois de NRTZX)
+if [[ -n $NRTZX ]] ; then
+    awk -v nr=$NRTZX '{if(nr!=0&&NR>=nr)print $0}' $arquivo_jones
+fi
+
+exit 0

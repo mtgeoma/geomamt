@@ -1,0 +1,90 @@
+      SUBROUTINE G13ADX(TOR,DELTA,ALPHA,IQ1,IFAIL1)
+C     MARK 9 RELEASE. NAG COPYRIGHT 1981.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     G13ADX CALCULATES THE PARAMETER
+C     CORRECTIONS DELTA FOR G13ADY
+C
+C     PARAMETERS
+C     TOR      - ARRAY OF M.A. PARAMETER EQUATION SOLUTIONS
+C     DELTA    - ARRAY OF PARAMETER CORRECTIONS
+C     ALPHA    - COPY OF TOR FOR REDUCTION AND ALPHAS
+C     IQ1      - NO. OF PARAMETERS+1=SIZE OF ABOVE ARRAYS
+C     IFAIL1   - SUCCESS/FAILURE INDICATOR
+C
+C
+C     I) CHECK TOR ZERO
+C
+C     .. Scalar Arguments ..
+      INTEGER           IFAIL1, IQ1
+C     .. Array Arguments ..
+      DOUBLE PRECISION  ALPHA(IQ1), DELTA(IQ1), TOR(IQ1)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  ALPHAN
+      INTEGER           I, INDA, J, N, NHALF
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS
+C     .. Executable Statements ..
+      IF (TOR(1).LE.0.0D0) GO TO 240
+C
+C     COPY TOR INTO ALPHA
+C
+      DO 20 I = 1, IQ1
+         ALPHA(I) = TOR(I)
+   20 CONTINUE
+C
+C     II)REDUCE COPY OF TOR
+C
+      IF (IQ1.LT.2) GO TO 140
+      DO 120 I = 2, IQ1
+         N = IQ1 - I + 2
+         ALPHAN = ALPHA(N)/ALPHA(1)
+         IF (ABS(ALPHAN).GE.1.0D0) GO TO 240
+         ALPHA(1) = ALPHA(1) - ALPHAN*ALPHA(N)
+         NHALF = (N+1)/2
+         IF (NHALF.LT.2) GO TO 80
+         INDA = N - 1
+         DO 60 J = 2, NHALF
+            ALPHA(N) = ALPHA(J)
+            ALPHA(J) = ALPHA(J) - ALPHAN*ALPHA(INDA)
+            IF (J.EQ.INDA) GO TO 40
+            ALPHA(INDA) = ALPHA(INDA) - ALPHAN*ALPHA(N)
+   40       INDA = INDA - 1
+   60    CONTINUE
+   80    ALPHA(N) = ALPHAN
+         DELTA(N) = DELTA(N)/ALPHA(1)
+         IF (N.EQ.2) GO TO 120
+         NHALF = N - 1
+         INDA = N - 1
+         DO 100 J = 2, NHALF
+            DELTA(J) = DELTA(J) - DELTA(N)*ALPHA(INDA)
+            INDA = INDA - 1
+  100    CONTINUE
+  120 CONTINUE
+C
+C     III) SET DELTA ZERO
+C
+  140 DELTA(1) = DELTA(1)/(2.0D0*ALPHA(1))
+C
+C     IV) CALCULATE CORRECTIONS
+C
+      IF (IQ1.LT.2) GO TO 220
+      DO 200 I = 2, IQ1
+         NHALF = (I+1)/2
+         INDA = I
+         DO 180 J = 1, NHALF
+            ALPHAN = DELTA(J)
+            DELTA(J) = DELTA(J) - ALPHA(I)*DELTA(INDA)
+            IF (J.EQ.INDA) GO TO 160
+            DELTA(INDA) = DELTA(INDA) - ALPHA(I)*ALPHAN
+  160       INDA = INDA - 1
+  180    CONTINUE
+  200 CONTINUE
+  220 IFAIL1 = 0
+      RETURN
+C
+C     COME HERE IF ERRORS
+C
+  240 IFAIL1 = 1
+      RETURN
+      END

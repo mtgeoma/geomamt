@@ -1,0 +1,33 @@
+valores de referencia:
+NS=6.4
+CAL=1.11
+HCV=250
+ECV=-1E6
+HGN=2
+EGN=3
+ELN [m]
+
+correcao 0:
+H=ADN*(HCV*NS*CAL)/(0x7FFFFF*HGN)
+H=ADN*1.0585786E-4 [nT]
+
+E=ADN*(ECV*NS*CAL)/(0x7FFFFF*EGN*ELN)
+E=ADN*(-0.282288)/ELN [mV/km]
+
+correcao 1:
+H=ADN*(HCV*NS)/(0x7FFFFF*HGN*CAL)
+H=ADN*8.5916615E-5 [nT]
+
+E=ADN*(ECV*NS)/(0x7FFFFF*EGN*CAL*ELN)
+E=ADN*(-0.229111)/ELN [mV/km]
+
+correcao 2:
+a correcao para T e V/m, normalizada para 0x7fffff
+esta nos arquivos de calibracao.
+aqui so corrige para nT e mV/km
+H=(ADN/0x7FFFFF)*1E9 [nT]
+H=119.209
+
+E=(ADN/0x7FFFFF)*1E6 [mV/km]
+E=0.119209
+

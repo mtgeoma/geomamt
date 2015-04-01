@@ -1,0 +1,114 @@
+#!/bin/bash
+if [[ $# != 1 ]] ; then
+    echo "usage: $(basename $0) file.dcmp"
+    exit 1
+fi
+DCMP=$1
+
+# remove extension .dcmp
+ID=${DCMP/.dcmp/}
+if [[ "$ID.dcmp" != $DCMP ]]
+then
+    echo "expected a file *.dcmp"
+    exit 1
+fi
+IMPED=imped${ID:3}.dat
+if [[ !(-e $DCMP) ]]
+then
+    echo "couldn't find $DCMP"
+    exit 1
+fi
+
+ps=${ID}.ps
+TITLE=$ID
+
+TMIN=1e-3
+TMAX=1e4
+De=1e-2/1e4
+DR=1e-1/1e5
+DP=-45/135
+
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+
+gmtset ANNOT_FONT_SIZE 8p LABEL_FONT_SIZE 10p
+
+# error CHI^2
+
+dcmp2gmt -I$DCMP -Derr -Q |\
+psxy -X2c -Y13c -JX8cl/6cl -R$TMIN/$TMAX/$De -Ba1pf3/a1p:"Error":WsNe -Sc0.15c -EY0p/0.25p/0 -G0 -K -P > $ps
+
+# TITLE
+echo "$TMAX 1e4 12 0.0 1 mc $TITLE" | pstext -N -J -R -D0.5c/1.0c -K -O >> $ps
+
+psxy -J -R -W0.8p -K -O <<end>> $ps
+1e-8 4
+1e+8 4
+end
+
+# RESIST AP XY and YX
+dcmp2gmt -I$DCMP -Drhoa -Q |\
+psxy -Y-6c -JX8cl/6cl -R$TMIN/$TMAX/$DR -Ba1pf3/a1pf3:"Rapp (Ohm-m)":Wsne -St0.15c -EY0p/0.25p/120 -G120 -K -O >> $ps
+
+dcmp2gmt -I$DCMP -Drhob -Q |\
+psxy -J -R -Ss0.15c -EY0p/0.25p/0 -G0 -K -O >> $ps
+
+# PHASE XY and YX
+dcmp2gmt -I$DCMP -Dphia -Q |\
+psxy -Y-6c -JX8cl/6c -R$TMIN/$TMAX/$DP -Ba1pf3g1:"Period (s)":/a45g15:"Phase (deg)":WSne -St0.15c -EY0p/0.25p/120 -G120 -K -O >> $ps
+
+dcmp2gmt -I$DCMP -Dphib -Q |\
+psxy -J -R -Ss0.15c -EY0p/0.25p/0 -G0 -K -O >> $ps
+
+# legends XY and YX
+echo "$TMIN 105" | psxy -J -R -D0.5c/0c -St0.15c -G120 -K -O >> $ps
+echo "$TMIN 105 9 0.0 1 ml XY" | pstext -J -R -D0.6c/0c -K -O >> $ps
+
+echo "$TMIN 120" | psxy -J -R -D0.5c/0c -Ss0.15c -G0 -K -O >> $ps
+echo "$TMIN 120 9 0.0 1 ml YX" | pstext -J -R -D0.6c/0c -K -O >> $ps
+
+# SKEW
+dcmp2gmt -I$DCMP -Dskew -Q | awk 'BEGIN{d2r=atan2(1,1)/45}{print $1,$2*d2r,$3*d2r,$4*d2r,$5*d2r,$6*d2r}' |\
+psxy -X9c -Y12c -JX8cl/6c -R$TMIN/$TMAX/0/.8 -Ba1pf3g1:"":/a.2g.1:"SKEW":wsNE -Ss0.17c -EY0p/0.25p/0 -G0 -K -O >> $ps
+
+# STRIKE CURRENT
+dcmp2gmt -I$DCMP -Dazim -Q |\
+psxy -Y-6c -JX8cl/6c -R$TMIN/$TMAX/-90/90 -Ba1pf3g1:"Period (s)":/a20g10:"Azimuth (deg)":wsnE -Sd0.17c -EY0p/0.25p/0 -G0 -K -O >> $ps
+
+dcmp2gmt -I$DCMP -Dch -Q |\
+psxy -J -R -Sc0.12c -EY0p/0.25p/0 -K -O >> $ps
+
+# legends STRIKE CURRENT
+echo "$TMIN -65" | psxy -J -R -D0.5c/0c -Sd0.17c -G0 -K -O >> $ps
+echo "$TMIN -65 9 0.0 1 ml strike" | pstext -J -R -D0.6c/0c -O -K >> $ps
+
+echo "$TMIN -75" | psxy -J -R -D0.5c/0c -Sc0.12c -K -O >> $ps
+echo "$TMIN -75 9 0.0 1 ml current" | pstext -J -R -D0.6c/0c -O -K >> $ps
+
+# SHEAR TWIST
+dcmp2gmt -I$DCMP -Dsh -Q |\
+psxy -Y-6c -JX8cl/6c -R$TMIN/$TMAX/-60/60 -Ba1pf3g1:"Period (s)":/a15g5:"Azimuth (deg)":wSnE -Sl0.45c/+ -EY0p/0.25p/200/0/0 -G200/0/0 -K -O >> $ps
+
+dcmp2gmt -I$DCMP -Dtw -Q |\
+psxy -J -R -Sl0.3c/x -EY0p/0.25p/0/0/230 -G0/0/230 -K -O >> $ps
+
+# PHIDIF
+dcmp2gmt -I$DCMP -Dphidif -Q |\
+psxy -J -R$TMIN/$TMAX/-60/60 -Ba1pf3g1:"Period (s)":/a15g5:"Azimuth (deg)":wSnE -Si0.14c -EY0p/0.25p,darkorange -Gdarkorange -K -O >> $ps
+
+# Legends SHEAR TWIST PHIDIF
+echo "$TMIN 52.5" | psxy -J -R -D0.5c/0c -Sl0.45c/+ -G200/0/0 -K -O >> $ps
+echo "$TMIN 52.5 9 0.0 1 ml shear" | pstext -J -R -D0.6c/0c -K -O >> $ps
+
+echo "$TMIN 45.0" | psxy -J -R -D0.5c/0c -Sl0.3c/x -G0/0/230 -K -O >> $ps
+echo "$TMIN 45.0 9 0.0 1 ml twist" | pstext -J -R -D0.6c/0c -K -O >> $ps
+
+echo "$TMIN 37.5" | psxy -J -R -D0.5c/0c -Si0.14c -Gdarkorange -K -O >> $ps
+echo "$TMIN 37.5 9 0.0 1 ml phadif" | pstext -J -R -D0.6c/0c -O >> $ps
+
+ps2raster $ps -A -P -Tg
+if [[ -n $VIEWER_PNG ]] ; then
+    $VIEWER_PNG ${ps/.ps/.png}&
+else
+    echo "figure ${ps/.ps/.png} done"
+fi
+rm -rf $GMT_TMPDIR

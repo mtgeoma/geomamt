@@ -1,0 +1,33 @@
+#!/bin/bash
+
+if [[ $# == 0 ]] ; then
+    echo "uso: reaproveitar_selecao_rhoplus bor606avelho/xy_bor606a_NM bor606a/xy_bor606a_NM"
+    exit 1
+fi
+
+linhas1=$(cat $1 | wc -l)
+linhas2=$(cat $2 | wc -l)
+if [[ $linhas1 != $linhas2 ]]
+then
+    echo "arquivos com número de linhas diferentes." 1>&2
+    echo "verificar se tem os mesmos períodos" 1>&2
+    exit 1
+fi
+
+paste $1 $2 | awk '{
+  if(NF==14) {
+    printf "%s",$8
+    for (i=9;i<=12;i++) {
+      printf " %s",$i
+    }
+    printf " %s %s\n",$6,$7
+  }
+  else {
+    printf "%s",$(NF/2+1)
+    for (i=NF/2+2;i<=NF;i++) {
+      printf " %s",$i
+    }
+    printf "\n"
+  }
+}'
+exit 0

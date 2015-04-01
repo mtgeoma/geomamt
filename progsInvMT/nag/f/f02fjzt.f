@@ -1,0 +1,16 @@
+      SUBROUTINE F02FJZ(ISTATE,NEXTIT,NEVALS,NEVECS,K,F,D)
+C     MARK 11 RELEASE. NAG COPYRIGHT 1983.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     F02FJZ IS A DUMMY VERSION OF MONIT FOR USE WITH F02FJF.
+C
+C     .. Scalar Arguments ..
+      INTEGER           ISTATE, K, NEVALS, NEVECS, NEXTIT
+C     .. Array Arguments ..
+      DOUBLE PRECISION  D(K), F(K)
+C     .. Executable Statements ..
+      RETURN
+C
+C     END OF F02FJZ.
+C
+      END

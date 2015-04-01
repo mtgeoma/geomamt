@@ -1,0 +1,102 @@
+      SUBROUTINE G13BES(MPAB,NMS,NMSQ,NUMW,MSN,MSPA,MSPB,PAR,NPAR,KEF,
+     *                  NAS,NBS,NBVD,H,IH,WQ,WZ,A,IDA,B,IDB,GCA,DELTA,
+     *                  NP,NQ,NPS,NS,NQD,NPD,NPDQ,F,ALPHA,R,S,NDFVA,KFL,
+     *                  G,NGH,PHI,SPHI)
+C     MARK 11 RELEASE. NAG COPYRIGHT 1983.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     SUBROUTINE G13BES DERIVES THE CORRECTIONS TO THE DERIVATIVE
+C     VECTOR ASSOCIATED WITH THE AUTOREGRESSIVE PARAMETERS
+C     AND CORRECTS FOR ALL ARIMA PARAMETERS.
+C     IT OBTAINS THE DELTA VALUE REQUIRED TO CALCULATE
+C     THE OBJECTIVE FUNCTION
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  DELTA, S
+      INTEGER           IDA, IDB, IH, KEF, KFL, NAS, NBS, NBVD, NDFVA,
+     *                  NGH, NMS, NMSQ, NP, NPAR, NPD, NPDQ, NPS, NQ,
+     *                  NQD, NS, NUMW
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(IDA), ALPHA(NPDQ), B(IDB), F(NPDQ), G(NGH),
+     *                  GCA(NPAR), H(IH,NGH), PAR(NPAR), PHI(NPDQ),
+     *                  R(NPDQ), SPHI(NPDQ), WQ(NMSQ,NMSQ), WZ(NMSQ)
+      INTEGER           MPAB(15), MSN(NMS), MSPA(NMS), MSPB(NMS)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  SCF, U, V
+      INTEGER           I, IFAIL, J, K, NUM
+C     .. External Subroutines ..
+      EXTERNAL          G13BEQ, G13BFS, G13BFT, G13BFV
+C     .. Intrinsic Functions ..
+      INTRINSIC         DBLE
+C     .. Data statements ..
+      DATA              U/1.0D0/
+C     .. Executable Statements ..
+      DELTA = U
+      IF (KEF.LE.1) GO TO 200
+      NUM = NMSQ - 1
+      SCF = S/DBLE(NDFVA)
+      IF (NPD.LE.0) GO TO 160
+C
+C     TRANSFER PHI AND SPHI VALUES FROM THE PAR ARRAY
+C
+      IF (NPS.LE.0) GO TO 40
+      J = NP + NQ
+      DO 20 I = 1, NPS
+         J = J + 1
+         SPHI(I) = PAR(J)
+   20 CONTINUE
+      IF (NP.LE.0) GO TO 80
+   40 DO 60 I = 1, NP
+         PHI(I) = PAR(I)
+   60 CONTINUE
+C
+C     CALCULATE F AND DELTA
+C
+   80 CALL G13BFV(PHI,NP,SPHI,NPS,F,ALPHA,NPD,NS,DELTA)
+      IF (KFL.LE.0) GO TO 200
+C
+C     MODIFY F AND DERIVE R AND V
+C
+      CALL G13BEQ(F,ALPHA,R,NPD,V)
+C
+C     DERIVE VECTOR OF DERIVATIVE CORRECTIONS IN PHI,SPHI ORDER
+C
+      CALL G13BFS(F,R,ALPHA,NPD,PHI,NP,SPHI,NPS,GCA,NPAR,NS,V)
+      IF (NP.LE.0) GO TO 120
+C
+C     APPLY CORRECTIONS TO G USING PHI COMPONENTS
+C
+      J = NGH - NPAR
+      DO 100 I = 1, NP
+         J = J + 1
+         G(J) = G(J) + SCF*GCA(I)
+  100 CONTINUE
+  120 IF (NPS.LE.0) GO TO 160
+C
+C     APPLY CORRECTIONS TO G USING THE SPHI COMPONENTS
+C
+      J = NGH - NPAR + NP + NQ
+      K = NP
+      DO 140 I = 1, NPS
+         J = J + 1
+         K = K + 1
+         G(J) = G(J) + SCF*GCA(K)
+  140 CONTINUE
+  160 IF (KFL.LE.0) GO TO 200
+      IF (NUM.LE.0) GO TO 200
+C
+C     DERIVE THE CORRECTION VECTOR ASSOCIATED WITH THE ARIMA PARAMETERS
+C
+      IFAIL = 0
+      CALL G13BFT(MPAB,NMS,NUM,NUMW,MSN,MSPA,MSPB,NPAR,KEF,NAS,NBS,NBVD,
+     *            H,IH,WQ,NMSQ,WZ,A,IDA,B,IDB,GCA,IFAIL)
+C
+C     APPLY CORRECTION TO ALL ARIMA COMPONENTS OF G
+C
+      J = NGH - NPAR
+      DO 180 I = 1, NPAR
+         J = J + 1
+         G(J) = G(J) + SCF*GCA(I)
+  180 CONTINUE
+  200 RETURN
+      END

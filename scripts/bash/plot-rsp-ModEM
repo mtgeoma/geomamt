@@ -1,0 +1,356 @@
+#!/bin/bash
+source gmt_defaults
+# set local gmt_defaults
+gmt_defaults[HEADER_FONT_SIZE]=14p
+gmt_defaults[LABEL_FONT_SIZE]=9p
+gmt_defaults[ANNOT_FONT_SIZE_PRIMARY]=8p
+gmt_defaults[TICK_LENGTH]=0.12c
+gmt_defaults[HEADER_OFFSET]=0.8c
+gmt_defaults[ANNOT_OFFSET_PRIMARY]=0.1c
+gmt_defaults[ANNOT_OFFSET_SECONDARY]=0.01c
+gmt_defaults[PAGE_ORIENTATION]=portrait
+
+# default optional arguments
+declare -A options
+options=(['R']="default" ['ps']="default" ['BH']="default" ['BV']="default"
+    ['NC']=3)
+
+source check-file
+
+usage ()
+{
+    printf "\nusage: %s label.list cmp rsp.dat[:par=val] [parameter=value]\n" $1
+    printf "\nwhere:\n"
+    printf "\tlabel.list\tfile with labels in the first column\n"
+    printf "\tcmpt\tis the component to be plotted (ZXX,ZYY,...)\n"
+    printf "\trsp.dat\tis input ModEM data file. It recognize three options:\n"
+    printf "\t\t\ts=symbol something like \"c4p\" in GMT symbol\n"
+    printf "\t\t\tl=line something like \"thin\" in GMT pen\n"
+    printf "\t\t\tf=open|close to set symbol as \"open\" or \"close\"\n"
+    printf "\t\t\toptions s and l are mutually exclusive\n"
+    printf "\nAfter these arguments, it's possible to set the parameters\n"
+    printf "\tR\trange in format HMIN/HMAX/VMIN/VMAX.\n"
+    printf "\tps\tpostscript file name\n"
+    printf "\t\t\tDefault is label_cmp.ps\n"
+    printf "\tBH\tHorizontal boundary anotation in format a<stride>f<stride>\n"
+    printf "\t\t\tDefault is a1lf3.\n"
+    printf "\tBV\tVertical boundary anotation in format a<stride>f<stride>\n"
+    printf "\t\t\tDefault is a<range/5>f<range/20>.\n"
+    printf "\tNC\tnumber of columns to be plotted.\n"
+    printf "\t\t\tDefault is ${options['NC']}.\n"
+    exit 1
+}
+
+is_data ()
+# to be a data string, it must be non-blank and if have "=", must have ":" first
+# e.g.: data.dat data.dat:s=c4p
+{
+    if [[ -z $1 ]] ; then
+	return 1 #false
+    fi
+    i=$(expr index $1 ":")
+    j=$(expr index $1 "=")
+
+    if ((  ($i == 0 && $j == 0) || ($i != 0 && $j > $i) )) ; then
+	return 0 # true
+    else
+	return 1 #false
+    fi
+}
+
+if [[ ${#} == 0 ]]
+then
+    usage $0
+fi
+
+# mandatory arguments
+
+label_list=$1
+check-file $label_list
+shift
+
+cmp=$1
+shift
+
+declare -a data
+declare -a symbol=("" "c3p")
+declare -a fill=("close" "close")
+declare -a line=("thin" "")
+
+# input data
+N=0
+while is_data $1 ; do
+    test=($(echo $1 | awk '{gsub(":"," ");print $0}'))
+    shift
+
+    data[$N]=${test[0]}
+    check-file ${data[$N]}
+
+    for (( i=1; i<${#test[*]}; i++ )) ; do
+	arg=($(echo ${test[i]} | awk '{gsub("="," ");print $0}'))
+
+	if [[ ${arg[0]} == "s" ]] ; then
+	    symbol[$N]=${arg[1]}
+	    line[$N]=""
+	elif [[ ${arg[0]} == "f" ]] ; then
+	    if [[ !(${arg[1]}=="close" || ${arg[1]}=="open") ]] ; then
+		echo "fill must be open or close:${arg[1]}"
+		exit 1
+	    fi
+	    fill[$N]=${arg[1]}
+	elif [[ ${arg[0]} == "l" ]] ; then
+	    line[$N]=${arg[1]}
+	    symbol[$N]=""
+	else
+	    echo "unknow extra data option: ${arg[0]}"
+	    exit 1
+	fi
+    done
+    ((N++))
+    unset test
+done
+
+# options parameters
+while [[ -n $1 ]] ; do
+    option=($(echo $1 | awk '{gsub("="," ");print $0}'))
+    if [[ ${#option[*]} -eq 2 ]] ; then
+        # check if is a valid option
+        if [[ -z ${options[${option[0]}]} ]] ; then
+            if [[ -z ${gmt_defaults[${option[0]}]} ]] ; then
+                echo "'${option[0]}' isn't a valid option"
+                usage $0
+            else
+                gmt_defaults[${option[0]}]=${option[1]}
+            fi
+        else
+            options[${option[0]}]=${option[1]}
+        fi
+    else
+        echo "error in option:$1"
+        usage $0
+    fi
+    shift
+done
+
+# running GMT in isolation mode
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+source set_gmt_options
+
+if [[ ${options['ps']} == "default" ]] ; then
+    ps=${label_list%.*}_${cmp}.ps
+else
+    ps=${options['ps']}
+fi
+
+resp=(real imag)
+color=(red blue)
+
+# make labels
+labels=($(awk '{printf " %s",$1}' $label_list))
+
+# number of stations
+Nstn=$(echo ${#labels[*]})
+
+for (( n=0; n<${#data[*]}; n++ )) ; do
+    mkdir $GMT_TMPDIR/data$n
+    for stn in $(echo ${labels[*]}) ; do
+	dir=$GMT_TMPDIR/data$n/$stn
+	mkdir $dir
+
+	awk -v s=${stn} -v cmp=${cmp} -v d=$dir -v rsp="${resp[*]}" 'BEGIN{
+          pi=atan2(1,1)*4
+          n=split(rsp,a," ")
+          for(i=1;i<=n;i++) {
+            r[i]=sprintf("%s/%s",d,a[i])
+          }
+        }
+        {
+          if($1==">"&&(index($2,"[")==1 || $2=="Ohm")) {
+            if($2=="[]/[]" || $2=="[]") {
+              type=1
+            }
+            else if($2=="[mV/km]/[nT]") {
+              type=2
+            }
+            else if($2=="[V/m]/[T]") {
+              type=3
+            }
+            else if($2=="[V/m]/[A/m]" || $2=="Ohm") {
+              type=4
+            }
+            else {
+              type=0
+            }
+          }
+          if(type!=0&&$2==s&&$8==cmp) {
+            c=8
+            if(type==1) {
+              for(i=1;i<=n;i++) {
+                print $1,$(c+i),$11 > r[i]
+              }
+            } else if(type==2) {
+              for(i=1;i<=n;i++) {
+                print $1,$(c+i)*sqrt(0.2*$1),$11*sqrt(0.2*$1) > r[i]
+              }
+            } else if(type==3) {
+              for(i=1;i<=n;i++) {
+                print $1,$(c+i)*1e-3*sqrt(0.2*$1),$11*1e-3*sqrt(0.2*$1) > r[i]
+              }
+            } else if(type==4) {
+              for(i=1;i<=n;i++) {
+                print $1,$(c+i)*sqrt(5*$1)/(2e-3*pi),$11*sqrt(5*$1)/(2e-3*pi) > r[i]
+              }
+            }
+          }
+        }' ${data[$n]}
+    done
+done
+
+declare -a R
+if [[ ${options['R']} == "default" ]] ; then
+    R=($(awk '{print $1,$2}' $GMT_TMPDIR/data*/*/* | minmax -C | \
+	awk 'BEGIN{r=0.99999}{printf "1e%d 1e%d %d %d",
+             int(log($1)/log(10)-r),int(log($2)/log(10)+r),
+             int($3-r),int($4+r)}'))
+else
+    R=($(echo ${options['R']} | gawk '{gsub("/"," ");print $0}'))
+    test=$(echo ${R[*]} | \
+        awk '{if(NF != 4 || $1 >= $2 || $3 >= $4){
+                print "fail"}else{print "pass"}}')
+    if [[ test == "fail" ]] ; then
+        echo "option R must be in format R=HMIN/HMAX/VMIN/VMAX"
+        rm -rf $GMT_TMPDIR
+        exit 1
+    fi
+fi
+
+if [[ ${options['BH']} == "default" ]] ; then
+    BH=a1lf3
+else
+    BH=${options['BH']}
+fi
+
+if [[ ${options['BV']} == "default" ]] ; then
+    BV=$(echo ${R[3]} ${R[2]} | \
+        gawk '{d=($1-$2);printf "a%ff%f",d/5,d/20}')
+else
+    BV=${options['BV']}
+fi
+
+# number of columns
+NC=${options['NC']}
+
+# number of lines
+NL=$(awk -v n=$Nstn -v d=$NC 'BEGIN{l=int(n/d);if(n%d!=0){l++};printf "%d",l}')
+
+# make layout
+if [[ ${gmt_defaults[PAGE_ORIENTATION]} == "portrait" ]] ; then
+    WIDTH=21.0
+    HEIGHT=29.7
+else
+    WIDTH=29.7
+    HEIGHT=21.0
+fi
+TOP=2
+BOTTOM=2
+LEFT=2
+RIGHT=2
+XL=$(echo "($WIDTH-($LEFT+$RIGHT))/$NC" | bc -l)
+YL=$(echo "($HEIGHT-($BOTTOM+$TOP))/$NL" | bc -l)
+
+# plot title
+X=$(echo "$WIDTH/2" | bc -l)
+Y=$(echo "$BOTTOM+$NL*$YL+${gmt_defaults[HEADER_OFFSET]/c/}" | bc -l)
+
+echo "$X $Y 12 0 0 mc $cmp @;${color[0]};${resp[0]} @;${color[1]};${resp[1]}" |\
+pstext -X0c -Y0c -R0/$WIDTH/0/$HEIGHT -Jx1 -K > $ps
+
+# set main loop
+N=0   # station number
+l=$NL # line number
+c=1   # column number
+
+X=$RIGHT
+Y=$(echo "$BOTTOM+($NL-1)*$YL" | bc -l)
+
+Xlabel=$(echo "$XL/2" | bc -l)
+Ylabel=$(echo "$YL-0.3" | bc -l)
+
+for stn in $(echo ${labels[*]}) ; do
+   ((N++))
+
+   # set boundaries to be plotted
+   bound=""
+   if [[ $l -eq $NL && $(expr $c % 2) -eq 1 ]] ; then
+       bound=${bound}"N"
+   else
+       bound=${bound}"n"
+   fi
+
+   if [[ $l -eq 1 && $(expr $c % 2) -eq 0 ]] ; then
+       bound=${bound}"S"
+   else
+       bound=${bound}"s"
+   fi
+
+   if [[ $c -eq 1 && $(expr $l % 2) -eq 0 ]] ; then
+       bound=${bound}"W"
+   else
+       bound=${bound}"w"
+   fi
+
+   if [[ ($c -eq $NC && $(expr $l % 2) -eq 1) || $N -eq $Nstn ]] ; then
+       bound=${bound}"E"
+   else
+       bound=${bound}"e"
+   fi
+
+   psbasemap -Xa${X}c -Ya${Y}c -R${R[0]}/${R[1]}/${R[2]}/${R[3]} \
+       -JX${XL}cl/${YL}c -B${BH}/${BV}$bound -K -O >> $ps
+
+   echo "${R[0]} ${R[2]} 12 0 0 mc $stn" |\
+   pstext -Xa${X}c -Ya${Y}c -R -J -D${Xlabel}c/${Ylabel}c -K -O >> $ps
+
+   for (( n=0; n<${#data[*]}; n++ )) ; do
+       for (( r=0; r<${#resp[*]}; r++ )) ; do
+	   dat=$GMT_TMPDIR/data$n/$stn/${resp[$r]}
+	   if [[ -n ${symbol[$n]} ]] ; then
+	       S="-S${symbol[$n]}"
+	       if [[ ${fill[$n]} == "close" ]] ; then
+		   S=$S" -G${color[$r]}"
+		   W="-Ey0p/thin,${color[$r]}" # plot error bar
+	       else
+		   S=$S" -Gwhite"
+		   W="-Wthinnest,${color[$r]}"
+	       fi
+	   fi
+	   if [[ -n ${line[$n]} ]] ; then
+	       S=""
+	       W="-W${line[$n]},${color[$r]}"
+	   fi
+	   sort -g $dat | \
+	       psxy -Xa${X}c -Ya${Y}c -R -J $S $W -K -O >> $ps
+       done
+   done
+   # update c, l, X and Y
+   if [[ $c -eq $NC ]] ; then
+       c=1
+       ((l--))
+       X=$RIGHT
+       Y=$(echo "$Y-$YL" | bc -l)
+   else
+       ((c++))
+       X=$(echo "$X+$XL" | bc -l)
+   fi
+done
+psxy -R -J -T -O >> $ps
+
+rm -rf $GMT_TMPDIR
+
+ps2raster $ps -A -P -Tg
+
+if [[ -n $VIEWER_PNG ]] ; then
+    $VIEWER_PNG ${ps/.ps/.png}&
+else
+    echo "figure ${ps/.ps/.png} done"
+fi

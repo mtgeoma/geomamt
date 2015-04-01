@@ -1,0 +1,4 @@
+cp SIZE_1x100.inc size.inc
+make strike
+rm -f *.o
+mv strike ~/bin/strike01x100

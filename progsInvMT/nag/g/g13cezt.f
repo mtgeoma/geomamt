@@ -1,0 +1,115 @@
+      SUBROUTINE G13CEZ(XG,YG,XYRG,XYIG,NG,STATS,CA,CALW,CAUP,T,SC,SCLW,
+     *                  SCUP,IERROR)
+C     MARK 10 RELEASE. NAG COPYRIGHT 1982.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 13 REVISED. USE OF MARK 12 X02 FUNCTIONS (APR 1988).
+C     MARK 16 REVISED. IER-1125 (JUL 1993).
+C
+C     G13CEZ SUPERVISES THE CALCULATION OF CROSS AMPLITUDE
+C     SPECTRUM AND SQUARED COHERENCY AND THEIR BOUNDS.
+C
+C     XG     - UNIVARIATE SPECTRUM OF X
+C     YG     - UNIVARIATE SPECTRUM OF Y
+C     XYRG   - REAL PART BIVARIATE SPECTRUM OF X AND Y
+C     XYIG   - IMAGINARY PART BIVARIATE SPECTRUM OF X AND Y
+C     NG     - NO. OF SPECTRAL ESTIMATES
+C     STATS  - ARRAY OF ASSOCIATED STATISTICS,
+C     D.F., UPPER,LOWER MULT. FACTOR, AND BANDWIDTH
+C     CA     - CROSS AMPLITUDE SPECTRUM
+C     CALW   - LOWER BOUND FOR CA
+C     CAUP   - UPPER BOUND FOR CA
+C     T      - TEST STATISTIC FOR SQUARED COHERENCY
+C     SC     - SQUARED COHERENCY
+C     SCLW   - LOWER BOUND FOR SC
+C     SCUP   - UPPER BOUND FOR SC
+C     IERROR - FAILURE PARAMETER
+C
+C     CALCULATE CONSTANTS
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  T
+      INTEGER           IERROR, NG
+C     .. Array Arguments ..
+      DOUBLE PRECISION  CA(NG), CALW(NG), CAUP(NG), SC(NG), SCLW(NG),
+     *                  SCUP(NG), STATS(4), XG(NG), XYIG(NG), XYRG(NG),
+     *                  YG(NG)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  R1, R2, R3, R4, R5, R6, R7, RMIN
+      INTEGER           I, IFAIL1, IFLAG, M1, M2
+C     .. External Functions ..
+      DOUBLE PRECISION  G01FDF, G01CEF, S10AAF, X02AKF
+      EXTERNAL          G01FDF, G01CEF, S10AAF, X02AKF
+C     .. Intrinsic Functions ..
+      INTRINSIC         EXP, DBLE, SQRT, INT
+C     .. Executable Statements ..
+      R1 = SQRT(1.0D0/STATS(1))
+      R3 = 0.975D0
+      IFAIL1 = 1
+      R3 = G01CEF(R3,IFAIL1)
+      R2 = R3*R1
+      IFAIL1 = 1
+      R3 = S10AAF(R2,IFAIL1)
+      RMIN = X02AKF()
+C     CALCULATE TEST STATISTIC FOR SQUARED COHERENCY
+      M1 = 2
+      M2 = INT(STATS(1)+0.1D0) - 2
+      R1 = 0.95D0
+      IFAIL1 = 1
+      R1 = G01FDF(R1,DBLE(M1),DBLE(M2),IFAIL1)
+      R1 = 2.0D0*R1
+      T = R1/(DBLE(M2)+R1)
+C     LOOP THROUGH NUMBER OF ESTIMATES
+      DO 120 I = 1, NG
+         IFLAG = 1
+         R1 = XYRG(I)
+         R4 = R1*R1
+         R1 = XYIG(I)
+         R4 = R4 + R1*R1
+         IF (R4.GT.RMIN) GO TO 20
+         IFLAG = 2
+         IF (IERROR.EQ.0) IERROR = 2
+   20    R5 = XG(I)
+         R6 = YG(I)
+         IF (R5.GE.0.0D0 .AND. R6.GE.0.0D0) GO TO 40
+         IFLAG = 3
+         IF (IERROR.EQ.0) IERROR = 3
+   40    R7 = R5*R6
+         IF (R7.GT.RMIN) GO TO 60
+         IFLAG = 4
+         IF (IERROR.EQ.0) IERROR = 4
+   60    CONTINUE
+         IF (IFLAG.EQ.1) GO TO 80
+C        SET STATISTICS AND BOUNDS TO ZERO IF INPUT VALUES FUNNY
+         CA(I) = 0.0D0
+         CALW(I) = 0.0D0
+         CAUP(I) = 0.0D0
+         SC(I) = 0.0D0
+         SCLW(I) = 0.0D0
+         SCUP(I) = 0.0D0
+         GO TO 120
+C        CALCULATE STATISTICS AND BOUNDS IF INPUT VALUES OK
+C        -CROSS AMPLITUDE SPECTRUM
+   80    R1 = SQRT(R4)
+         CA(I) = R1
+C        -SQUARED COHERENCY
+         R5 = R4/R7
+         IF (R5.LE.1.0D0) GO TO 100
+         IF (IERROR.EQ.0) IERROR = 5
+         R5 = 1.0D0
+  100    SC(I) = R5
+C        -CROSS AMPLITUDE SPECTRUM BOUNDS
+         R6 = R2*SQRT((1.0D0/R5)+1.0D0)
+         R7 = R1*EXP(-R6)
+         CALW(I) = R7
+         R7 = R1*EXP(R6)
+         CAUP(I) = R7
+C        -SQUARED COHERENCY BOUNDS
+         R1 = SQRT(R5)
+         R7 = (R1-R3)
+         IF (R7.LE.0.0D0) R7 = 0.0D0
+         R7 = R7/(1.0D0-R1*R3)
+         SCLW(I) = R7*R7
+         R7 = (R1+R3)/(1.0D0+R1*R3)
+         SCUP(I) = R7*R7
+  120 CONTINUE
+      RETURN
+      END

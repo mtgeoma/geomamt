@@ -1,0 +1,1 @@
+g++ imped2gmt.cpp -o ~/bin/imped2gmt

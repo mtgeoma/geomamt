@@ -1,0 +1,34 @@
+This directory has code for program clean.
+The purposes of this program are two:
+to clean up isolated spikes (this may not be necessary in most
+cases ...), and to put data into a standard format for other of
+my programs, in particular the FFT program.  As discussed elsewhere
+this step can be dispensed with by making some simple modifications
+to the input subroutines for the FFT program.  However, the easiest way to
+use these programs is to just run everything through clean, so that
+all data files are in a standard form.  Doing this some other advantages:
+the output data files are much smaller than ASCII files, sample numbers
+(relative to some specified clock zero) are attached to all data points
+so separate data segments (separated by a gap)
+from a single station can be concatenated into a single file (provided
+system parameters such as gains, filter settings, etc. are not changed
+between segments).
+
+In addition to the data file the program needs a file which tells
+(1) the digitization rate (in SECONDS, not HZ!!!! - i.e. DELTA T)
+(2) the clock time for the first sample in the data file
+(3) the reference, or zero time. All data samples are numbered from
+    this reference time, so that data from simultaneous stations
+     can be alligned
+
+There are several internal parameters which might need to be changed:
+- the input data format
+- number of channels (e.g., for GDS data)
+hopefully, this will be reasonably self explanatory if you
+look at the source code.
+
+ALSO: See directory RF to just reformat data files.
+
+This processing step will probably not survive in future,
+more organized releases of these processing programs.
+

@@ -1,0 +1,72 @@
+>HEAD
+  DATAID=exa1_004
+  ACQBY=UB
+  FILEBY=AM
+  ACQDATE=31/1/08
+  FILEDATE=31/1/08
+  ENDDATE= 31/1/08
+  COUNTRY=Synt
+  STATE=
+  COUNTY=
+  LAT= 00:00:00
+  LONG= 00:00:00
+  UNITS=M
+  STDVERS=
+  PROGVERS=
+  PROGDATE=
+>INFO   MAXLINES=1000                                                                               
+                                                                                                    
+EDI Utilities.                                                                                      
+                                                                                                    
+                                                                                                    
+>=DEFINEMEAS                                                                                        
+                                                                                                    
+  MAXCHAN=7                                                                                         
+  MAXRUN=999                                                                                        
+  MAXMEAS=99999                                                                                     
+  UNITS=M                                                                                           
+  REFLAT=00:00:00
+  REFLONG= 00:00:00
+                                                                                                    
+>HMEAS ID=  1001.001 CHTYPE=HX X=      0 Y=      0 AZM=   0.                                        
+>HMEAS ID=  1002.001 CHTYPE=HY X=      0 Y=      0 AZM=  90.                                        
+>HMEAS ID=  1003.001 CHTYPE=HZ X=      0 Y=      0 AZM=   0.                                        
+>EMEAS ID=  1004.001 CHTYPE=EX X=    -75 Y=      0 X2=     75 Y2=      0                            
+>EMEAS ID=  1005.001 CHTYPE=EY X=      0 Y=    -75 X2=      0 Y2=     75                            
+                                                                                                    
+>HMEAS ID=  1006.001 CHTYPE=HX X=      0 Y=      0 AZM=   0.                                        
+>HMEAS ID=  1007.001 CHTYPE=HY X=      0 Y=      0 AZM=  90.                                        
+                                                                                                    
+>=MTSECT                                                                                            
+  SECTID=Synt     
+  NFREQ=1
+  HX=  1001.001                                                                                     
+  HY=  1002.001                                                                                     
+  HZ=  1003.001                                                                                     
+  EX=  1004.001                                                                                     
+  EY=  1005.001                                                                                     
+  RX=  1006.001                                                                                     
+  RY=  1007.001                                                                                     
+>FREQ ORDER=DEC  //    1                                                                            
+    1.00000                                                                                          
+                                                                                                    
+>ZROT  //    1                                                                                      
+   .000000                                                                                       
+>ZXXR  //    1                                                                                      
+  -3420.00
+>ZXXI  //    1                   
+  -1550.00                                                                               
+>ZXYR  //    1   
+   3800.00                                                                                         
+>ZXYI  //    1    
+   4220.00
+>ZYXR  //    1  
+  -6700.00                                                                                         
+>ZYXI  //    1   
+  -5010.00                                                                                         
+>ZYYR  //    1   
+   1750.00                                                                                        
+>ZYYI  //    1    
+   942.000                                                                                          
+                                                                                                    
+>END                                                                                                

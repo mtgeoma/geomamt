@@ -1,0 +1,51 @@
+      SUBROUTINE D02NNV(WK,IWK,X,N,IER)
+C     MARK 12 RELEASE. NAG COPYRIGHT 1986.
+C
+C     OLD NAME SOLSS
+C
+C-----------------------------------------------------------------------
+C THIS ROUTINE MANAGES THE SOLUTION OF THE LINEAR SYSTEM ARISING FROM
+C A CHORD ITERATION.
+C IT CALLS D02NNU TO ACCOMPLISH THIS.
+C COMMUNICATION WITH SLSS USES THE FOLLOWING VARIABLES..
+C WK    = REAL WORK SPACE CONTAINING THE
+C         LU DECOMPOSITION OF THE MATRIX OTHERWISE.
+C         STORAGE OF MATRIX ELEMENTS STARTS AT WK(1).
+C IWK   = INTEGER WORK SPACE FOR MATRIX-RELATED DATA
+C X     = THE RIGHT-HAND SIDE VECTOR ON INPUT, AND THE SOLUTION VECTOR
+C         ON OUTPUT, OF LENGTH N.
+C IER   = OUTPUT FLAG
+C         IER   = 0  IF NO TROUBLE OCCURRED.
+C         IER   = -1 IF CDRV RETURNED AN ERROR FLAG (MITER = 1 OR 2).
+C                    THIS SHOULD NEVER OCCUR AND IS CONSIDERED FATAL.
+C N     = THE DIMENSION OF THE O.D.E. SYSTEM
+C THIS ROUTINE ALSO USES OTHER VARIABLES IN COMMON.
+C-----------------------------------------------------------------------
+C     .. Scalar Arguments ..
+      INTEGER           IER, N
+C     .. Array Arguments ..
+      DOUBLE PRECISION  WK(*), X(*)
+      INTEGER           IWK(*)
+C     .. Scalars in Common ..
+      CHARACTER*6       SINGLR
+C     .. External Subroutines ..
+      EXTERNAL          D02NNQ, D02NNU
+C     .. Common blocks ..
+      COMMON            /MD02NM/SINGLR
+C     .. Save statement ..
+      SAVE              /MD02NM/
+C     .. Executable Statements ..
+      IF (SINGLR.NE.'NSING3') THEN
+         CALL D02NNQ(
+     *' BACK-SUBSTITUTION TRIED WITH EITHER
+     *  SINGULAR JACOBIAN MATRIX OR NO JACOBIAN MATRIX AT
+     *  ALL OR THE ARRAY RWORK HAS BEEN OVERWRITTEN ',1,0,0,0,0,0.0D0,
+     *               0.0D0)
+         IER = -1
+         RETURN
+      END IF
+      IER = 0
+      CALL D02NNU(N,IWK,WK,X,3,IER)
+      IF (IER.NE.0) IER = -1
+      RETURN
+      END

@@ -1,0 +1,62 @@
+EMTF.tar.gz is a compressed unix tarfile containing source code
+documenataion and data for compiling and testing the OSU robust
+single station, remote reference and multiple station processing
+programs.  The tar file is compressed with "gzip".
+After you unpack ("gunzip EMTF.tar.gz"  and "tar xvf EMTF.tar")
+you will get a directory called EMTF with the following sub-directories :
+
+doc  :  program documentatation :  
+
+  doc/TEX  contains latex source code 
+
+	EMTF_doc.tex = main documentation for EMTF
+	MMT_doc.tex = documentation for MMT (multiple station program)
+	matlab_doc.tex = documentation for some matlab plotting programs
+	Z_files.tex = documentation for TF output files including
+		format and details on rotation/error bar calculation
+
+#######################################################################
+# ==> PRINT OUT EMTF_doc FIRST ... BUT JUST READ THE FIRST FEW PAGES  #
+#######################################################################
+
+  doc/PS  contains postscript files produced by from the latex files in TEX
+
+
+test :	Test data sets : use to test other programs
+	The main test directory contains instructions in README
+	for initial installation and testing of EMTF and MMT programs.
+	There is also a sub-directory test/EMI-MT1 which contains
+	an example EMI MT-1 data file with instructions for installing
+	and testing data reformatting programs for these files.
+
+#######################################################################
+#   ==> LOOK AT test/README BEFORE YOU SPEND MUCH TIME READING        # 
+#                           THE DOCUMENTATION                         #
+#		(COMPLINING AND TESTING CODE SHOULD BE EASY           #
+#			IF YOU FOLLOW THESE INSTRUCTIONS)             #
+#######################################################################
+	
+
+RF :	Programs for reformatting data files, including ASCII (rfasc),
+	and EMI MT-1 format (rfemi), and a program for translating the
+	output standard binary files into an ASCII file (bin2asc).
+
+D :	Program for windowing, decimation, and Fourier Transformation of time
+	series files (dnff)
+
+T :	Programs for standard robust single station and RR TF estimation (tranmt)
+  
+include:	Include files for Fortran programs that are used by programs
+	in more than one subdirectory.  These are kept here to reduce chances
+	of compiling programs which read and write the same files
+	with different parameter values.
+
+C :	Old time series cleaning (despiking) program, which also reformats 
+	data into the same format output by programs in RF.
+
+MMT :	Multiple station program (multmtrn); Contains a tar file with source
+	code for making libraries consisting of the subset of lapack routines
+	and blas routines called by multmrn
+
+matlab:	Some matlab scripts and functions for plotting and post-processing
+	output files.

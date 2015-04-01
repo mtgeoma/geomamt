@@ -1,0 +1,11 @@
+#!/bin/bash
+dir=$1
+if [[ -d "$dir" ]] ; then
+    ls ${dir}/*.ats |\
+    gawk '{printf "atsheader %s Longitude Latitude Elevation\n",$1}' |\
+    gawk '{system($0)}' | gawk '{if(!($1==0&&$2==0))print $0}' |\
+    gmtmath -S -Ca STDIN MEAN = |\
+    awk '{printf "# coord %.5f %.5f %.0f\n",$1,$2,$3}'
+else
+    echo "$dir não é um diretório válido"
+fi

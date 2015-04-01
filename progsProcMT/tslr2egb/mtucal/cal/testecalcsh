@@ -1,0 +1,18 @@
+#!/bin/csh
+# os arquivos de calibracao fazem a correcao para [T]^-1 e [V/m]^-1
+# estre script recupera (em amplitude) a correcao para [nT] e [uV]
+# obs: [uV/m]=[mV/km]
+#
+# canais magneticos:
+awk '{print $0}' ./box/1175hx.cal | testecal HB 1.047396 > ./box/hxteste.dat
+awk '{print $0}' ./box/1175hy.cal | testecal HB 1.032152 > ./box/hyteste.dat
+awk '{print $0}' ./box/1175hz.cal | testecal HB 1.049230 > ./box/hzteste.dat
+awk '{print $0}' ./sys/1175622ahx.cal | testecal HS 1.047396 > ./sys/hxteste.dat
+awk '{print $0}' ./sys/1175622ahy.cal | testecal HS 1.032152 > ./sys/hyteste.dat
+awk '{print $0}' ./sys/1175622ahz.cal | testecal HS 1.049230 > ./sys/hzteste.dat
+#
+# canais eletricos
+awk '{print $0}' ./box/1175ex.cal | testecal EB 146.0 > ./box/exteste.dat
+awk '{print $0}' ./box/1175ey.cal | testecal EB 146.5 > ./box/eyteste.dat
+awk '{print $0}' ./sys/1175622aex.cal | testecal ES 146.0 > ./sys/exteste.dat
+awk '{print $0}' ./sys/1175622aey.cal | testecal ES 146.5 > ./sys/eyteste.dat

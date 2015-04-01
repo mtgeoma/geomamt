@@ -1,0 +1,95 @@
+#!/bin/bash
+# uso: verifica-posicao-eletrodos arquivo-posicao-eletrodos.dat
+if [[ -z "$1" ]]
+then
+    echo "modo de usar: $0 arquivo-posicao-eletrodos.dat"
+    echo "sendo arquivo-posicao-eletrodos.dat com conteúdo similar a:"
+    echo "  25/06/2009 600   DIA"
+    echo "  -45.83653 -23.11123 N"
+    echo "  -45.83620 -23.11208 S"
+    echo "  -45.83585 -23.11147 E"
+    echo "  -45.83683 -23.11184 W"
+    exit 1
+fi
+# verifica dependências:
+if [[ $(which geod 2>&1 | awk '{print NF}') != 1 ]]
+then
+    echo "instale o programa geod para poder usar esse script"
+    exit 1
+fi
+arquivo=$1
+exec 6<&0 # liga o arquivo #6 com stdin (cópia de segurança)
+exec < $arquivo # stdin é substituido
+while read -a coluna
+do
+    if [[ ${coluna[2]} == "N" ]]
+    then
+	lonN=${coluna[0]}
+	latN=${coluna[1]}
+    elif [[ ${coluna[2]} == "S" ]]
+    then
+	lonS=${coluna[0]}
+	latS=${coluna[1]}
+    elif [[ ${coluna[2]} == "E" ]]
+    then
+	lonE=${coluna[0]}
+	latE=${coluna[1]}
+    elif [[ ${coluna[2]} == "W" ]]
+    then
+	lonW=${coluna[0]}
+	latW=${coluna[1]}
+    elif [[ ${coluna[2]} == "DIA" ]]
+    then
+	D=${coluna[0]:0:2}
+	M=${coluna[0]:3:2}
+	Y=${coluna[0]:6:4}
+	H=$(echo "${coluna[1]}/1000" | bc -l)
+        # verifica se a data é válida
+	TESTE=$(echo "${Y}-${M}-${D}" | gmtconvert -fi0T -fo0T)
+	if [[ $TESTE == "NaN" ]]
+	then
+	    echo "$D/$M/$Y é uma dada inválida! deve ser no formato dd/mm/aaaa na primeira coluna da linha DIA"
+	    exit 1
+	fi
+    else
+	printf "o valor da 3a. coluna (\"%s\") não é um rótulo válido [N,S,E,W,DIA]\n" ${coluna[2]}
+	exit 1
+    fi
+done
+exec 0<&6 6<&- # restaura stdin do arquivo #6 e o fecha
+# verifica se encontrou todos os dados
+if [[ -z $lonN && -z $latN ]]
+then
+    echo "não encontrou longitude e latitude na linha N"
+    exit 1
+elif [[ -z $lonS && -z $latS ]]
+then
+    echo "não encontrou longitude e latitude na linha S"
+    exit 1
+elif [[ -z $lonE && -z $latE ]]
+then
+    echo "não encontrou longitude e latitude na linha E"
+    exit 1
+elif [[ -z $lonW && -z $latW ]]
+then
+    echo "não encontrou longitude e latitude na linha W"
+    exit 1
+elif [[ -z $Y && -z $H ]]
+then
+    echo "não encontrou data e altitude na linha DIA"
+    exit 1
+fi
+
+echo "$lonN $latN $H ${Y}-${M}-${D}" |  mgd77magref -Fd/0 | awk '{printf "declinação do eletrodo N: %.1f\n",$1}'
+printf "%s %s %s %s\n%s %s %s %s\n" $latS $lonS $latN $lonN $latW $lonW $latE $lonE |\
+geod +ellps=WGS84 +units=m -f %.5f -I|\
+awk '{
+  if(NR==1){
+    printf "S-N: distância %4.0fm; ângulo %6.1f\n",$3,$1
+    s_n=$1
+  }
+  else{
+    printf "W-E: distância %4.0fm; ângulo %6.1f\n",$3,$1
+    printf "ângulo entre os eixos S-N e W-E: %.1f\n",$1-s_n
+  }
+}'

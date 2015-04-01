@@ -1,0 +1,303 @@
+#!/bin/csh
+
+# entrada e saida de dados
+set FILETMdix=tms6.dix_tm
+set FILETMdat=tms6.data_tm
+set FILETMrsp=tms6_resp_tm.004
+set   OUTFILE=tms6b.ps
+
+# limites das escalas
+set TMIN=1e-3   set TMAX=1e5 set TMED=10
+set RHOMIN=1e1 set RHOMAX=1e5
+
+set PHIMIN=0  set PHIMAX=90
+
+# comprimentos dos eixos (decada=0.7cm) (180 graus => 2.728753 decadas)
+set TLEN=5.6c
+set RHOLEN=2.8c
+# 50% maior que o normal
+set PHILEN=1.432595c
+
+# apresentacao:
+# simbolos
+set SYMBOLTE=s3p
+set SYMBOLTM=t3p
+# legendas
+set LABELTE=XY
+set LABELTM=YX
+# canetas (Pen) e Cor de preenchimento
+set COLORTE=0               set COLORTM=100
+set PENTE=0.25p/$COLORTE    set PENTM=0.25p/$COLORTE
+
+# configura tamanho das letras
+gmtset HEADER_FONT_SIZE 16p ANOT_FONT_SIZE 12p ANOT_OFFSET 0.1c LABEL_FONT_SIZE 14p
+
+# simbolos das legendas
+echo " 9.0 28.9" | psxy -X0c -Y0c -Jx1 -R0/21/0/29.7 -S$SYMBOLTE -G$COLORTE -W$PENTE -K -P > $OUTFILE
+echo "11.1 28.9" | psxy -Jx -R -S$SYMBOLTM -G$COLORTM -W$PENTM -K -O >> $OUTFILE
+
+# textos das legendas
+pstext -Jx -R -D0.2/0 -K -O << END >> $OUTFILE
+ 9.0 28.9  10 0 0 ML $LABELTE
+11.1 28.9  10 0 0 ML $LABELTM
+END
+
+## estação 19
+#  basemap para rho
+psbasemap -X2.0c -Y25c -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":WesN -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 19
+EOF
+rebocc_rsp2gmt -S19 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S19 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3/a45f15:"fase (graus)":wesn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S19 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S19 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+## estação 20
+#  basemap para rho
+psbasemap -X$TLEN -Y$PHILEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":wesn -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 20
+EOF
+rebocc_rsp2gmt -S20 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S20 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3:"T (s)":/a45f15:"fase (graus)":wesn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S20 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S20 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+## estação 21
+#  basemap para rho
+psbasemap -X$TLEN -Y$PHILEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":wesN -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 21
+EOF
+rebocc_rsp2gmt -S21 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S21 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3/a45f15:"fase (graus)":wEsn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S21 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S21 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+## estação 22
+#  basemap para rho
+psbasemap -X-11.2c -Y-$RHOLEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":Wesn -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 22
+EOF
+rebocc_rsp2gmt -S22 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S22 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3:"T (s)":/a45f15:"fase (graus)":wesn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S22 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S22 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+## estação 23
+#  basemap para rho
+psbasemap -X$TLEN -Y$PHILEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":wesn -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 23
+EOF
+rebocc_rsp2gmt -S23 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S23 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3:"T (s)":/a45f15:"fase (graus)":wesn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S23 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S23 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+## estação 24
+#  basemap para rho
+psbasemap -X$TLEN -Y$PHILEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":wesn -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 24
+EOF
+rebocc_rsp2gmt -S24 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S24 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3/a45f15:"fase (graus)":wEsn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S24 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S24 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+## estação 25
+#  basemap para rho
+psbasemap -X-11.2c -Y-$RHOLEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":Wesn -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 25
+EOF
+rebocc_rsp2gmt -S25 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S25 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3:"T (s)":/a45f15:"fase (graus)":wesn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S25 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S25 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+## estação 26
+#  basemap para rho
+psbasemap -X$TLEN -Y$PHILEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":wesn -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 26
+EOF
+rebocc_rsp2gmt -S26 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S26 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3:"T (s)":/a45f15:"fase (graus)":wesn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S26 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S26 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+## estação 27
+#  basemap para rho
+psbasemap -X$TLEN -Y$PHILEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":wesn -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 27
+EOF
+rebocc_rsp2gmt -S27 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S27 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3/a45f15:"fase (graus)":wEsn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S27 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S27 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+## estação 28
+#  basemap para rho
+psbasemap -X-11.2c -Y-$RHOLEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":Wesn -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 28
+EOF
+rebocc_rsp2gmt -S28 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S28 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3:"T (s)":/a45f15:"fase (graus)":wesn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S28 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S28 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+## estação 29
+#  basemap para rho
+psbasemap -X$TLEN -Y$PHILEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":wesn -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 29
+EOF
+rebocc_rsp2gmt -S29 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S29 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3:"T (s)":/a45f15:"fase (graus)":wesn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S29 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S29 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+## estação 30
+#  basemap para rho
+psbasemap -X$TLEN -Y$PHILEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":wesn -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 30
+EOF
+rebocc_rsp2gmt -S30 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S30 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3/a45f15:"fase (graus)":wEsn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S30 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S30 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+## estação 31
+#  basemap para rho
+psbasemap -X-11.2c -Y-$RHOLEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":Wesn -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 31
+EOF
+rebocc_rsp2gmt -S31 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S31 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3:"T (s)":/a45f15:"fase (graus)":wesn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S31 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S31 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+## estação 32
+#  basemap para rho
+psbasemap -X$TLEN -Y$PHILEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":wesn -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 32
+EOF
+rebocc_rsp2gmt -S32 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S32 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3:"T (s)":/a45f15:"fase (graus)":wesn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S32 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S32 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+## estação 33
+#  basemap para rho
+psbasemap -X$TLEN -Y$PHILEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":wesn -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 33
+EOF
+rebocc_rsp2gmt -S33 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S33 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3/a45f15:"fase (graus)":wEsn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S33 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S33 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+## estação 34
+#  basemap para rho
+psbasemap -X-11.2c -Y-$RHOLEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":Wesn -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 34
+EOF
+rebocc_rsp2gmt -S34 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S34 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3:"T (s)":/a45f15:"fase (graus)":wesn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S34 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S34 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+## estação 35
+#  basemap para rho
+psbasemap -X$TLEN -Y$PHILEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":wesn -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 35
+EOF
+rebocc_rsp2gmt -S35 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S35 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3:"T (s)":/a45f15:"fase (graus)":wesn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S35 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S35 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+## estação 36
+#  basemap para rho
+psbasemap -X$TLEN -Y$PHILEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1lf3/a1lf3:"rho (@~W@~.m)":wesn -K -O >> $OUTFILE
+pstext -JX -R -N -D0c/-0.5c -K -O << EOF >> $OUTFILE
+$TMED $RHOMAX 14 0 0 mc 36
+EOF
+rebocc_rsp2gmt -S36 -Drho -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S36 -Drho -I$FILETMrsp | psxy -JX -R -W$PENTM -K -O >> $OUTFILE
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1lf3/a45f15:"fase (graus)":wEsn -K -O >> $OUTFILE
+rebocc_rsp2gmt -S36 -Dphi -I$FILETMdat -M$FILETMdix | psxy -JX -R -S$SYMBOLTM -G$COLORTM -K -O >> $OUTFILE
+rebocc_rsp2gmt -S36 -Dphi -I$FILETMrsp | psxy -JX -R -W$PENTM -O >> $OUTFILE
+
+# retorna aos valores defaults
+gmtset HEADER_FONT_SIZE 36p ANOT_FONT_SIZE 14p  ANOT_OFFSET 0.2c LABEL_FONT_SIZE 24p
+
+#ggv $OUTFILE&
+ps2eps -f $OUTFILE
+awk 'BEGIN{cmd=sprintf("convert -density 150x150 %seps %spng\n",substr("'$OUTFILE'",1,index("'$OUTFILE'",".")),substr("'$OUTFILE'",1,index("'$OUTFILE'",".")));system(cmd)}'
+awk 'BEGIN{cmd=sprintf("eog %spng&\n",substr("'$OUTFILE'",1,index("'$OUTFILE'",".")));system(cmd)}'

@@ -1,0 +1,1 @@
+g++ main_rad.cpp read_line_mackie.cpp -o ~/bin/mk2rebocc

@@ -1,0 +1,344 @@
+      SUBROUTINE D02KDF(XPOINT,NXP,COEFFN,BDYVAL,K,TOL,ELAM,DELAM,HMAX,
+     *                  MAXIT,MAXFUN,MONIT,IFAIL)
+C     MARK 7 RELEASE. NAG COPYRIGHT 1978.
+C     MARK 8A REVISED. IER-258 (AUG 1980).
+C     MARK 9 REVISED. IER-307 (SEP 1981).
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 13 REVISED. USE OF MARK 12 X02 FUNCTIONS (APR 1988).
+C
+C     MEANING OF COMMON VARIABLES:
+C     ZER,ONE,TWO,PI - CONSTANTS WITH INDICATED VALUES
+C     LAMDA - CURRENT VALUE OF EIGENVALUE ESTIMATE. SET AND USED IN
+C     EIGODE. USED IN AUX,OPTSC.
+C     PSIGN   - SAMPLE P(X) VALUE. SET IN PRUFER, USED IN AUX.
+C     MINSC - MINIMUM ALLOWED SCALEFACTOR. SET IN EIGODE, USED IN
+C     OPTSC.
+C     BP    - USED BY THE POLYGONAL SCALING METHOD. THE CURRENT
+C     VALUE OF THE DERIVATIVE OF B(X). SET IN PRUFER, USED I
+C
+C     BDYVAL, MONIT
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='D02KDF')
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  DELAM, ELAM, TOL
+      INTEGER           IFAIL, K, MAXFUN, MAXIT, NXP
+C     .. Array Arguments ..
+      DOUBLE PRECISION  HMAX(2,NXP), XPOINT(NXP)
+C     .. Subroutine Arguments ..
+      EXTERNAL          BDYVAL, COEFFN, MONIT
+C     .. Scalars in Common ..
+      DOUBLE PRECISION  BP, LAMDA, MINSC, ONE, PI, PSIGN, TWO, ZER
+      INTEGER           JINT
+C     .. Arrays in Common ..
+      DOUBLE PRECISION  YL(3), YR(3)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  D, DELAM1, DETL2L, DETL2R, DETOLL, DETOLR, DMIN,
+     *                  EL0, EL1, F0, F1, GAMMA, TEMP, TEMP0, TEMP1,
+     *                  TEMP2, TEMP3, TEMP4, TEMP5, TEMP6, TEMP7, TENU,
+     *                  TOL2, V3BDYL, V3BDYR, X, XL, XOLD, XR, ZETA
+      INTEGER           I, IBACK, IC, IFAIL1, IFLAG, ILOOP, IND, ISTAT1,
+     *                  ISTATE, ITOP, IXP, MAXFN1, NINT, NXP1
+C     .. Local Arrays ..
+      DOUBLE PRECISION  C(17), F(15), V(21), VL(7)
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      DOUBLE PRECISION  D02KDS, D02KDU, X01AAF, X02AJF
+      INTEGER           P01ABF
+      EXTERNAL          D02KDS, D02KDU, X01AAF, X02AJF, P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          C05AZF, D02KDT, D02KDV, D02KDX
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS, MAX, MIN, LOG, DBLE
+C     .. Common blocks ..
+      COMMON            /AD02KD/ZER, ONE, TWO, PI, LAMDA, PSIGN, MINSC,
+     *                  BP, YL, YR, JINT
+C     .. Executable Statements ..
+      ZER = 0.D0
+      ONE = 1.D0
+      TWO = 2.D0
+      PI = X01AAF(TEMP)
+      TENU = 10.D0*X02AJF()
+C
+C     PARAMETER CHECKS, DEFAULT VALUES ETC.
+      IF (NXP.LT.4) GO TO 300
+      IF (K.LT.0) GO TO 320
+      IF (TOL.LE.ZER) GO TO 340
+      NINT = NXP - 3
+      XL = XPOINT(2)
+      XR = XPOINT(NXP-1)
+C     CHECK XPOINT(I) IN ASC. ORDER AND FIND POSN. OF MATCHING
+C     POINT.
+      DMIN = TWO*ABS(XR-XL)
+      NXP1 = NXP - 1
+      XOLD = XPOINT(1)
+      DO 40 I = 2, NXP1
+         X = XPOINT(I)
+         IF (X.LT.XOLD) GO TO 360
+         D = ABS((XL-X)+(XR-X))
+         IF (D.GT.DMIN) GO TO 20
+         IC = I
+         DMIN = D
+   20    XOLD = X
+   40 CONTINUE
+      I = NXP
+      IF (XPOINT(NXP).LT.XOLD) GO TO 360
+C
+      MINSC = ONE/TENU
+      GAMMA = ZER
+      IF (XL.EQ.XR) GO TO 60
+      MINSC = 4.D0/ABS(XR-XL)
+      GAMMA = (XPOINT(IC)-XL)/(XR-XL)
+   60 CONTINUE
+C
+      DO 80 I = 1, NXP
+         HMAX(2,I) = ZER
+   80 CONTINUE
+C
+      TOL2 = TOL/TWO
+      DELAM1 = DELAM
+      IF (DELAM1.EQ.ZER) DELAM1 = .25D0*MAX(ONE,ABS(ELAM))
+C
+C     INITIAL VALUES OF TOLERANCE PARAMS LOG(ETA) AT XL,XR.
+      DETOLL = LOG(1.D-4)
+      DETOLR = DETOLL
+C     INITIALIZE FAIL-FLAG FOR MISS DISTANCE CODE.
+      IFAIL1 = 0
+      EL1 = ELAM
+      EL0 = ELAM + DELAM1
+C     INITIAL EVALUATION, F=F(EL1) .
+      ISTATE = 1
+      LAMDA = EL1
+      IBACK = 1
+      GO TO 500
+  100 IF (IFAIL1.GT.0) GO TO 440
+      F1 = F(1)
+C     ENTER BRACKETING LOOP.
+      IF (F1.EQ.ZER) GO TO 180
+C     THROUGHOUT THE ROOTFINDING, MAINTAIN EL1,EL0 AS TWO MOST
+C     RECENT
+C     APPROXIMATIONS, WITH ABS(F(EL0)).GE.ABS(F(EL1))
+C
+      IBACK = 2
+      LAMDA = EL0
+      ILOOP = 0
+  120 ILOOP = ILOOP + 1
+      GO TO 500
+  140 IF (IFAIL1.GT.0) GO TO 420
+      EL0 = LAMDA
+      F0 = F(1)
+      IF (ABS(F0).GT.ABS(F1)) GO TO 160
+      EL0 = EL1
+      F0 = F1
+      EL1 = LAMDA
+      F1 = F(1)
+  160 IF (F1.EQ.ZER) GO TO 180
+      IF (F0*F1.LT.ZER) GO TO 200
+      LAMDA = EL1 - TWO*(EL0-EL1)
+      IF (ILOOP.LE.8) GO TO 120
+C     HERE HAVE FAILED TO BRACKET ROOT AFTER 10 EVALUATIONS
+      IFAIL1 = 5
+      GO TO 420
+C     ON FINDING FMISS EXACTLY 0 ON
+C     1ST EVAL OR WHEN BRACKETING
+  180 EL0 = EL1
+      GO TO 280
+C     ROOT BETWEEN EL0 AND EL1..  START CALLING ROOTFINDER
+  200 IFLAG = 1
+      ISTATE = 2
+      IBACK = 3
+      IND = -1
+      C(1) = F0
+  220 CALL C05AZF(EL1,EL0,F1,TOL2,0,C,IND,IFLAG)
+      IF (IND.EQ.0) GO TO 260
+      IF (IND.NE.4 .OR. IFLAG.NE.1) GO TO 400
+      LAMDA = EL1
+      GO TO 500
+  240 IF (IFAIL1.GT.0) GO TO 420
+      F1 = F(1)
+      GO TO 220
+C     ON EXIT FROM LOOP TEST FAILURE PARAM OF C05AZF
+  260 IF (IFLAG.NE.0) GO TO 400
+C     NORMAL EXIT PATH.
+  280 IFAIL1 = 0
+      GO TO 420
+C     ***
+C     ERROR PROCESSING FOR MAIN ROUTINE
+C     ***
+C     PARAMETER ERROR NXP,K OR TOL
+  300 HMAX(2,1) = 1.D0
+      GO TO 380
+  320 HMAX(2,1) = 2.D0
+      GO TO 380
+  340 HMAX(2,1) = 3.D0
+      GO TO 380
+  360 HMAX(2,1) = 4.D0
+      HMAX(2,2) = DBLE(I)
+  380 IFAIL1 = 1
+      HMAX(2,2) = ZER
+      IF (HMAX(2,1).EQ.4.D0) HMAX(2,2) = DBLE(I)
+      GO TO 480
+  400 IFAIL1 = 12
+      IF (IFLAG.EQ.4) IFAIL1 = 10
+      IF (IFLAG.EQ.5) IFAIL1 = 9
+  420 ELAM = EL1
+      DELAM = ABS(F(2)) + ABS(EL0-EL1)
+  440 HMAX(2,1) = ZER
+      HMAX(2,2) = ZER
+      IF (IFAIL1.EQ.0) GO TO 480
+      IF (IFAIL1.EQ.5) DELAM = EL0 - EL1
+      IF (IFAIL1.NE.11) GO TO 460
+      HMAX(2,1) = TEMP1
+      HMAX(2,2) = TEMP2
+  460 IF (IFAIL1.NE.12) GO TO 480
+      HMAX(2,1) = DBLE(IFLAG)
+      HMAX(2,2) = DBLE(IND)
+  480 IFAIL = P01ABF(IFAIL,IFAIL1,SRNAME,0,P01REC)
+      RETURN
+C     ***
+C     CODE TO COMPUTE MISS DISTANCE.
+C     ***
+  500 F(3) = ZER
+  520 F(3) = F(3) + ONE
+      IF (IFAIL1.LT.0) GO TO 940
+      MAXIT = MAXIT - 1
+      MAXFN1 = MAXFUN
+      F(1) = ZER
+      F(2) = ZER
+      DO 540 I = 4, 15
+         F(I) = ZER
+  540 CONTINUE
+      HMAX(1,NXP-1) = ZER
+      HMAX(1,NXP) = ZER
+      YL(3) = ZER
+      YR(3) = ZER
+      CALL BDYVAL(XL,XR,LAMDA,YL,YR)
+C     SET PARAMETERS APPLICABLE TO SHOOTING EITHER DIRECTION.
+      V(6) = ZER
+      V(7) = MAX(ONE,ABS(LAMDA))*TOL2
+C     SET PARAMS FOR SHOOTING C FROM XL.
+      JINT = 1
+      V(1) = D02KDU(XL,COEFFN)
+      CALL D02KDT(V,YL(1),YL(2),-1,IFAIL1)
+      IF (IFAIL1.NE.0) GO TO 880
+      V3BDYL = V(3)
+      V(3) = ZER
+      V(4) = ZER
+      V(5) = DETOLL
+      X = XL
+      IF (IC.LT.3) GO TO 580
+      DO 560 IXP = 3, IC
+         JINT = IXP - 2
+         CALL D02KDX(X,XPOINT(IXP),V,COEFFN,MAXFN1,HMAX(1,JINT),IFAIL1)
+         F(5) = F(5) + V(15)
+         F(6) = F(6) + V(16)
+         F(7) = F(7) + V(10)
+         IF (IFAIL1.NE.0) GO TO 740
+  560 CONTINUE
+C
+  580 DO 600 I = 1, 7
+         VL(I) = V(I)
+  600 CONTINUE
+C
+C     SET PARAMS FOR SHOOTING C FROM XR.
+      JINT = NINT
+      V(1) = D02KDU(XR,COEFFN)
+      CALL D02KDT(V,YR(1),YR(2),K,IFAIL1)
+      IF (IFAIL1.NE.0) GO TO 900
+      V3BDYR = V(3)
+      V(3) = ZER
+      V(4) = ZER
+      V(5) = DETOLR
+      X = XR
+      ITOP = NXP - IC
+      IF (2.GT.ITOP) GO TO 640
+      DO 620 I = 2, ITOP
+         IXP = NXP - I
+         JINT = IXP - 1
+         CALL D02KDX(X,XPOINT(IXP),V,COEFFN,MAXFN1,HMAX(1,JINT),IFAIL1)
+         F(5) = F(5) + V(15)
+         F(6) = F(6) + V(16)
+         F(7) = F(7) + V(10)
+         IF (IFAIL1.NE.0) GO TO 740
+  620 CONTINUE
+C
+  640 CONTINUE
+C     HAVE NOW SHOT C FROM XL, RESULTS IN VL, C FROM XR, RESULTS IN
+C     V.
+C     CONVERT TO SAME SCALE AND COMPUTE MISS-DISTANCE.
+      CALL D02KDV(VL,V(1),IFAIL1)
+      F(1) = (VL(2)-V(2))/(PI+PI)
+C     COMPUTE ERROR ESTIMATE INFO.
+      TEMP0 = VL(5) - VL(3)
+      TEMP1 = V(5) - V(3)
+      TEMP2 = D02KDS(-ABS(TEMP0-TEMP1))
+      IF (GAMMA.EQ.ZER .OR. (GAMMA.NE.ONE .AND. TEMP0.LT.TEMP1))
+     *    GO TO 660
+      TEMP3 = TEMP0
+      TEMP4 = ONE
+      TEMP5 = TEMP2
+      GO TO 680
+  660 TEMP3 = TEMP1
+      TEMP4 = TEMP2
+      TEMP5 = ONE
+  680 TEMP6 = TEMP4*GAMMA + TEMP5*(ONE-GAMMA)
+      TEMP7 = TEMP4*VL(4) - TEMP5*V(4)
+      F(2) = -TEMP7/TEMP6
+      ZETA = ABS(F(2)*V(7))
+      IF (ABS(F(2)).LT.TENU) F(2) = TENU
+      F(2) = ONE/F(2)
+      HMAX(1,NXP-1) = -TWO*D02KDS(-V3BDYL-VL(3)-TEMP3)/TEMP7
+      HMAX(1,NXP) = TWO*D02KDS(-V3BDYR-V(3)-TEMP3)/TEMP7
+      TEMP2 = TEMP3 + LOG(.75D0*TEMP6*MAX(ZETA,1.D-2))
+      DETL2L = VL(3) + TEMP2
+      DETL2R = V(3) + TEMP2
+      DETOLL = MIN(DETOLL+TWO,DETL2L)
+      DETOLR = MIN(DETOLR+TWO,DETL2R)
+C
+      IFAIL1 = 0
+      IF (MAXIT.EQ.0) IFAIL1 = -1
+      ISTAT1 = ISTATE
+  700 CONTINUE
+C
+      F(4) = MAXFUN - MAXFN1
+      CALL MONIT(MAXIT,ISTAT1,LAMDA,F)
+      IF (IFAIL1.GT.0) GO TO 720
+      IF (ZETA.LT.ONE) GO TO 520
+  720 GO TO (100,140,240) IBACK
+  740 GO TO (760,780,780,800,820,760,820,840,760)
+     *       IFAIL1
+  760 IFAIL1 = 11
+      TEMP1 = DBLE(IFAIL1)
+      TEMP2 = V(18)
+      GO TO 860
+  780 IFAIL1 = 8
+      GO TO 860
+  800 IFAIL1 = 7
+      GO TO 860
+  820 IFAIL1 = 6
+      GO TO 860
+  840 IFAIL1 = 3
+  860 ISTAT1 = -IFAIL1
+      F(9) = JINT
+      F(10) = X
+      F(11) = V(1)
+      F(12) = V(2)
+      F(13) = V(3)
+      F(14) = V(18)
+      F(15) = V(11)
+      GO TO 700
+C     BDYVAL ERROR AT XL
+  880 F(9) = ZER
+      F(10) = XL
+      GO TO 920
+C     BDYVAL ERROR AT XR
+  900 F(9) = DBLE(NXP-2)
+      F(10) = XR
+  920 IFAIL1 = 2
+      ISTAT1 = -IFAIL1
+      GO TO 700
+C
+C     MAXIT ERROR
+  940 IFAIL1 = 4
+      GO TO 720
+      END

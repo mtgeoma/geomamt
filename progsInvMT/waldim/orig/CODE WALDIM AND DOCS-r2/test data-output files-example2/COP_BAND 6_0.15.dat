@@ -1,0 +1,5 @@
+ 
+Dimensionality results average for band   6:  100.     s -  0.100E+04 s
+ 
+Site                           Longitude        Latitude   nper  DIM  strike   errstr      twi   errtwi    shear    errsh  cont determ  strikecomp
+cop314                     -103.175         49.1556         6    4   82.2943   0.8938  -0.4886   0.6649   4.4353   0.7673   1   2.1188 -82.2943

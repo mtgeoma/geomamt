@@ -1,0 +1,4 @@
+Place system parameter look up tables in this directory.
+
+OR:  in the parent directory, make a link called "sensors"
+to the location where system parameter tables are kept.

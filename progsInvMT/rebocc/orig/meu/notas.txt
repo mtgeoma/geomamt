@@ -1,0 +1,13 @@
+em src/utilfunct.f troquei "1.E+99" por "3.40282347e+38"
+> grep MAXFLOAT /usr/include/math.h
+#  define MAXFLOAT      3.40282347e+38F
+
+Para usar o BLAS2_3.f comentei a linha 3993 que marcava ETIME como EXTERNAL
+
+No Makefile, removi os programas do blas e lapack e passei a usar os
+instalados no sistema. Mas em BLAS1.f as subrotinas sort e median não são do
+BLAS. Criei o arquivo sort_median.f com estas subrotinas e inclui no Makefile.
+
+É preciso ver qual função substitui o comando obsoleto PAUSE.
+
+Shimeles teve um problema extranho: o rebooc não funcionava em um Suse11.0 32bits a não ser quando usava uma biblioteca blas externa.

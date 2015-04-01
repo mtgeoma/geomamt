@@ -1,0 +1,76 @@
+      SUBROUTINE D01AHY(A,B,RESULT,K,EPSIL,NPTS,ICHECK,F,AMAXL,AMAXR,R1,
+     *                  IT)
+C     MARK 8 RELEASE. NAG COPYRIGHT 1979.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     CONTROLS BASIC ALGORITHM D01AHX, APPLYING A FURTHER RANDOM
+C     TRANSFORMATION IF CONVERGENCE WAS ACHIEVED AS A RESULT OF THE
+C     E-ALGORITHM TO IMPROVE RELIABILITY
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  A, AMAXL, AMAXR, B, EPSIL, R1
+      INTEGER           ICHECK, IT, K, NPTS
+C     .. Array Arguments ..
+      DOUBLE PRECISION  RESULT(8)
+C     .. Function Arguments ..
+      DOUBLE PRECISION  F
+      EXTERNAL          F
+C     .. Scalars in Common ..
+      DOUBLE PRECISION  ALP, AV, FZERO
+      INTEGER           IR, NT
+C     .. Arrays in Common ..
+      DOUBLE PRECISION  FUNCTM(127), FUNCTP(127)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  ALAST, ERR, XDUM
+      INTEGER           IQ, NF
+C     .. External Functions ..
+      DOUBLE PRECISION  D01AHU, G05CAF
+      EXTERNAL          D01AHU, G05CAF
+C     .. External Subroutines ..
+      EXTERNAL          D01AHV, D01AHX
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS
+C     .. Common blocks ..
+      COMMON            /BD01AH/FUNCTP, FUNCTM, FZERO
+      COMMON            /CD01AH/ALP, AV, NT, IR
+C     .. Executable Statements ..
+      NPTS = 0
+      IR = 0
+      IQ = 0
+C
+C     RANDOM TRANSFORMATION PARAMETER
+C     USE STANDARD NAG ROUTINE G05CAF FOR RANDOM NUMBER
+   20 ALP = (2.0D0*G05CAF(XDUM)-1.0D0)*0.01D0/D01AHU(B-A)
+      CALL D01AHX(A,B,RESULT,K,EPSIL,NF,ICHECK,F,AMAXL,AMAXR,R1,IT)
+      NPTS = NPTS + NF
+      IF (ICHECK.EQ.0) GO TO 100
+      IF (ICHECK.NE.4) RETURN
+C
+C     CONVERGED USING E-ALGORITHM
+      IF (IQ.EQ.0) GO TO 60
+   40 ERR = ABS(ALAST-RESULT(K))
+      IF (ERR.LE.ABS(ALAST)*EPSIL) GO TO 80
+      IF (K.LT.5) GO TO 120
+C
+C     CALCULATE VARIATION ON LEFT AND RIGHT
+      CALL D01AHV(A,B,AMAXL,AMAXR)
+      RETURN
+C
+C     CHECK RESULT
+   60 IQ = 1
+      ALAST = RESULT(K)
+      IR = 1
+      GO TO 20
+   80 ICHECK = 0
+      RETURN
+  100 IF (IQ.EQ.0) RETURN
+C
+C     ICHECK = 4  INDICATES THAT A CONVERGED RESULT WAS OBTAINED
+C     AFTER
+C     APPLYING E- ALGORITHM.
+      ICHECK = 4
+      GO TO 40
+  120 AMAXL = 0.0D0
+      AMAXR = 0.0D0
+      RETURN
+      END

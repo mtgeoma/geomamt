@@ -1,0 +1,156 @@
+#!/bin/bash
+if [[ -z $1 ]]
+then
+    echo "modo de usar:$0 stn001a"
+    exit 1
+else
+    STN=$1
+fi
+# entrada de dados
+DATA1=${STN}
+TITLE="${STN}"
+
+# saida de dados
+ARQUIVO_PS=${STN}.ps
+
+# limites das escalas
+TMIN=1e-4   TMAX=1e4
+RHOMIN=1e-1 RHOMAX=1e5
+PHIMIN=0  PHIMAX=90
+
+# comprimentos dos eixos (decada=1.5cm) (180 graus => 2.728753 decadas)
+TLEN=12.0c
+RHOLEN=9c
+PHILEN=2.0466c
+
+# apresentacao:
+# simbolos
+SYMBOLa=c4p
+PENb=1t3_3:0p
+# canetas (Pen) e Cor de preenchimento
+COLOR1=0
+COLOR2=100
+PEN1=1p/$COLOR1
+PEN2=1p/$COLOR2
+# barras de erros (para nao aparecerem use Y0p/0p/255
+ERRORBAR1=y0c/$PEN1
+ERRORBAR2=y0c/$PEN2
+
+# configura tamanho das letras
+gmtset HEADER_FONT_SIZE 16p ANOT_FONT_SIZE 12p ANOT_OFFSET 0.1c LABEL_FONT_SIZE 14p
+
+#  basemap para rhoxy
+psbasemap -X2.5c -Y5c -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1pf3/a1pf3:."xy"::"@~r@~ (@~W@~.m)":Wesn -K > $ARQUIVO_PS
+psxy -JX -R -L -G200 -K -O <<EOF >> $ARQUIVO_PS
+$TMIN $RHOMIN
+$TMIN $RHOMAX
+1E-3  $RHOMAX
+1E-3  $RHOMIN
+EOF
+pstext -JX -R -D0c/2c -N -K -O <<EOF >> $ARQUIVO_PS
+$TMAX $RHOMAX 14 0 0 MC $TITLE
+EOF
+gawk -f ../get_chisq.awk xy_${STN}.out | gawk '{printf "'$TMAX' '$RHOMAX' 12 0 0 MC @~c@~@+2@+ %s\n",$2}' |\
+pstext -JX -R -D-4c/1c -N -K -O >> $ARQUIVO_PS
+# rhob
+if [[ -r xy_${STN}.bnd ]]
+then
+    gawk '{nT=$1;for(i=1;i<=nT+1;i++){getline};for(i=1;i<=nT;i++){getline;print 1./$1,$2}}' xy_${STN}.bnd | \
+    psxy -JX -R -W$PENb/$COLOR1 -K -O >> $ARQUIVO_PS
+    gawk '{nT=$1;for(i=1;i<=nT+1;i++){getline};for(i=1;i<=nT;i++){getline;print 1./$1,$3}}' xy_${STN}.bnd | \
+    psxy -JX -R -W$PENb/$COLOR1 -K -O >> $ARQUIVO_PS
+fi
+
+# rhoa
+gawk '{if($3!=0.)print 1./$1,$2,$3}' xy_${STN}.rsp | \
+psxy -JX -R -S$SYMBOLa -E$ERRORBAR1 -G$COLOR1 -W$PEN1 -K -O >> $ARQUIVO_PS
+gawk '{if($3==0.)print 1./$1,$2}' xy_${STN}.rsp | \
+psxy -JX -R -S$SYMBOLa -G255 -W$PEN1 -K -O >> $ARQUIVO_PS
+gawk '{print 1./$1,$4}' xy_${STN}.rsp | \
+psxy -JX -R -W1p/$COLOR1 -K -O >> $ARQUIVO_PS
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1pf3/a45f15:"@~f@~ (graus)":weSn -K -O -V >> $ARQUIVO_PS
+psxy -JX -R -L -G200 -K -O <<EOF >> $ARQUIVO_PS
+$TMIN $PHIMIN
+$TMIN $PHIMAX
+1E-3  $PHIMAX
+1E-3  $PHIMIN
+EOF
+# phib
+if [[ -r xy_${STN}.bnd ]]
+then
+    gawk '{nT=$1;for(i=1;i<=nT;i++){getline;print 1./$1,$2};nextfile}' xy_${STN}.bnd | \
+    psxy -JX -R -W$PENb/$COLOR1 -K -O >> $ARQUIVO_PS
+    gawk '{nT=$1;for(i=1;i<=nT;i++){getline;print 1./$1,$3};nextfile}' xy_${STN}.bnd | \
+    psxy -JX -R -W$PENb/$COLOR1 -K -O >> $ARQUIVO_PS
+fi
+
+# phia
+gawk '{if($6!=0.)print 1./$1,$5,$6}' xy_${STN}.rsp | \
+psxy -JX -R -S$SYMBOLa -E$ERRORBAR1 -G$COLOR1 -W$PEN1 -K -O >> $ARQUIVO_PS
+gawk '{if($6==0.)print 1./$1,$5}' xy_${STN}.rsp | \
+psxy -JX -R -S$SYMBOLa -G255 -W$PEN1 -K -O >> $ARQUIVO_PS
+gawk '{print 1./$1,$7}' xy_${STN}.rsp | \
+psxy -JX -R -W1p/$COLOR1 -K -O >> $ARQUIVO_PS
+
+#===================================================================================================
+#  basemap para rhoyx
+psbasemap -X$TLEN -Y$PHILEN -JX$TLEN''l/$RHOLEN''l -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1pf3/a1pf3:."yx"::"@~r@~ (@~W@~.m)":wesN -K -O >> $ARQUIVO_PS
+psxy -JX -R -L -G200 -K -O <<EOF >> $ARQUIVO_PS
+$TMIN $RHOMIN
+$TMIN $RHOMAX
+1E-3  $RHOMAX
+1E-3  $RHOMIN
+EOF
+
+gawk -f ../get_chisq.awk yx_${STN}.out | gawk '{printf "'$TMAX' '$RHOMAX' 12 0 0 MC @~c@~@+2@+ %s\n",$2}' |\
+pstext -JX -R -D-4c/1.8c -N -K -O >> $ARQUIVO_PS
+
+# rhob
+if [[ -r yx_${STN}.bnd ]]
+then
+    gawk '{nT=$1;for(i=1;i<=nT+1;i++){getline};for(i=1;i<=nT;i++){getline;print 1./$1,$2}}' yx_${STN}.bnd | \
+    psxy -JX -R -W$PENb/$COLOR1 -K -O >> $ARQUIVO_PS
+    gawk '{nT=$1;for(i=1;i<=nT+1;i++){getline};for(i=1;i<=nT;i++){getline;print 1./$1,$3}}' yx_${STN}.bnd | \
+    psxy -JX -R -W$PENb/$COLOR1 -K -O >> $ARQUIVO_PS
+fi
+
+# rhoa
+gawk '{if($3!=0.)print 1./$1,$2,$3}' yx_${STN}.rsp | \
+psxy -JX -R -S$SYMBOLa -E$ERRORBAR1 -G$COLOR1 -W$PEN1 -K -O >> $ARQUIVO_PS
+gawk '{if($3==0.)print 1./$1,$2}' yx_${STN}.rsp | \
+psxy -JX -R -S$SYMBOLa -G255 -W$PEN1 -K -O >> $ARQUIVO_PS
+gawk '{print 1./$1,$4}' yx_${STN}.rsp | \
+psxy -JX -R -W1p/$COLOR1 -K -O >> $ARQUIVO_PS
+
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$TLEN''l/$PHILEN -R$TMIN/$TMAX/$PHIMIN/$PHIMAX -Ba1pf3/a45f15:"@~f@~ (graus)":wEsn -K -O -V >> $ARQUIVO_PS
+psxy -JX -R -L -G200 -K -O <<EOF >> $ARQUIVO_PS
+$TMIN $PHIMIN
+$TMIN $PHIMAX
+1E-3  $PHIMAX
+1E-3  $PHIMIN
+EOF
+# phib
+if [[ -r yx_${STN}.bnd ]]
+then
+    gawk '{nT=$1;for(i=1;i<=nT;i++){getline;print 1./$1,$2};nextfile}' yx_${STN}.bnd | \
+    psxy -JX -R -W$PENb/$COLOR1 -K -O >> $ARQUIVO_PS
+    gawk '{nT=$1;for(i=1;i<=nT;i++){getline;print 1./$1,$3};nextfile}' yx_${STN}.bnd | \
+    psxy -JX -R -W$PENb/$COLOR1 -K -O >> $ARQUIVO_PS
+fi
+# phia
+gawk '{if($6!=0.)print 1./$1,$5,$6}' yx_${STN}.rsp | \
+psxy -N -JX -R -S$SYMBOLa -E$ERRORBAR1 -G$COLOR1 -W$PEN1 -K -O >> $ARQUIVO_PS
+gawk '{if($6==0.)print 1./$1,$5}' yx_${STN}.rsp | \
+psxy -N -JX -R -S$SYMBOLa -G255 -W$PEN1 -K -O >> $ARQUIVO_PS
+gawk '{print 1./$1,$7}' yx_${STN}.rsp | \
+psxy -JX -R -W1p/$COLOR1 -O >> $ARQUIVO_PS
+
+# retorna aos valores defaults
+rm -f .gmtcommands4 .gmtdefaults4
+
+ARQUIVO_PNG=${ARQUIVO_PS/.ps/.png}
+ps2raster $ARQUIVO_PS -A -P -Tg
+eog $ARQUIVO_PNG &

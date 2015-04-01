@@ -1,0 +1,114 @@
+      SUBROUTINE G01AAF(N,X,IWT,WT,XMEAN,S2,S3,S4,XMIN,XMAX,WSUM,IFAIL)
+C     MARK 4 RELEASE NAG COPYRIGHT 1974.
+C     MARK 4.5 REVISED
+C     MARK 10D REVISED. IER-430 (FEB 1984)
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 13 REVISED. USE OF MARK 12 X02 FUNCTIONS (APR 1988).
+C
+C     G01AAF - THE ROUTINE RETURNS THE MEAN, THE STANDARD
+C     DEVIATION, THE COEFFICIENTS OF SKEWNESS AND
+C     KURTOSIS, AND THE LARGEST AND SMALLEST VALUES
+C     FROM THE VALUES IN THE ARRAY X - OPTIONALLY
+C     USING WEIGHTS IN THE ARRAY WT
+C
+C     USES NAG LIBRARY ROUTINE P01AAF
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='G01AAF')
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  S2, S3, S4, WSUM, XMAX, XMEAN, XMIN
+      INTEGER           IFAIL, IWT, N
+C     .. Array Arguments ..
+      DOUBLE PRECISION  WT(N), X(N)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  A2, ATEMP, BTEMP, SMALL, WTEMP, XTEMP
+      INTEGER           I, IERR, K, LOW
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      DOUBLE PRECISION  X02AKF
+      INTEGER           P01ABF
+      EXTERNAL          X02AKF, P01ABF
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS, SQRT
+C     .. Executable Statements ..
+      IF (N) 20, 20, 80
+   20 IERR = 1
+   40 IWT = 0
+   60 IFAIL = P01ABF(IFAIL,IERR,SRNAME,0,P01REC)
+      RETURN
+   80 IF (IWT-1) 100, 140, 100
+C     INITIALISE  WEIGHTS IF NOT GIVEN
+  100 DO 120 I = 1, N
+         WT(I) = 1.0D0
+  120 CONTINUE
+      LOW = 1
+      WTEMP = 1.0D0
+      IWT = N
+      GO TO 300
+C     FIND FIRST POSITIVE WEIGHT--CHECK OTHERS NON-NEG
+  140 IWT = 0
+      DO 260 I = 1, N
+         WTEMP = WT(I)
+         IF (WTEMP) 280, 260, 160
+  160    IF (I-N) 180, 240, 240
+  180    LOW = I + 1
+         DO 220 K = LOW, N
+            IF (WT(K)) 280, 220, 200
+  200       IWT = IWT + 1
+  220    CONTINUE
+  240    LOW = I
+         IWT = IWT + 1
+         GO TO 300
+  260 CONTINUE
+  280 IERR = 3
+      GO TO 40
+C     INITIALISE MEANS ETC
+  300 S2 = 0.0D0
+      S3 = 0.0D0
+      S4 = 0.0D0
+      XMEAN = X(LOW)
+      WSUM = WTEMP
+      XMIN = XMEAN
+      XMAX = XMEAN
+      IF (IWT-1) 280, 440, 320
+  320 A2 = 0.0D0
+      SMALL = SQRT(SQRT(X02AKF()))
+C     LOOP FOR CALCULATIONS
+      LOW = LOW + 1
+      DO 360 I = LOW, N
+         WTEMP = WT(I)
+         IF (WTEMP) 280, 360, 340
+  340    XTEMP = X(I)
+         IF (XTEMP.LT.XMIN) XMIN = XTEMP
+         IF (XTEMP.GT.XMAX) XMAX = XTEMP
+         A2 = 2.0D0*WSUM*WTEMP + A2
+         WSUM = WTEMP + WSUM
+         XTEMP = XTEMP - XMEAN
+         ATEMP = WTEMP*XTEMP
+         IF (ABS(ATEMP).LE.SMALL) ATEMP = 0.0D0
+         BTEMP = ATEMP/WSUM
+         ATEMP = ATEMP*(XTEMP-BTEMP)
+         WTEMP = 3.0D0*BTEMP*S2
+         S4 = BTEMP*(2.0D0*WTEMP-4.0D0*S3) +
+     *        ATEMP*(-3.0D0*ATEMP/WSUM+XTEMP*XTEMP) + S4
+         S3 = -WTEMP + ATEMP*(-2.0D0*BTEMP+XTEMP) + S3
+         S2 = ATEMP + S2
+         XMEAN = BTEMP + XMEAN
+  360 CONTINUE
+      IF (S2) 400, 400, 380
+  380 ATEMP = WSUM/A2
+      A2 = S2*ATEMP
+      S2 = SQRT(A2)
+      S3 = ATEMP*S3/(A2*S2)
+      S4 = ATEMP*S4/(A2*A2) - 3.0D0
+      GO TO 420
+  400 S3 = 0.0D0
+      S4 = 0.0D0
+      S2 = 0.0D0
+  420 IFAIL = 0
+      RETURN
+  440 IERR = 2
+      GO TO 60
+      END

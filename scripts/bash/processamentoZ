@@ -1,0 +1,481 @@
+#!/bin/bash
+# recebe um arquivo com instruções sobre o processamento a ser feito
+# sobre um arquivo no seguinte formato:
+# coluna 1: arquivos no formato asc a serem processados
+# exemplos: *a.asc; stn001*[a,b].asc; stn002a091_03c.asc; etc
+# coluna 2: janela a ser usada
+# exemplos: 64; 128; etc
+# coluna 3: processamento a ser feito
+#           opções válidas são: ss; rr; mlt
+
+declare -A options=(
+    ['WIN_WITH']=5
+    ['IDRUN']=11:2
+)
+
+# função para criar arquivo paths.cfg
+# $1: ${WIN}
+# $2: ${BAD}
+make_paths ()
+{
+    decset=CF${1}/decset.cfg
+    pwset=CF${1}/pwset.cfg
+    if [[ -r ${decset} &&  -r ${pwset} ]] ; then
+	if [[ $2 == "DATA" ]] ; then
+	    DIRFC=FC${1}
+	else
+	    DIRFC=FC${1}BAD
+	fi
+	echo "DATA" > paths.cfg
+	echo "SP" >> paths.cfg
+	echo "$2" >> paths.cfg
+	echo "$decset" >> paths.cfg
+	echo "$pwset" >> paths.cfg
+	echo "$DIRFC" >> paths.cfg
+	if [[ !(-d $DIRFC) ]] ; then
+	    mkdir $DIRFC
+	fi
+	return 0
+    else
+	return 1
+    fi
+}
+
+# função para verificar se os arquivos *.clk possuem mesma taxa de amostragem
+# e data de referência
+# $1: arquivos *.asc cujos *.clk devem ser verificados
+verifica_clk ()
+{
+    clk=($1)
+    for (( clkj=0; clkj < ${#clk[*]}; clkj++ ))
+    do
+	clk[$clkj]=${clk[$clkj]/.asc/.clk}
+    done
+
+    if [[ -f ${clk[0]} ]]
+    then
+	for (( clkj=1; clkj < ${#clk[*]}; clkj++ ))
+	do
+	    if [[ -f ${clk[$clkj]} ]] # if files exist
+	    then
+		resp=$(paste -d : ${clk[0]} ${clk[$clkj]} |\
+                     awk 'BEGIN{FS=":";s=0}{gsub(/[[:blank:]]/,"");\
+                          if(NR!=2&&$1!=$2)s+=1}END{print s}')
+		if [[ $resp != 0 ]]
+		then
+		    return 3
+		fi
+	    else
+		return 2
+	    fi
+	done
+    else
+	return 1
+    fi
+    return 0
+}
+
+IDRUN=11:2
+# assume que as seguintes variáveis globais estão corretas
+# IDRUN: begin:n begin and number of caracter of common name
+# $1: arquivos *.asc
+make_namez ()
+{
+    names=($1)
+    name=$(basename ${names[0]})
+    mkni=$(echo $IDRUN | cut -d':' -f1)
+    mknf=$(echo $IDRUN | cut -d':' -f2)
+    NAMEZ=${name:0:$[$mkni+$mknf]}
+    for (( j=1; j < ${#names[*]}; j++ ))
+    do
+	name=$(basename ${names[$j]})
+	NAMEZ=${NAMEZ}${name:$mkni:$mknf}
+    done
+    mknf=$[$mkni+$mknf]
+    NAMEZ=$NAMEZ${name:$mknf}
+    NAMEZ=${NAMEZ/.asc/}
+}
+
+# função para criar arquivos *.f?
+# $1: arquivos *.asc
+make_dnff ()
+{
+    DIRFC=$(awk '{if(NR==6)print $1}' paths.cfg)
+    MKASC=($1)
+    export PROC_TMPDIR=$(mktemp -d /tmp/proc.XXXXXX)
+    for (( i=0; i < ${#MKASC[*]}; i++ ))
+    do
+        # verifica o número de canais do arquivo
+	N=$(head -n 1 ${MKASC[$i]} | wc -w)
+        # arquivo log
+	LOG=$(basename ${MKASC[$i]})
+	LOG=${DIRFC}_${LOG/.asc/.log}
+        # arquivo FC
+	ARQFC=$(basename ${MKASC[$i]})
+	ARQFC=${ARQFC/.asc/.f$N}
+        ARQFC=${DIRFC}/${ARQFC}
+        # verifica se o arquivo já exite
+	if [[ -e $ARQFC ]]
+	then
+	    if [[ -s $ARQFC ]]
+	    then
+		echo "$ARQFC já foi criado anteriormente"
+	    else
+		echo -n "$ARQFC já foi criado anteriormente com tamanho zero!"
+		echo " pulando este processo"
+		continue
+	    fi
+	else
+	    printf "%s\nn\n" $(basename ${MKASC[$i]}) > dnff.bat
+	    $DNFF -a < dnff.bat > $PROC_TMPDIR/$LOG 2>&1
+	    if [[ -s $ARQFC ]]
+	    then
+		grep NSMAX $PROC_TMPDIR/$LOG > /dev/null
+		if [[ $? == 0 ]]; then
+		    tail -n 8 $PROC_TMPDIR/$LOG > $LOG
+		    echo "gerado arquivo $ARQFC mas atingiu NSMAX (veja $LOG)"
+		else
+		    echo "gerado arquivo $ARQFC"
+		fi
+	    else
+		cp $PROC_TMPDIR/$LOG .
+		echo "problema ao gerar $ARQFC, pulando este processo (veja $LOG)"
+		continue
+	    fi
+	fi
+    done
+    rm -rf $PROC_TMPDIR
+}
+
+usage ()
+{
+    echo "uso: $1 arquivo_processamento [parametro=valor]"
+    echo "     sendo que arquivo_processamento deve ter 3 colunas:"
+    echo "     (linhas que comecem com # são ignoradas)"
+    echo " 1a. coluna: indica quais arquivos devem ser processados"
+    echo "    exemplo: *A.asc"
+    echo " 2a. coluna: janela a ser usada no processamento"
+    echo "    exemplo: 16384"
+    echo " 3a. coluna: processamento a ser feito. Deve ser ss ou rr ou mlt."
+    echo "    pode-se acrescentar uma opção separada por \";\""
+    echo "    exemplo: ss;coh1"
+    echo
+    echo "para processar todos os arquivos DATA/*A.asc com janela de 65536"
+    echo "usando o arquivo options65536bs1.cfg, inclua a seguinte linha no"
+    echo "arquivo_processamento:"
+    echo " *A.asc 65536 ss;bs1"
+    echo
+    echo "para processar stn001a057_01D.asc com janela de 128 usando"
+    echo "como referência remota a sondagem stn002a091_01D.asc, inclua a"
+    echo "seguinte linha no arquivo_processamento:"
+    echo " stn001a057_01D.asc 128 rr;stn002a091_01D.asc"
+    echo
+    echo "pode-se alterar os seguintes parâmetros por linha de comando:"
+    echo "WIN_WITH=tamanho fixo do string da janela [${options['WIN_WITH']}]"
+    echo "    o que implica na existência de arquivos similares a:"
+    printf "    options%0${options['WIN_WITH']}d.cfg options%0${options['WIN_WITH']}d.cfg\n" 64 128
+    echo "IDRUN=N:M identifica o run [${options['IDRUN']}]"
+    echo "  espera que o run comece no caracter N e tenha M digitos"
+    echo "  a contagem dos caracteres começa no zero"
+    echo
+    exit 1
+}
+
+if [[ -z $EMTF_PATH ]]
+then
+    echo "deve-se definir a variável de ambiente EMTF_PATH"
+    echo "com o diretório onde se encontra os programas dnff* e tranmt*"
+    echo
+    exit 1
+fi
+
+if [[ -z $1 ]]
+then
+    usage $0
+fi
+
+until [[ -z "$1" ]]
+do
+    # parâmetros que possuam o caracter "=" são para alterar variáveis internas
+    if [[ $(expr index "$1" "=") != 0 ]]
+    then
+        option=($(echo $1 | tr '=' ' '))
+        if [[ ${#option[*]} -eq 2 ]] ; then
+        # check if is a valid option
+            if [[ -z ${options[${option[0]}]} ]] ; then
+                echo "'${option[0]}' opção invalida"
+		usage $0
+            else
+                options[${option[0]}]=${option[1]}
+            fi
+        else
+            echo "erro na opção: $1"
+            usage $0
+        fi
+    else
+    # se não é  para alterar variáveis internas (não tem caracter "="),
+    # então é o arquivo de processamento
+	PROCESSAMENTO=$1
+    fi
+    shift
+done
+
+WIN_WITH=${options['WIN_WITH']}
+
+IDRUN=${options['IDRUN']}
+
+# procura os executáveis dnff e tranmt disponíveis:
+declare -a PROG_WIN
+i=0
+for dnff in $(ls $EMTF_PATH/dnff* 2> /dev/null) ; do
+    dnff=$(basename $dnff)
+    PROG_WIN[$i]=${dnff/dnff/}
+    if [[ ${#PROG_WIN[$i]} != $WIN_WITH ]] ; then
+	echo -n "dnff${PROG_WIN[$i]}: length(${PROG_WIN[$i]})=${#PROG_WIN[$i]}"
+	echo " != WIN_WITH=$WIN_WITH"
+	echo
+	exit 1
+    fi
+
+    ls $EMTF_PATH/tranmt${PROG_WIN[$i]} > /dev/null 2>&1
+    if [[ $? != 0 ]]
+    then
+	echo "exite o programa $EMTF_PATH/dnff${PROG_WIN[$i]}"
+	echo "mas não exite o programa $EMTF_PATH/tranmt${PROG_WIN[$i]}"
+	echo
+	exit 1
+    fi
+    ((i++))
+done
+
+if [[ $i == 0 ]]
+then
+    echo "não encontrou o programa dnff no diretório $EMTF_PATH"
+    echo
+    exit 1
+fi
+
+exec 6<&0 # liga o arquivo #6 com stdin (cópia de segurança)
+exec < $PROCESSAMENTO # stdin substituído pelo arquivo $PROCESSAMENTO
+while read -a col
+do
+    if [[ ${col[0]:0:1} != "#" ]] # pula linhas iniciadas com "#"
+    then
+	DNFF=""
+	TRANMT=""
+	ASC_EXP=$(echo ${col[0]} | cut -d';' -f1)
+	BAD=$(echo ${col[0]} | cut -s -d';' -f2 | tr a-z A-Z)
+	if [[ -z $BAD ]] ; then
+	    BAD="DATA"
+	elif [[ $BAD != "BAD" ]] ; then
+	    echo "esperava apenas *.asc;BAD na primeira coluna"
+	    exit 1
+	fi
+	WIN=$(printf "%0${WIN_WITH}d" ${col[1]})
+	PROC=$(echo ${col[2]} | cut -d';' -f1 | tr a-z A-Z)
+	CMPL=$(echo ${col[2]} | cut -s -d';' -f2)
+	if [[ $PROC == "RR" ]]
+	then
+	    OPT=options${WIN}${PROC}.cfg
+	elif [[ $PROC == "SS" || $PROC == "MLT"  ]]
+	then
+	    OPT=options${WIN}${CMPL}.cfg
+	else
+	    echo -n "$PROC: processamento desconhecido!"
+	    echo " Pulando este processo"
+	    continue
+	fi
+	make_paths ${WIN} ${BAD}
+	if [[ $? != 0 ]] ; then
+	    echo -n "não encontrou os arquivos $decset e $pwset!"
+	    echo " pulando este processo"
+	    continue
+	fi
+
+	if [[ -r ${OPT} ]]
+	then
+	    if [[ $BAD == "DATA" ]] ; then
+		cp ${OPT} options.cfg
+	    else
+		awk '{if(NR==2){printf "%sBAD\n",$1}else{print $0}}' ${OPT}\
+                > options.cfg
+	    fi
+	    # procura o programa com a janela adequada
+	    for (( i=0; i<${#PROG_WIN[*]}; i++ ))
+	    do
+		# "base#numero" força interpretar número na base indicada
+		# (evita que números iniciados com zero sejam interpretados
+		# como hexadecimal)
+		if [[ "10#${PROG_WIN[$i]}" -ge "10#${WIN}" ]]
+		then
+		    DNFF=$EMTF_PATH/dnff${PROG_WIN[$i]}
+		    TRANMT=$EMTF_PATH/tranmt${PROG_WIN[$i]}
+		    break
+		fi
+	    done
+	    if [[ -z $DNFF ]]
+	    then
+		echo "não encontrou o programa dnff com uma janela adequada"
+		echo "maior janela encontrada foi de ${PROG_WIN[$i]}"
+		exit 1
+	    fi
+	else
+	    echo -n "arquivo ${OPT} não existe"
+	    echo " ou não tem permissão de leitura"
+	    continue
+	fi
+	# diretórios
+	DIRDATA=$(awk '{if(NR==1)print $1}' paths.cfg)
+	ASC=($(ls $DIRDATA/${ASC_EXP}))
+	make_dnff "${ASC[*]}"
+	if [[ $PROC == "RR" ]]
+	then
+	    ASCRR=($(ls $DIRDATA/${CMPL}))
+	    make_dnff "${ASCRR[*]}"
+	fi
+
+	DIRMT=$(awk '{if(NR==3)print $1}' options.cfg)
+	if [[ !(-d $DIRMT) ]] ; then
+	    mkdir $DIRMT
+	fi
+	if [[ $PROC == "SS" ]]
+	then
+	    for (( i=0; i < ${#ASC[*]}; i++ ))
+	    do
+		NAMEZ=$(basename ${ASC[$i]})
+		NAMEZ=${NAMEZ/.asc/}
+                # verifica o número de canais do arquivo
+		N=$(head -n 1 ${ASC[$i]} | wc -w)
+		ARQFC=${NAMEZ}.f$N
+		if [[ $BAD == "DATA" ]] ; then
+		    NAMEZ=${NAMEZ}${CMPL}
+		else
+		    NAMEZ=${NAMEZ}${CMPL}bad
+		fi
+		ARQZ=${DIRMT}/${NAMEZ}.zss
+		if [[ -e ${ARQZ} ]]
+		then
+		    if [[ -s ${ARQZ} ]]
+		    then
+			echo "${ARQZ} já foi criado anteriormente"
+		    else
+			echo -n "$ARQZ já foi criado anteriormente"
+			        " com tamanho zero! pulando este processo"
+			continue
+		    fi
+		else
+		    printf "%s\n%s\n1\n1 %s\n%s\nn\n"\
+                            $NAMEZ options.cfg $N $ARQFC > tranmt.bat
+		    echo "tranmt.bat" > tranmt.bat.tmp
+		    $TRANMT < tranmt.bat.tmp > /dev/null 2>&1
+		    rm tranmt.bat.tmp
+		    if [[ -s $ARQZ ]]
+		    then
+			echo "gerado arquivo $ARQZ"
+		    else
+			echo "problema ao gerar $ARQZ, pulando este processo"
+			continue
+		    fi
+		fi
+	    done
+	else
+	    make_namez "${ASC[*]}"
+	    if [[ $PROC == "MLT" ]]
+	    then
+		NAMEZ=${NAMEZ}${CMPL}
+		ARQZ=${DIRMT}/${NAMEZ}.zss
+		if [[ -e ${ARQZ} ]]
+		then
+		    if [[ -s ${ARQZ} ]]
+		    then
+			echo "${ARQZ} já foi criado anteriormente"
+		    else
+			echo -n "$ARQZ já foi criado anteriormente"
+			        " com tamanho zero! pulando este processo"
+			continue
+		    fi
+		else
+		    N=$(head -n 1 ${ASC[0]} | wc -w)
+		    printf "%s\n%s\n1\n%s %s\n"\
+                            $NAMEZ options.cfg ${#ASC[*]} $N > tranmt.bat
+		    for (( i=0; i < ${#ASC[*]}; i++ ))
+		    do
+                        # verifica o número de canais do arquivo
+			N=$(head -n 1 ${ASC[$i]} | wc -w)
+			ARQFC=$(basename ${ASC[$i]})
+			ARQFC=${ARQFC/.asc/.f$N}
+			echo $ARQFC >> tranmt.bat
+		    done
+		    echo "n" >> tranmt.bat
+		    echo "tranmt.bat" > tranmt.bat.tmp
+		    $TRANMT < tranmt.bat.tmp > /dev/null 2>&1
+		    rm tranmt.bat.tmp
+		    if [[ -s $ARQZ ]]
+		    then
+			echo "gerado arquivo $ARQZ"
+		    else
+			echo "problema ao gerar $ARQZ, pulando este processo"
+			continue
+		    fi
+		fi
+	    else # $PROC == "RR"
+		verifica_clk "${ASC[*]} ${ASCRR[*]}"
+		if [[ $? != 0 ]]
+		then
+		    echo "algum dos arquivos clk não está preparado para RR"
+		    echo "${ASC[*]} ${ASCRR[*]}"
+		    exit 1
+		fi
+		ARQZ=$NAMEZ
+		make_namez "${ASCRR[*]}"
+		NAMEZ=${ARQZ}${PROC}${NAMEZ}
+		ARQZ=${DIRMT}/${NAMEZ}.zrr
+		if [[ -e ${ARQZ} ]]
+		then
+		    if [[ -s ${ARQZ} ]]
+		    then
+			echo "${ARQZ} já foi criado anteriormente"
+		    else
+			echo -n "$ARQZ já foi criado anteriormente"
+			        " com tamanho zero! pulando este processo"
+			continue
+		    fi
+		else
+		    N=$(head -n 1 ${ASC[0]} | wc -w)
+		    printf "%s\n%s\n2\n%s %s\n"\
+                            $NAMEZ options.cfg ${#ASC[*]} $N > tranmt.bat
+		    for (( i=0; i < ${#ASC[*]}; i++ ))
+		    do
+                        # verifica o número de canais do arquivo
+			N=$(head -n 1 ${ASC[$i]} | wc -w)
+			ARQFC=$(basename ${ASC[$i]})
+			ARQFC=${ARQFC/.asc/.f$N}
+			echo $ARQFC >> tranmt.bat
+		    done
+		    N=$(head -n 1 ${ASCRR[0]} | wc -w)
+		    echo "${#ASC[*]} $N" >> tranmt.bat
+		    for (( i=0; i < ${#ASCRR[*]}; i++ ))
+		    do
+                        # verifica o número de canais do arquivo
+			N=$(head -n 1 ${ASCRR[$i]} | wc -w)
+			ARQFC=$(basename ${ASCRR[$i]})
+			ARQFC=${ARQFC/.asc/.f$N}
+			echo $ARQFC >> tranmt.bat
+		    done
+		    echo "n" >> tranmt.bat
+		    echo "tranmt.bat" > tranmt.bat.tmp
+		    $TRANMT < tranmt.bat.tmp > /dev/null 2>&1
+		    rm tranmt.bat.tmp
+		    if [[ -s $ARQZ ]]
+		    then
+			echo "gerado arquivo $ARQZ"
+		    else
+			echo "problema ao gerar $ARQZ, pulando este processo"
+			continue
+		    fi
+		fi
+	    fi
+	fi
+    fi
+done
+exec 0<&6 6<&- # restaura stdin do arquivo #6 e o fecha

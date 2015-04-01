@@ -1,0 +1,16 @@
+      SUBROUTINE E04NAN(N,NROWH,NCOLH,JTHCOL,HESS,X,HX)
+C     MARK 11 RELEASE. NAG COPYRIGHT 1983.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     E04NAN IS A DUMMY QPHESS ROUTINE FOR USE WITH E04NAF.
+C
+C     .. Scalar Arguments ..
+      INTEGER           JTHCOL, N, NCOLH, NROWH
+C     .. Array Arguments ..
+      DOUBLE PRECISION  HESS(NROWH,NCOLH), HX(N), X(N)
+C     .. Executable Statements ..
+      RETURN
+C
+C     END OF E04NAN. ( QPHESS. )
+C
+      END

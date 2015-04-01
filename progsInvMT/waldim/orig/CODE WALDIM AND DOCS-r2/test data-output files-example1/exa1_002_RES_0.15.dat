@@ -1,0 +1,8 @@
+ 
+Writing main dimensionality analysis results for site exa1_002
+ 
+ Table with results for each frequency
+ 
+Site                           Longitude        Latitude         F(Hz)    Per(s)          DIM   Strike(º) errStrike(º)     Twist(º)  errTwist(º)     Shear(º)  errShear(º)
+exa1_002                     116.000         140.000         0.100E-01   0.100E+03         2D     40.0269       7.1386
+exa1_002                     116.000         140.000         0.100E-02   0.100E+04         2D     40.0108       3.4427

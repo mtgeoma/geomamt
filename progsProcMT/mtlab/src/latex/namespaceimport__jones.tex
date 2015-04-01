@@ -1,0 +1,201 @@
+\section{import\_\-jones Namespace Reference}
+\label{namespaceimport__jones}\index{import\_\-jones@{import\_\-jones}}
+funções para ler um arquivo do tipo jones  
+
+
+\subsection*{Typedefs}
+\begin{CompactItemize}
+\item 
+typedef std::map$<$ {\bf transfer\_\-function::real\_\-type}, transfer\_\-function::complex\_\-measurement\_\-type $>$ {\bf component\_\-map}
+\begin{CompactList}\small\item\em Conjunto de todos os valores de uma determinada componente. \item\end{CompactList}\item 
+typedef std::map$<$ std::string, {\bf component\_\-map} $>$ {\bf components\_\-collection}
+\begin{CompactList}\small\item\em Coleção de todas as componentes de um arquivo Jones. \item\end{CompactList}\end{CompactItemize}
+\subsection*{Functions}
+\begin{CompactItemize}
+\item 
+void {\bf import\_\-component} ({\bf component\_\-map} \&component, const std::string comp\_\-string, std::ifstream \&file)
+\begin{CompactList}\small\item\em importa a componente {\em component\/} identificada por {\em comp\_\-string\/} do arquivo {\em file\/} \item\end{CompactList}\item 
+void {\bf read\_\-components} ({\bf components\_\-collection} \&collection, std::ifstream \&file)
+\begin{CompactList}\small\item\em transfere todos os componentes de {\em file\/} em {\em collection\/} \item\end{CompactList}\item 
+bool {\bf periods\_\-are\_\-valid} ({\bf components\_\-collection} const \&collection)
+\begin{CompactList}\small\item\em confirma se os periodos do arquivo estão validos \item\end{CompactList}\item 
+bool {\bf periods\_\-are\_\-equal} (components\_\-collection::const\_\-iterator const first\_\-it, components\_\-collection::const\_\-iterator const second\_\-it)
+\begin{CompactList}\small\item\em Verifica se todos os periodos de {\em first\_\-it\/} estão em {\em second\_\-it\/}. \item\end{CompactList}\item 
+void {\bf skip\_\-comment\_\-block} (std::ifstream \&file)
+\begin{CompactList}\small\item\em salta o bloco de comentário de {\em file\/} \item\end{CompactList}\item 
+void {\bf skip\_\-information\_\-block} (std::ifstream \&file)
+\begin{CompactList}\small\item\em salta o bloco de informação de {\em file\/} \item\end{CompactList}\item 
+transfer\_\-function::impedance\_\-collection\_\-type::size\_\-type {\bf number\_\-of\_\-transfer\_\-functions} (std::ifstream \&file)
+\begin{CompactList}\small\item\em Retorna o número de funções de transferência em {\em file\/}. \item\end{CompactList}\item 
+void {\bf import\_\-impedances} ({\bf transfer\_\-function::impedance\_\-collection\_\-type} \&tf, std::ifstream \&file)
+\begin{CompactList}\small\item\em função para adquirir as funções de transferência de um arquivo \item\end{CompactList}\end{CompactItemize}
+
+
+\subsection{Detailed Description}
+funções para ler um arquivo do tipo jones 
+
+\subsection{Typedef Documentation}
+\index{import\_\-jones@{import\_\-jones}!component\_\-map@{component\_\-map}}
+\index{component\_\-map@{component\_\-map}!import_jones@{import\_\-jones}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}typedef std::map$<$ {\bf transfer\_\-function::real\_\-type}, transfer\_\-function::complex\_\-measurement\_\-type $>$ {\bf import\_\-jones::component\_\-map}}\label{namespaceimport__jones_d2b4d7e667d6c47684ae4da6724c7e5d}
+
+
+Conjunto de todos os valores de uma determinada componente. 
+
+A chave do mapa é período é o valor mapeado é o valor da componente daquele período \index{import\_\-jones@{import\_\-jones}!components\_\-collection@{components\_\-collection}}
+\index{components\_\-collection@{components\_\-collection}!import_jones@{import\_\-jones}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}typedef std::map$<$ std::string, {\bf component\_\-map} $>$ {\bf import\_\-jones::components\_\-collection}}\label{namespaceimport__jones_9955043e5d0f0c94b0bbcb5feb27d4cb}
+
+
+Coleção de todas as componentes de um arquivo Jones. 
+
+A chave do mapa é um {\tt std::string} que identifica a componente e o valor mapeado é um {\tt std::map} com os todos os valores da componente identificada pela string 
+
+\subsection{Function Documentation}
+\index{import\_\-jones@{import\_\-jones}!import\_\-component@{import\_\-component}}
+\index{import\_\-component@{import\_\-component}!import_jones@{import\_\-jones}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}void import\_\-jones::import\_\-component (component\_\-map \& {\em component}, \/  const std::string {\em comp\_\-string}, \/  std::ifstream \& {\em file})}\label{namespaceimport__jones_72dc4a4971336f116ef35e8a8f3f0b8d}
+
+
+importa a componente {\em component\/} identificada por {\em comp\_\-string\/} do arquivo {\em file\/} 
+
+Os arquivos do tipo jones identificam cada componente por um string. Quando essa string é encontrada os valores são inseridos na componente fornecida
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[\mbox{$\rightarrow$} {\em component}]mapa com os valores do componente \item[\mbox{$\leftarrow$} {\em comp\_\-string}]identificação do componente (case sensitive) \item[\mbox{$\leftarrow$} {\em file}]arquivo tipo jones \end{description}
+\end{Desc}
+
+
+Referenced by read\_\-components().\index{import\_\-jones@{import\_\-jones}!import\_\-impedances@{import\_\-impedances}}
+\index{import\_\-impedances@{import\_\-impedances}!import_jones@{import\_\-jones}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}void import\_\-jones::import\_\-impedances ({\bf transfer\_\-function::impedance\_\-collection\_\-type} \& {\em tf}, \/  std::ifstream \& {\em file})}\label{namespaceimport__jones_3e08f0a7cde171650db75253b8287d19}
+
+
+função para adquirir as funções de transferência de um arquivo 
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[\mbox{$\rightarrow$} {\em tf}]container com as funções de transferência \item[\mbox{$\leftarrow$} {\em file}]arquivo no formato jones \end{description}
+\end{Desc}
+
+
+References read\_\-components().
+
+Referenced by import::import\_\-impedances().\index{import\_\-jones@{import\_\-jones}!number\_\-of\_\-transfer\_\-functions@{number\_\-of\_\-transfer\_\-functions}}
+\index{number\_\-of\_\-transfer\_\-functions@{number\_\-of\_\-transfer\_\-functions}!import_jones@{import\_\-jones}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}transfer\_\-function::impedance\_\-collection\_\-type::size\_\-type import\_\-jones::number\_\-of\_\-transfer\_\-functions (std::ifstream \& {\em file})}\label{namespaceimport__jones_26ede64f9b6fb11c4eda58e7cbee068c}
+
+
+Retorna o número de funções de transferência em {\em file\/}. 
+
+\begin{Desc}
+\item[Precondition:]{\em file\/} deve ser um arquivo válido no formato jones \end{Desc}
+\begin{Desc}
+\item[Invariant:]a posição de leitura de {\em file\/} \end{Desc}
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[\mbox{$\leftarrow$} {\em file}]stream de um arquivo válido no formato jones\end{description}
+\end{Desc}
+\begin{Desc}
+\item[Returns:]o número de funções de transferência em {\em file\/} \end{Desc}
+
+
+References skip\_\-comment\_\-block(), and skip\_\-information\_\-block().
+
+Referenced by import::number\_\-of\_\-transfer\_\-functions().\index{import\_\-jones@{import\_\-jones}!periods\_\-are\_\-equal@{periods\_\-are\_\-equal}}
+\index{periods\_\-are\_\-equal@{periods\_\-are\_\-equal}!import_jones@{import\_\-jones}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}bool import\_\-jones::periods\_\-are\_\-equal (components\_\-collection::const\_\-iterator const  {\em first\_\-it}, \/  components\_\-collection::const\_\-iterator const  {\em second\_\-it})}\label{namespaceimport__jones_e567a71f78fff26410a2311c6a3d63ab}
+
+
+Verifica se todos os periodos de {\em first\_\-it\/} estão em {\em second\_\-it\/}. 
+
+\begin{Desc}
+\item[Note:]Não verifica se os containers de {\em first\_\-it\/} e {\em second\_\-it\/} tem o mesmo tamanho\end{Desc}
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[{\em first\_\-it}]\item[{\em second\_\-it}]\end{description}
+\end{Desc}
+\begin{Desc}
+\item[Returns:]\end{Desc}
+
+
+Referenced by periods\_\-are\_\-valid().\index{import\_\-jones@{import\_\-jones}!periods\_\-are\_\-valid@{periods\_\-are\_\-valid}}
+\index{periods\_\-are\_\-valid@{periods\_\-are\_\-valid}!import_jones@{import\_\-jones}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}bool import\_\-jones::periods\_\-are\_\-valid (components\_\-collection const \& {\em collection})}\label{namespaceimport__jones_d8e443e84ee51f88f2946e09be441bc5}
+
+
+confirma se os periodos do arquivo estão validos 
+
+Se uma componente (Tzx, Tzy, Zxx, Zxy, etc.) tiver um certo período todas as demais componentes devem ter o mesmo período \begin{Desc}
+\item[{\bf Todo}]não é claro o que o jones calcula os erros \end{Desc}
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[\mbox{$\leftarrow$} {\em collection}]vetor com as componentes a serem verificadas\end{description}
+\end{Desc}
+\begin{Desc}
+\item[Returns:]true se todas as componentes de {\em collection\/} tiverem os mesmos períodos \end{Desc}
+
+
+References periods\_\-are\_\-equal().\index{import\_\-jones@{import\_\-jones}!read\_\-components@{read\_\-components}}
+\index{read\_\-components@{read\_\-components}!import_jones@{import\_\-jones}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}void import\_\-jones::read\_\-components (components\_\-collection \& {\em collection}, \/  std::ifstream \& {\em file})}\label{namespaceimport__jones_f8f27fbde7f3c20de8a3e51ffa0d0a48}
+
+
+transfere todos os componentes de {\em file\/} em {\em collection\/} 
+
+!
+
+collection contém todas as 42 componentes possíveis, as que não estão em {\em file\/} tem tamanho igual a zero.
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[\mbox{$\rightarrow$} {\em collection}]\item[\mbox{$\leftarrow$} {\em file}]\end{description}
+\end{Desc}
+
+
+References import\_\-component().
+
+Referenced by import\_\-impedances().\index{import\_\-jones@{import\_\-jones}!skip\_\-comment\_\-block@{skip\_\-comment\_\-block}}
+\index{skip\_\-comment\_\-block@{skip\_\-comment\_\-block}!import_jones@{import\_\-jones}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}void import\_\-jones::skip\_\-comment\_\-block (std::ifstream \& {\em file})}\label{namespaceimport__jones_190752d1f4009c86eddaad77de479f65}
+
+
+salta o bloco de comentário de {\em file\/} 
+
+\begin{Desc}
+\item[Precondition:]{\em file\/} deve ser um arquivo válido no jones (file == true) \end{Desc}
+\begin{Desc}
+\item[Postcondition:]{\em file\/} fica posicionado após o bloco de comentário \end{Desc}
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[{\em file}]arquivo no formato jones \end{description}
+\end{Desc}
+
+
+Referenced by number\_\-of\_\-transfer\_\-functions().\index{import\_\-jones@{import\_\-jones}!skip\_\-information\_\-block@{skip\_\-information\_\-block}}
+\index{skip\_\-information\_\-block@{skip\_\-information\_\-block}!import_jones@{import\_\-jones}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}void import\_\-jones::skip\_\-information\_\-block (std::ifstream \& {\em file})}\label{namespaceimport__jones_70a6912ec6b26abd8069c950aa3fc488}
+
+
+salta o bloco de informação de {\em file\/} 
+
+\begin{Desc}
+\item[Precondition:]{\em file\/} deve estar posicionado no início do bloco de informação. Essa condição pode ser consiguida com uma chamada a \doxyref{skip\_\-comment\_\-block}{p.}{namespaceimport__jones_190752d1f4009c86eddaad77de479f65}\end{Desc}
+\begin{Desc}
+\item[Postcondition:]{\em file\/} fica posicionado após o bloco de informação\end{Desc}
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[{\em file}]arquivo no formato jones \end{description}
+\end{Desc}
+
+
+Referenced by number\_\-of\_\-transfer\_\-functions().

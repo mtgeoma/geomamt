@@ -1,0 +1,19 @@
+#!/bin/bash
+# $1: diretório das pastas gms?? com os arquivos ats
+# assume que o último diretório identifica a estação
+# exemplo: faz_arquivo_coordenadas_ats DADOS_MT/niq/niq*
+
+while [[ -n $1 ]] ;do
+    stn_dir=$1
+    if [[ -d $stn_dir ]] ; then
+	stn=$(echo $stn_dir | gawk '{n=split($1,a,"/");print a[n]}')
+    else
+	echo "$stn_dir não é um diretório válido"
+    fi
+    ls $stn_dir/gms??/*.ats |\
+       gawk '{printf "atsheader %s Longitude Latitude\n",$1}' |\
+       gawk '{system($0)}' | gawk '{if(!($1==0&&$2==0))print $0}' |\
+       gmtmath -S -Ca STDIN MEAN = |\
+       gawk -v s=$stn '{printf "%.5f %.5f %s\n",$1,$2,s}'
+    shift
+done

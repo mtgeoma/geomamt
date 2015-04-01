@@ -1,0 +1,60 @@
+mtcomp.f:95.14:
+
+        Zxx = Num/Den                                                   
+              1
+Warning: Possible change of value in conversion from COMPLEX(8) to COMPLEX(4) at (1)
+mtcomp.f:97.14:
+
+        Zxy = Num/Den                                                   
+              1
+Warning: Possible change of value in conversion from COMPLEX(8) to COMPLEX(4) at (1)
+mtcomp.f:99.14:
+
+        Zyx = Num/Den                                                   
+              1
+Warning: Possible change of value in conversion from COMPLEX(8) to COMPLEX(4) at (1)
+mtcomp.f:101.14:
+
+        Zyy = Num/Den                                                   
+              1
+Warning: Possible change of value in conversion from COMPLEX(8) to COMPLEX(4) at (1)
+mtcomp.f:108.16:
+
+          Zzx = Num/Den                                                 
+                1
+Warning: Possible change of value in conversion from COMPLEX(8) to COMPLEX(4) at (1)
+mtcomp.f:110.16:
+
+          Zzy = Num/Den                                                 
+                1
+Warning: Possible change of value in conversion from COMPLEX(8) to COMPLEX(4) at (1)
+mtcomp.f:138.16:
+
+        Nx2 =   Cavg(Ex,Ex)/Cavg(Rx,Rx)                                 
+                1
+Warning: Possible change of value in conversion from COMPLEX(4) to REAL(8) at (1)
+mtcomp.f:144.16:
+
+        Ny2 =   Cavg(Ey,Ey)/Cavg(Rx,Rx)                                 
+                1
+Warning: Possible change of value in conversion from COMPLEX(4) to REAL(8) at (1)
+mtcomp.f:151.16:
+
+           T2 = Cavg(Hz,Hz)/Cavg(Rx,Rx)                                 
+                1
+Warning: Possible change of value in conversion from COMPLEX(4) to REAL(8) at (1)
+mtcomp.f:159.16:
+
+        Ax2=    Cavg(Hy,Ry)*CONJG(Cavg(Hy,Ry))                          
+                1
+Warning: Possible change of value in conversion from COMPLEX(4) to REAL(8) at (1)
+mtcomp.f:164.16:
+
+        Ay2 =   Cavg(Ry,Ry)/Cavg(Rx,Rx)                                 
+                1
+Warning: Possible change of value in conversion from COMPLEX(4) to REAL(8) at (1)
+mtcomp.f:172.15:
+
+        Den2 = Temp1 * CONJG(Temp1)                                     
+               1
+Warning: Possible change of value in conversion from COMPLEX(4) to REAL(8) at (1)

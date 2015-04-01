@@ -1,0 +1,10 @@
+# set gmt options: fast
+gmtset_options=""
+for index in $(echo ${!gmt_defaults[*]}) ; do
+    if [[ $index != "UNIX_TIME_FORMAT" ]] ; then
+        gmtset_options="$gmtset_options $index=${gmt_defaults[$index]}"
+    fi
+done
+
+gmtset UNIX_TIME_FORMAT="${gmt_defaults[UNIX_TIME_FORMAT]}"
+gmtset $gmtset_options

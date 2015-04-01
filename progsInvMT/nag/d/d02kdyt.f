@@ -1,0 +1,676 @@
+      SUBROUTINE D02KDY(X,XEND,N,Y,CIN,TOL,FCN,COMM,CONST,COUT,W,IW,IW1,
+     *                  COEFFN,COEFF1,ARR,M,IFAIL)
+C     MARK 7 RELEASE. NAG COPYRIGHT 1978.
+C     MARK 7F REVISED. IER-209 (OCT 1979)
+C     MARK 7G REVISED. IER-216 (FEB 1980)
+C     MARK 8 REVISED. IER-227 (APR 1980), IER-246 (MAY 1980).
+C     MARK 8A REVISED. IER-251 (AUG 1980).
+C     MARK 11 REVISED. IER-419 (FEB 1984).
+C     MARK 11D REVISED. IER-469 (NOV.1985).
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 13 REVISED. USE OF MARK 12 X02 FUNCTIONS (APR 1988).
+C     MARK 13 REVISED. IER-633 (APR 1988).
+C     MARK 14 REVISED. IER-715 (DEC 1989).
+C     MARK 14B REVISED. IER-837 (MAR 1990).
+C     INTEGRATES THE N DIFFERENTIAL EQUATIONS DEFINED
+C     BY FCN FROM X TO XEND.  THE VALUES AT X
+C     OF THE SOLUTION MUST BE GIVEN IN Y
+C     AND THE CALCULATED VALUES ARE RETURNED
+C     IN THE SAME VECTOR.  THE LOCAL ERROR
+C     PER STEP IS CONTROLLED BY TOL. VARIOUS
+C     OPTIONS ARE CONTROLLED BY CIN AND
+C     THE WORKSPACE W WHICH MUST HAVE
+C     FIRST DIMENSION N1 .GE. N AND
+C     SECOND DIMENSION .GE.7.  USEFUL
+C     OUTPUT IS ALSO RETURNED IN CIN AND
+C     W, PERMITTING EFFICIENT INTEGRATION.
+C
+C     COEFF1, COEFFN, FCN
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='D02KDY')
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  TOL, X, XEND
+      INTEGER           IFAIL, IW, IW1, M, N
+C     .. Array Arguments ..
+      DOUBLE PRECISION  ARR(M), CIN(6), COMM(5), CONST(3), COUT(14),
+     *                  W(IW,IW1), Y(N)
+C     .. Subroutine Arguments ..
+      EXTERNAL          COEFF1, COEFFN, FCN
+C     .. Local Scalars ..
+      DOUBLE PRECISION  COUT12, EXP, EXPI, FAC, FAC1, FAC2, FAC3, FAC4,
+     *                  FAC5, FAC6, FAC7, FAC8, FAC9, FNORM, HEST,
+     *                  HEST1, RAT, RAT1, S, SMALL, T, TOLEST, XORIG,
+     *                  YNORM
+      INTEGER           I, I1, IEND, IND, ISIG, ISTEP, J, K, N2
+      LOGICAL           CALLS, INIT, INTER, REDUCE, START, TEST
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      DOUBLE PRECISION  D02PAY, X02AJF, X02AKF
+      INTEGER           P01ABF
+      EXTERNAL          D02PAY, X02AJF, X02AKF, P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          D02KDZ
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS, MAX, MIN, SIGN, DBLE, SQRT, INT
+C     .. Save statement ..
+      SAVE              START
+C     .. Data statements ..
+      DATA              FAC/10.D0/, FAC1/0.1D0/, FAC3/2.D0/,
+     *                  FAC4/0.8D0/, FAC5/0.25D0/, FAC6/0.25D0/,
+     *                  FAC8/0.2D0/, FAC9/0.2D0/
+C     .. Executable Statements ..
+C
+C     SET CONSTANTS
+C
+      XORIG = X
+      HEST1 = 0.D0
+      INIT = .FALSE.
+      EXP = FAC6
+      EXPI = FAC5
+      IND = 0
+      ISIG = 0
+      INTER = .FALSE.
+      ISTEP = 2
+      N2 = 7
+      TEST = .FALSE.
+      CALLS = .FALSE.
+      COUT12 = 0.D0
+      IF (CIN(1).NE.7.D0) GO TO 20
+      COUT12 = COUT(12)
+      CIN(1) = 1.D0
+      GO TO 40
+   20 COUT(12) = 0.D0
+   40 IF (CIN(1).EQ.0.D0) GO TO 100
+      DO 60 I = 1, 3
+         IF (COMM(I).NE.0.D0) GO TO 100
+   60 CONTINUE
+      IF (CIN(1).NE.5.D0 .OR. COMM(4).LE.0.D0) GO TO 80
+      TEST = .TRUE.
+      IF (CIN(2).GE.3.D0) GO TO 360
+      GO TO 860
+   80 IF (CIN(1).NE.6.D0 .OR. COMM(4).GE.0.D0) GO TO 100
+      TEST = .TRUE.
+      IF (CIN(2).GE.3.D0) GO TO 360
+      GO TO 720
+C
+C     ARGUMENT TESTS
+C
+  100 IF (IW.GE.N .AND. N.GT.0 .AND. IW1.GE.7) GO TO 140
+C     WORKSPACE WRONGLY DIMENSIONED
+  120 IND = 1
+      CIN(1) = -1.D0
+      GO TO 2620
+  140 IF (TOL.GT.0.D0) GO TO 160
+C     ERROR TOLERANCE NOT POSITIVE
+      IND = 1
+      CIN(1) = -2.D0
+      GO TO 2620
+  160 IF (CIN(1).EQ.0.D0) GO TO 180
+      IF (CIN(1).EQ.1.D0) GO TO 240
+      IF (CIN(1).GE.2.D0 .AND. CIN(1).LE.6.D0) GO TO 280
+C     CIN(1) OUT OF RANGE
+      IND = 1
+      CIN(1) = -3.D0
+      GO TO 2620
+C
+C     SET INPUT AND OUTPUT PARAMETERS
+C
+  180 DO 200 I = 2, 5
+         CIN(I) = 0.D0
+  200 CONTINUE
+      DO 220 I = 1, 4
+         COMM(I) = 0.D0
+  220 CONTINUE
+      CONST(1) = 0.D0
+      CONST(2) = FAC3
+      CONST(3) = FAC4
+  240 COUT(11) = X02AJF()
+      SMALL = X02AKF()
+      COUT(13) = ABS(CIN(3))
+      COUT(14) = ABS(CIN(4))
+      CIN(6) = 0.D0
+      ISTEP = 0
+      S = 0.D0
+      DO 260 I = 1, N
+         S = MAX(S,ABS(Y(I)))
+  260 CONTINUE
+      INIT = .TRUE.
+      COUT(1) = 0.D0
+      COUT(2) = 0.D0
+      COUT(3) = 0.D0
+      COUT(4) = X
+      COUT(5) = X
+      COUT(6) = S
+      COUT(7) = S
+      COUT(8) = 0.D0
+      COUT(9) = 0.D0
+      COUT(10) = 0.D0
+      IF (CIN(1).EQ.0.D0) GO TO 800
+      GO TO 320
+C
+C     ARGUMENT TESTS FOR CIN(1).GT.0.
+C
+  280 IF ((COUT(4).GE.COUT(5) .AND. X.LT.COUT(4)) .OR. (COUT(4)
+     *    .LT.COUT(5) .AND. X.GE.COUT(4))) GO TO 300
+      IF (X.EQ.XEND) GO TO 320
+      IF ((X.GE.COUT(4) .AND. XEND.GE.X) .OR. (X.LT.COUT(4)
+     *    .AND. XEND.LT.X)) GO TO 320
+  300 CIN(1) = 1.D0
+      INTER = .TRUE.
+      GO TO 240
+  320 IF (CIN(2).EQ.0.D0 .OR. CIN(2).EQ.1.D0 .OR. CIN(2)
+     *    .EQ.2.D0 .OR. CIN(2).EQ.3.D0 .OR. CIN(2).EQ.4.D0) GO TO 340
+C     CIN(2) OUT OF RANGE
+      IND = 1
+      CIN(1) = -4.D0
+      GO TO 2620
+  340 IF (CIN(2).LT.3.D0) GO TO 420
+  360 IF (IW1.LT.8) GO TO 120
+      N2 = 8
+      DO 380 I = 1, N
+         IF (W(I,7).GT.0.D0) GO TO 380
+C        SCALING OF TOLERANCE NON-POSITIVE
+         IND = 1
+         CIN(1) = -5.D0
+         GO TO 2620
+  380 CONTINUE
+      IF (CIN(2).EQ.4.D0) GO TO 420
+      IF (IW1.LT.9) GO TO 120
+      N2 = 9
+      DO 400 I = 1, N
+         IF (Y(I).NE.0.D0 .OR. W(I,8).GT.0.D0) GO TO 400
+C        FLOOR ZERO AND SOLUTION ZERO IN SAME COMPONENT
+         IND = 1
+         CIN(1) = -6.D0
+         GO TO 2620
+  400 CONTINUE
+  420 IF ( .NOT. TEST) GO TO 440
+      IF (COMM(4).LT.0.D0) GO TO 720
+      GO TO 860
+  440 IF (CONST(1).EQ.0.D0) GO TO 480
+      IF (CONST(1).EQ.1.D0) GO TO 460
+C     CONST(1) INVALID
+      IND = 1
+      CIN(1) = -7.D0
+      GO TO 2620
+  460 EXPI = FAC9
+      EXP = FAC8
+  480 IF (CONST(2).GE.0.D0 .AND. CONST(3).GE.0.D0) GO TO 520
+C     CONST(2) OR CONST(3) INVALID
+  500 IND = 1
+      CIN(1) = -8.D0
+      GO TO 2620
+  520 IF (CONST(2).EQ.0.D0) CONST(2) = FAC3
+      IF (CONST(3).EQ.0.D0) CONST(3) = FAC4
+      IF (CONST(2).LE.1.D0/CONST(3) .OR. CONST(2).LE.1.D0 .OR. CONST(3)
+     *    .GE.1.D0) GO TO 500
+      IF (COMM(1).GE.0.D0) GO TO 540
+C     COMM(1) OUT OF RANGE
+      IND = 1
+      CIN(1) = -9.D0
+      GO TO 2620
+  540 IF (COMM(1).GT.0.D0) CALLS = .TRUE.
+      IF (COMM(2).EQ.0.D0) GO TO 580
+      IF (COMM(2).GT.0.D0) GO TO 560
+C     COMM(2) OUT OF RANGE
+      IND = 1
+      CIN(1) = -10.D0
+      GO TO 2620
+  560 IF (COUT(6).LT.COMM(2)) GO TO 580
+C     INITIAL VECTOR TOO LARGE
+      IND = 1
+      COMM(2) = 0.D0
+      CIN(1) = -11.D0
+      GO TO 2620
+  580 IF (COMM(3).EQ.0.D0) GO TO 640
+      IF (IW1.LT.10) GO TO 120
+      N2 = 8
+      IF (CIN(2).EQ.3.D0) N2 = 11
+      IF (IW1.LT.N2) GO TO 120
+      DO 600 I = 1, N
+         IF (Y(I).NE.W(I,9)) GO TO 600
+C        INITIAL VECTOR ATTAINS GIVEN VALUE
+         IND = 1
+         COMM(3) = 0.D0
+         CIN(1) = -12.D0
+         GO TO 2620
+  600 CONTINUE
+      DO 620 I = 1, N
+         W(I,10) = Y(I)
+  620 CONTINUE
+C
+C     TEST INPUT PARAMETERS FOR INTERRUPT ON POSITION
+C
+  640 IF (COMM(4).GE.0.D0) GO TO 800
+      IF (CIN(1).GT.1.D0) GO TO 720
+      IF (X.EQ.XEND .AND. COMM(5).EQ.X) GO TO 880
+      IF (X.NE.XEND) GO TO 680
+C     VALUE OF CIN(1) DOES NOT PERMIT EXTRAPOLATION
+  660 IND = 1
+      CIN(1) = -13.D0
+      GO TO 780
+  680 IF ((X.GE.COMM(5) .AND. XEND.LT.COMM(5)) .OR. (X.LT.COMM(5)
+     *    .AND. XEND.GE.COMM(5))) GO TO 800
+      IF (INTER) GO TO 700
+C     VALUE OF CIN(1) DOES NOT PERMIT EXTRAPOLATION
+      GO TO 660
+C     ORDER OF POINTS X,COUT(4) AND COUT(5)  INCORRECT
+  700 IND = 1
+      CIN(1) = -14.D0
+      GO TO 780
+  720 IF (X.EQ.COUT(5) .OR. X.EQ.COUT(4)) GO TO 700
+      IF ((X.GE.COUT(4) .AND. COUT(4).LT.COUT(5)) .OR. (X.LT.COUT(4)
+     *     .AND. COUT(4).GE.COUT(5))) GO TO 700
+      IF (X.EQ.XEND) GO TO 880
+      IF (SIGN(1.D0,XEND-X).NE.SIGN(1.D0,X-COUT(5))) GO TO 700
+      IF (COMM(5).EQ.COUT(5) .OR. COMM(5).EQ.XEND) GO TO 740
+      IF (SIGN(1.D0,COMM(5)-COUT(5)).NE.SIGN(1.D0,COMM(5)-XEND))
+     *    GO TO 740
+C     INTERRUPT POINT NOT IN RANGE
+      IND = 1
+      CIN(1) = -15.D0
+      GO TO 780
+  740 IF (COMM(5).EQ.COUT(5) .OR. COMM(5).EQ.X) GO TO 760
+      IF (SIGN(1.D0,COMM(5)-COUT(5)).EQ.SIGN(1.D0,COMM(5)-X))
+     *    GO TO 800
+  760 CIN(1) = 6.D0
+  780 COMM(4) = 0.D0
+      GO TO 2620
+C
+C     SET DEFAULTS
+C
+  800 IF (TEST) GO TO 860
+      IF (ABS(CIN(4)).GT.ABS(CIN(3)) .OR. CIN(4).EQ.0.D0) GO TO 820
+C     USER SET HMIN.GT.HMAX
+      IND = 1
+      CIN(1) = -16.D0
+      GO TO 2620
+  820 COUT(13) = MAX(2.D0*COUT(11)*ABS(XEND-X),ABS(CIN(3)))
+      FAC7 = 0.5D0
+      IF (CIN(1).GE.2.D0) FAC7 = 1.D0
+      COUT(14) = FAC7*ABS(XEND-X)
+      IF (CIN(4).EQ.0.D0) GO TO 840
+      COUT(14) = MIN(ABS(COUT(14)),ABS(CIN(4)))
+  840 IF (CIN(1).GE.2.D0) GO TO 860
+      CALL FCN(N,X,Y,W(1,1),COEFFN,COEFF1,M,ARR)
+      IF (CALLS) COMM(1) = COMM(1) - 1.D0
+C
+C     INITIALISATION
+C
+  860 IF (X.NE.XEND) GO TO 920
+      IF (CIN(1).LE.1.D0) GO TO 900
+      IF (CIN(1).NE.2.D0 .OR. CIN(6).NE.0.D0) GO TO 900
+C     REPEATED CALL WITH X=XEND
+      IND = 1
+      CIN(1) = -17.D0
+      GO TO 2620
+C
+C     RETURN WHEN X=XEND
+C
+  880 COMM(4) = 0.D0
+  900 CIN(5) = 0.D0
+      CIN(6) = 0.D0
+      CIN(1) = 2.D0
+      GO TO 2620
+C
+C     X.NE.XEND INITIALLY
+C
+  920 IEND = 0
+      REDUCE = .FALSE.
+      RAT1 = 1.D0
+      IF (CIN(1).EQ.0.D0) GO TO 960
+      IF (CIN(1).EQ.1.D0) CIN(6) = CIN(5)
+      IF (CIN(6).EQ.0.0D0) GO TO 940
+      IF (SIGN(1.D0,CIN(6)).NE.SIGN(1.D0,XEND-X)) CIN(6) = 0.D0
+  940 IF (CIN(2).EQ.2.D0) FAC2 = SMALL/COUT(11)
+      IF (ABS(CIN(6)).GE.COUT(13) .AND. CIN(1).GE.2.D0) GO TO 1500
+  960 ISTEP = 0
+      START = .TRUE.
+      IF (CIN(6).NE.0.D0) GO TO 1160
+C
+C     ESTIMATE STEP
+C
+      CIN(1) = 1.D0
+      FNORM = 0.D0
+      YNORM = 0.D0
+      DO 980 I = 1, N
+         YNORM = MAX(YNORM,ABS(Y(I)))
+         FNORM = MAX(FNORM,ABS(W(I,1)))
+  980 CONTINUE
+      TOLEST = TOL
+      J = INT(CIN(2)+0.1D0) + 1
+      GO TO (1000,1140,1020,1040,1080) J
+ 1000 S = MAX(1.D0,YNORM)
+      GO TO 1120
+ 1020 S = MAX(YNORM,FAC2)
+      GO TO 1120
+ 1040 DO 1060 I = 1, N
+         T = W(I,7)*MAX(W(I,8),ABS(Y(I)))
+         IF (I.EQ.1) S = T
+         S = MIN(S,T)
+ 1060 CONTINUE
+      GO TO 1120
+ 1080 DO 1100 I = 1, N
+         IF (I.EQ.1) S = W(1,7)
+         S = MIN(S,W(I,7))
+ 1100 CONTINUE
+ 1120 TOLEST = TOLEST*S
+ 1140 S = SQRT(COUT(11))
+      CIN(6) = (XEND-X)*(TOLEST*COUT(11))**EXPI*MAX(S,YNORM)
+     *         /MAX(S,FNORM)
+ 1160 DO 1180 I = 1, N
+         W(I,4) = Y(I)
+         W(I,5) = W(I,1)
+ 1180 CONTINUE
+      IF (ABS(CIN(6)).LT.COUT(13)) CIN(6) = SIGN(COUT(13),XEND-X)
+      IF (ABS(CIN(6)).GT.COUT(14)) CIN(6) = SIGN(COUT(14),CIN(6))
+      ISIG = 1
+      GO TO 1600
+C
+C     RETURN FOR INITIAL STEP
+C
+ 1200 IF (COMM(1).GT.0.D0 .OR. .NOT. CALLS) GO TO 1260
+C     TOO MANY FCN CALLS TAKEN STARTING
+ 1220 IND = 7
+      DO 1240 I = 1, N
+         Y(I) = W(I,4)
+ 1240 CONTINUE
+      COUT(9) = COUT(9) + 1.D0
+      GO TO 2620
+ 1260 IF (ABS(HEST).LT.ABS(CIN(6))) GO TO 1280
+C
+C     ESTIMATED STEP LARGER THAN INITIAL STEP
+C
+      IF (ABS(CIN(6))*CONST(2).GT.COUT(14)) GO TO 1420
+      IF (ABS(HEST).GT.COUT(14)) HEST = SIGN(COUT(14),HEST)
+      IF (REDUCE) GO TO 1420
+      IF (ABS(HEST).LT.CONST(2)*CONST(2)*ABS(CIN(6))) GO TO 1420
+      CIN(6) = HEST
+      GO TO 1460
+ 1280 IF (ABS(CIN(6)).GT.COUT(13)) GO TO 1340
+C     ERROR TOLERANCE TOO SMALL FOR INITIAL STEP
+ 1300 COUT(9) = COUT(9) + 1.D0
+      DO 1320 I = 1, N
+         Y(I) = W(I,4)
+ 1320 CONTINUE
+      IND = 4
+      GO TO 2620
+C
+C     ESTIMATED STEP SMALLER THAN INITIAL STEP
+C
+ 1340 T = CIN(6)/CONST(2)
+      IF (ABS(HEST).GT.ABS(T)) GO TO 1420
+      T = T*FAC1
+      IF (ABS(HEST).LT.ABS(T)) HEST = T
+      CIN(6) = HEST
+      IF (ABS(CIN(6)).LT.COUT(13)) CIN(6) = SIGN(COUT(13),XEND-X)
+      GO TO 1440
+C
+C     INSIGNIFICANT ERROR ESTIMATE ON INITIAL STEP
+C
+ 1360 CONTINUE
+      IF (REDUCE) GO TO 1380
+      IF (ABS(CIN(6)).EQ.COUT(14)) GO TO 1400
+      CIN(6) = CIN(6)*FAC
+      IF (ABS(CIN(6)).GT.COUT(14)) CIN(6) = SIGN(COUT(14),CIN(6))
+      GO TO 1460
+ 1380 IF (ISIG.EQ.3) GO TO 1300
+      ISIG = 3
+      CIN(6) = CIN(6)/FAC3
+      GO TO 1440
+C
+C     INITIAL STEP ACCEPTED
+C
+ 1400 HEST = CIN(6)
+ 1420 START = .FALSE.
+      GO TO 2000
+C
+C     INITIAL STEP REJECTED TRY AGAIN
+C
+ 1440 REDUCE = .TRUE.
+ 1460 DO 1480 I = 1, N
+         Y(I) = W(I,2)
+ 1480 CONTINUE
+      COUT(9) = COUT(9) + 1.D0
+      GO TO 1560
+C
+C     TAKE A STEP, CHECK AGAINST LENGTH OF RANGE
+C
+ 1500 IF (ISTEP.LT.2) ISTEP = ISTEP + 1
+ 1520 IF (D02PAY(X,CIN(6),XEND)*SIGN(1.0D0,XEND-X).LT.0.0D0)
+     *    GO TO 1560
+      IF (ISTEP.EQ.-1) GO TO 1540
+      CIN(6) = XEND - X
+      RAT1 = ABS(COUT(4)-X)/ABS(CIN(6))
+ 1540 IEND = 1
+ 1560 DO 1580 I = 1, N
+         W(I,4) = W(I,2)
+         W(I,5) = W(I,3)
+ 1580 CONTINUE
+ 1600 CALL D02KDZ(X,CIN(6),N,Y,FCN,W,IW,N2,COEFFN,COEFF1,M,ARR)
+      IF (CALLS) COMM(1) = COMM(1) - 4.D0
+C
+C     ESTIMATE NEW STEP
+C
+      IF (CIN(2).GE.3.D0) GO TO 1800
+      S = 0.D0
+      T = 0.D0
+      J = 0
+      DO 1620 I = 1, N
+         IF (S.GT.ABS(W(I,6))) GO TO 1620
+         J = I
+         T = W(I,N2)
+         S = ABS(W(I,6))
+ 1620 CONTINUE
+      IF (T.EQ.0.D0) GO TO 1680
+ 1640 RAT = RAT1
+      IF (START) GO TO 1360
+      IF (J.NE.INT(COUT(10)+0.1D0)) GO TO 1980
+      HEST = CIN(6)
+      IF (ABS(HEST).EQ.COUT(14) .OR. IEND.EQ.1) GO TO 1980
+      IF (ABS(HEST).LT.ABS(HEST1)) GO TO 1660
+      HEST1 = HEST
+      RAT = CONST(2)
+      GO TO 1980
+ 1660 IND = 3
+      GO TO 2620
+ 1680 J = 0
+      K = INT(CIN(2)+0.1D0) + 1
+      GO TO (1720,1700,1760) K
+ 1700 RAT = (TOL/S)**EXP
+      GO TO 1980
+ 1720 T = 1.D0
+      DO 1740 I = 1, N
+         T = MAX(T,ABS(Y(I)))
+ 1740 CONTINUE
+      RAT = (TOL*T/S)**EXP
+      GO TO 1980
+ 1760 T = FAC2
+      DO 1780 I = 1, N
+         T = MAX(T,ABS(Y(I)))
+ 1780 CONTINUE
+      RAT = (TOL*T/S)**EXP
+      GO TO 1980
+ 1800 IF (CIN(2).EQ.4.D0) GO TO 1840
+      DO 1820 I = 1, N
+C        RELATIVE ERROR FAILURE
+         IF (W(I,8).GT.0.0D0) GO TO 1820
+         IF ((Y(I).GE.0.0D0 .AND. W(I,2).GE.0.0D0) .OR. (Y(I)
+     *       .LT.0.0D0 .AND. W(I,2).LT.0.0D0)) GO TO 1820
+         IND = 6
+         GO TO 2620
+ 1820 CONTINUE
+ 1840 J = -1
+      I1 = 0
+      DO 1960 I = 1, N
+         IF (W(I,6).NE.0.D0) GO TO 1880
+         IF (W(I,N2).EQ.0.D0) GO TO 1860
+         IF (I1.EQ.0) J = I
+         GO TO 1960
+ 1860    IF (J.LT.0) J = I
+         GO TO 1960
+ 1880    IF (CIN(2).EQ.4.D0) GO TO 1900
+         T = MAX(W(I,8),ABS(Y(I)))*W(I,7)/ABS(W(I,6))
+         GO TO 1920
+ 1900    T = W(I,7)/ABS(W(I,6))
+ 1920    IF (I1.EQ.0) GO TO 1940
+         IF (S.LE.T) GO TO 1960
+ 1940    S = T
+         J = 0
+         I1 = 1
+         IF (W(I,N2).EQ.1.D0) J = I
+ 1960 CONTINUE
+      IF (J.NE.0) GO TO 1640
+      RAT = (TOL*S)**EXP
+ 1980 HEST = RAT*CIN(6)
+      IF (START) GO TO 1200
+C
+C     TEST ESTIMATED STEP
+C
+ 2000 IF (ABS(HEST).GE.ABS(CIN(6))) GO TO 2140
+C
+C     STEP REJECTED
+C
+      RAT1 = 1
+      IEND = 0
+      IF (ISTEP.LT.0) GO TO 2100
+      COUT12 = 1.D0
+      IF (X.EQ.XORIG) COUT(12) = 1.D0
+      HEST = HEST*CONST(3)
+      COUT(9) = COUT(9) + 1.D0
+      DO 2020 I = 1, N
+         Y(I) = W(I,2)
+         W(I,3) = W(I,5)
+         W(I,2) = W(I,4)
+ 2020 CONTINUE
+      T = CIN(6)/CONST(2)
+      IF (ABS(HEST).LT.ABS(T)) HEST = T
+      CIN(6) = HEST
+      IF (ABS(CIN(6)).GE.COUT(13)) GO TO 2060
+C     STEP LENGTH TOO SMALL
+ 2040 IND = 2
+      GO TO 2620
+ 2060 IF (COMM(1).GT.0.D0 .OR. .NOT. CALLS) GO TO 1520
+      IF (ISTEP.LT.2) GO TO 1220
+C     TOO MANY FCN CALLS
+ 2080 IND = 5
+      GO TO 2620
+C
+C     STEP REJECTED AFTER INTERRUPT IN FIRST STEP
+C
+ 2100 IF (COMM(1).LT.0.D0) GO TO 1220
+      CIN(6) = (X-COUT(4))*0.5D0
+      IF (ABS(CIN(6)).LT.COUT(13)) GO TO 2040
+      X = COUT(4)
+      DO 2120 I = 1, N
+         Y(I) = W(I,4)
+         W(I,1) = W(I,5)
+ 2120 CONTINUE
+      COUT(9) = COUT(9) + 2.D0
+      INIT = .TRUE.
+      ISTEP = 0
+      GO TO 1600
+C
+C     STEP ACCEPTED
+C
+ 2140 COUT(5) = COUT(4)
+      COUT(4) = X
+      X = X + CIN(6)
+      HEST1 = 0.D0
+      COUT(10) = DBLE(J)
+      COUT(8) = COUT(8) + 1.D0
+      IF ( .NOT. INIT) GO TO 2160
+      INIT = .FALSE.
+      CIN(5) = CIN(6)
+      COUT(1) = CIN(6)
+      COUT(2) = CIN(6)
+      GO TO 2180
+ 2160 IF (ABS(CIN(6)).LT.ABS(COUT(1))) COUT(1) = CIN(6)
+      IF (ABS(CIN(6)).GT.ABS(COUT(2))) COUT(2) = CIN(6)
+ 2180 IF (HEST.EQ.CIN(6) .AND. ABS(HEST).EQ.COUT(14)) GO TO 2260
+      HEST = HEST*CONST(3)
+      IF (ABS(CIN(6)).EQ.COUT(14) .OR. IEND.EQ.1) COUT(3) = COUT(3) +
+     *    1.D0
+      IF (COUT12.EQ.0.D0) GO TO 2200
+      COUT12 = 0.D0
+      HEST = 0.5D0*(HEST+CIN(6))
+ 2200 IF (IEND.EQ.1) GO TO 2220
+      T = CONST(2)*CIN(6)
+      IF (ABS(HEST).GT.ABS(T)) HEST = T
+      IF (ABS(HEST).GT.COUT(14)) HEST = SIGN(COUT(14),HEST)
+      IF (ABS(HEST).LT.COUT(13)) HEST = SIGN(COUT(13),XEND-X)
+      GO TO 2240
+ 2220 CIN(6) = CIN(6)*RAT1
+      IF (ABS(CIN(6)).GE.ABS(HEST)) GO TO 2260
+ 2240 CIN(6) = HEST
+ 2260 S = 0.D0
+      DO 2280 I = 1, N
+         S = MAX(S,ABS(Y(I)))
+ 2280 CONTINUE
+      COUT(6) = MAX(S,COUT(6))
+      COUT(7) = MIN(S,COUT(7))
+      CALL FCN(N,X,Y,W(1,1),COEFFN,COEFF1,M,ARR)
+      IF (CIN(1).EQ.0.D0) GO TO 2580
+      IF (COMM(3).EQ.0.D0) GO TO 2320
+      DO 2300 I = 1, N
+         IF (ABS(Y(I)-W(I,9)).LT.ABS(W(I,10)-W(I,9))) W(I,10) = Y(I)
+ 2300 CONTINUE
+ 2320 IF ( .NOT. CALLS) GO TO 2340
+      COMM(1) = COMM(1) - 1.D0
+      IF (COMM(1).LE.0.D0) GO TO 2080
+ 2340 IF (IEND.EQ.1) GO TO 2600
+      IF (ISTEP.GE.0) GO TO 2360
+      ISTEP = -ISTEP
+      GO TO (2460,2440,2620,2520) ISTEP
+C
+C     TEST INTERRUPTS
+C
+ 2360 IF (COMM(3).EQ.0.D0) GO TO 2420
+      DO 2400 I = 1, N
+         IF (Y(I).EQ.W(I,9)) GO TO 2380
+         IF ((W(I,2).GE.W(I,9) .AND. Y(I).GE.W(I,9)) .OR. (W(I,2)
+     *       .LT.W(I,9) .AND. Y(I).LT.W(I,9))) GO TO 2400
+C        COMPONENTS ACHIEVE GIVEN VALUE
+ 2380    CIN(1) = 3.D0
+         IF (ISTEP.EQ.0) GO TO 2540
+         GO TO 2460
+ 2400 CONTINUE
+C     NORM OF SOLUTION TOO LARGE TOO CONTINUE
+ 2420 IF (COMM(2).EQ.0.D0 .OR. COUT(6).LT.COMM(2)) GO TO 2480
+      CIN(1) = 4.D0
+      IF (ISTEP.EQ.0) GO TO 2540
+ 2440 COMM(2) = 0.0D0
+      GO TO 2620
+ 2460 COMM(3) = 0.0D0
+      GO TO 2620
+ 2480 IF (COMM(4).EQ.0.D0) GO TO 2560
+      IF (COMM(4).LT.0.D0) GO TO 2500
+C     INTERRUPT EVERY STEP
+      CIN(1) = 5.D0
+      IF (ISTEP.EQ.0) GO TO 2540
+      GO TO 2620
+ 2500 IF ((COMM(5).GE.X .AND. XEND.GE.X) .OR. (COMM(5)
+     *    .LT.X .AND. XEND.LT.X)) GO TO 2560
+C     INTERRUPT AT SPECIFIED POINT
+      CIN(1) = 6.D0
+      IF (ISTEP.EQ.0) GO TO 2540
+ 2520 COMM(4) = 0.0D0
+      GO TO 2620
+ 2540 IF (COMM(1).LT.0.D0) GO TO 1220
+      ISTEP = -INT(CIN(1)-1.5D0)
+      GO TO 1520
+ 2560 IF (COMM(1).LT.0.D0) GO TO 2080
+ 2580 IF (IEND.EQ.0) GO TO 1500
+C     NORMAL RETURN
+ 2600 CIN(1) = 2.D0
+      X = XEND
+C
+C     RETURN TO MAIN PROGRAM
+C
+ 2620 IF (CALLS .AND. COMM(1).EQ.0.D0) COMM(1) = -1.D0
+      IFAIL = P01ABF(IFAIL,IND,SRNAME,0,P01REC)
+      IF (CIN(1).GE.0.D0 .AND. IFAIL.GT.0) CIN(1) = 8.D0
+      RETURN
+      END

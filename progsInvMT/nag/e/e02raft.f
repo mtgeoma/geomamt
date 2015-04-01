@@ -1,0 +1,59 @@
+      SUBROUTINE E02RAF(IA,IB,C,IC,A,B,W,JW,IFAIL)
+C     MARK 7 RELEASE. NAG COPYRIGHT 1978.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     GIVEN A POWER SERIES E02RAF CALCULATES THE COEFFICIENTS OF
+C     THE (L/M) PADE APPROXIMANT.
+C
+C     ARGUMENT LIST.
+C     --------------
+C
+C     IA    (INTEGER)  ON ENTRY IA=L+1. THIS PARAMETER IMPLICITLY
+C                      SPECIFIES THE ORDER OF THE NUMERATOR OF THE
+C                      APPROXIMANT.
+C                      UNCHANGED ON EXIT.
+C     IB    (INTEGER)  ON ENTRY IB=M+1. THIS PARAMETER IMPLICITLY
+C                      SPECIFIES THE ORDER OF THE DENOMINATOR OF
+C                      THE APPROXIMANT. UNCHANGED ON EXIT.
+C     C   (REAL ARRAY) ON ENTRY CONTAINS THE POWER SERIES
+C                      COEFFICIENTS. UNCHANGED ON EXIT.
+C     IC    (INTEGER)  LENGTH OF ARRAY C. AT LEAST L+M+1
+C     A   (REAL ARRAY) ON EXIT CONTAINS THE NUMERATOR COEFFICIENTS
+C                      A(1)= COEFF OF X**0 ETC.
+C     B   (REAL ARRAY) ON EXIT CONTAINS THE DENOMINATOR
+C                      COEFFICIENTS. B(1)=COEFF OF X**0 ETC.
+C     W   (REAL ARRAY) ARRAY USED AS WORKSPACE.
+C     JW    (INTEGER)  DIMENSION OF W AT LEAST IB*(2*IB+3).
+C     IFAIL (INTEGER)  USED FOR ERROR EXITS.
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='E02RAF')
+C     .. Scalar Arguments ..
+      INTEGER           IA, IB, IC, IFAIL, JW
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(IA), B(IB), C(IC), W(JW)
+C     .. Local Scalars ..
+      INTEGER           IF, M3, M4
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      INTEGER           P01ABF
+      EXTERNAL          P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          E02RAZ
+C     .. Executable Statements ..
+      IF = IFAIL
+      IF (JW.LT.IB*(2*IB+3)) GO TO 20
+      IF (IA.LT.1 .OR. IB.LT.1 .OR. IC.LT.IA+IB-1) GO TO 20
+      M3 = 3*IB + 1
+      M4 = M3 + IB*IB
+      CALL E02RAZ(C,IC,A,IA,B,IB,W(M3),W(M4),W(1),W(IB+1),W(2*IB+1)
+     *            ,IFAIL)
+C     ERROR EXIT IFAIL=2 - ILL POSED CASE
+      IF (IFAIL.EQ.0) RETURN
+      IFAIL = P01ABF(IF,2,SRNAME,0,P01REC)
+      RETURN
+C     ERROR EXIT IFAIL=1 - WRONG PARAMETERS
+   20 IFAIL = P01ABF(IF,1,SRNAME,0,P01REC)
+      RETURN
+      END

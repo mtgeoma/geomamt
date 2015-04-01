@@ -1,0 +1,114 @@
+      SUBROUTINE E01DAL(N,IBANDW,UFCTR,LUFCTR,NSETS,NTZERO,THETA,IT1,
+     *                  IT2,LTHETA)
+C     MARK 14 RELEASE. NAG COPYRIGHT 1989.
+C     A DASL routine, unmodified except for name.
+C
+C     **********************************************************
+C
+C     D A S L  -  DATA APPROXIMATION SUBROUTINE LIBRARY
+C
+C     SUBROUTINE RBSOL     SOLVE BAND UPPER TRIANGULAR
+C     ================     SYSTEM (ROW STORAGE).
+C
+C     CREATED 25 10 78.  UPDATED 23 06 82.  RELEASE 00/06
+C
+C     AUTHORS ... MAURICE G. COX AND PAULINE E. M. CURTIS.
+C     NATIONAL PHYSICAL LABORATORY, TEDDINGTON,
+C     MIDDLESEX TW11 OLW, ENGLAND.
+C
+C     (C)  CROWN COPYRIGHT 1978-1982
+C
+C     **********************************************************
+C
+C     RBSOL.  SOLVES  U*BETA = THETA,  WHERE  U  IS BAND
+C     UPPER TRIANGULAR, BY BACK-SUBSTITUTION.  IF THE
+C     LAST  NTZERO  COMPONENTS OF EACH VECTOR IN  THETA  ARE
+C     ZERO, THEN SO ARE THE CORRESPONDING COMPONENTS
+C     IN  BETA.  ADVANTAGE IS TAKEN OF THIS PROPERTY IN
+C     THE SOLUTION PROCESS.
+C
+C     THESE ZERO COMPONENTS OF  THETA  DO NOT HAVE TO BE
+C     PROVIDED, NEITHER ARE THE CORRESPONDING COMPONENTS
+C     OF  BETA  RETURNED.
+C
+C     INPUT PARAMETERS
+C        N        ORDER OF BAND UPPER TRIANGULAR MATRIX  U
+C        IBANDW   BANDWIDTH OF  U
+C        UFCTR    (BAND PART ONLY OF)  U,  STORED
+C                    CONTIGUOUSLY IN ROW ORDER
+C        LUFCTR   DIMENSION OF  UFCTR
+C        NSETS    NUMBER OF RIGHT HAND SIDE VECTORS
+C        NTZERO   NUMBER OF TRAILING COMPONENTS OF  THETA
+C                    VECTORS TO BE REGARDED AS ZERO
+C
+C     INPUT/OUTPUT (AND ASSOCIATED) PARAMETERS
+C        THETA    THETA  ON ENTRY,  BETA  ON EXIT
+C        IT1,
+C        IT2      INDEX INCREMENTS OF  THETA
+C        LTHETA   DIMENSION OF  THETA
+C
+C     ----------------------------------------------------------
+C
+C     .. Scalar Arguments ..
+      INTEGER           IBANDW, IT1, IT2, LTHETA, LUFCTR, N, NSETS,
+     *                  NTZERO
+C     .. Array Arguments ..
+      DOUBLE PRECISION  THETA(LTHETA), UFCTR(LUFCTR)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  S
+      INTEGER           I, IB, IREV, ISET, IT, ITREF, IU, IU0, IU1,
+     *                  JMAX, JREV, JREVMX, JTEST, Q
+C     .. Executable Statements ..
+C
+      Q = N - NTZERO
+      JTEST = N - IBANDW
+      IU0 = -JTEST*(JTEST+1) - 2*N
+      IU1 = 2*N + 1
+      ITREF = 1 + (Q-1)*IT1 - IT2
+C
+C     DETERMINE EACH SOLUTION VECTOR IN TURN BY
+C     BACK-SUBSTITUTION
+C
+      DO 80 ISET = 1, NSETS
+         ITREF = ITREF + IT2
+         IB = ITREF + IT1
+         JMAX = Q
+C
+C        COMPUTE (IN REVERSE ORDER) THE FIRST  Q  COMPONENTS
+C        OF THE  ISET-TH  SOLUTION VECTOR
+C
+         I = Q + 1
+         DO 60 IREV = 1, Q
+            I = I - 1
+            IF (I+IBANDW.LE.Q) JMAX = JMAX - 1
+            IB = IB - IT1
+            S = THETA(IB)
+C
+C           DETERMINE STARTING LOCATION OF CONTRIBUTORY
+C           ELEMENTS ... WHETHER IN MAIN PART OF BAND ...
+C
+            IF (I.LE.JTEST) IU = (IBANDW-1)*(I-1) + JMAX
+C
+C           ... OR IN BOTTOM RIGHT TRIANGLE OF ORDER  IBANDW
+C
+            IF (I.GT.JTEST) IU = (IU0+(IU1-I)*I)/2 + JMAX
+            IT = ITREF - (Q-JMAX)*IT1
+            IF (I.EQ.JMAX) GO TO 40
+C
+C           DETERMINE CONTRIBUTION TO  J-TH  COMPONENT
+C           OF  ISET-TH  SOLUTION VECTOR
+C
+            JREVMX = JMAX - I
+            DO 20 JREV = 1, JREVMX
+               S = S - UFCTR(IU)*THETA(IT)
+               IU = IU - 1
+               IT = IT - IT1
+   20       CONTINUE
+   40       THETA(IT) = S/UFCTR(IU)
+   60    CONTINUE
+   80 CONTINUE
+      RETURN
+C
+C     END E01DAL
+C
+      END

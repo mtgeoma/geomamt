@@ -1,0 +1,48 @@
+      SUBROUTINE G13BEP(MPAB,MPSG,KRN,MSN,MSPA,MSPB,IMP,K,KSPA,KSPB,
+     *                  KSPC,MIS,MRN)
+C     MARK 11 RELEASE. NAG COPYRIGHT 1983.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     SUBROUTINE G13BEP DERIVES THE ORDER IN WHICH THE A(T)
+C     AND B(T) SETS RELATING TO
+C     ARIMA PARAMETERS, BACK FORECASTS AND CONSTANT
+C     WILL BE HELD IN THE BETA ARRAY FOR PROCESSING IN
+C     S, G, AND H CALCULATIONS. IT GIVES THE RELATIVE
+C     START POINTS.
+C
+C     .. Scalar Arguments ..
+      INTEGER           IMP, K, KRN, KSPA, KSPB, KSPC
+C     .. Array Arguments ..
+      INTEGER           MIS(IMP), MPAB(15), MPSG(15), MRN(IMP),
+     *                  MSN(IMP), MSPA(IMP), MSPB(IMP)
+C     .. Local Scalars ..
+      INTEGER           I, NSG
+C     .. Executable Statements ..
+      NSG = MPSG(KRN)
+      IF (NSG.LE.0) GO TO 100
+      DO 80 I = 1, NSG
+         K = K + 1
+C
+C        MSN HOLDS THE SUBSCRIPTS OF THE RELEVANT A(T) AND B(T)
+C        SETS. A NEGATIVE VALUE INDICATES A CHANGE OF SIGN WHEN
+C        CALCULATIONS INVOLVE THESE SETS.
+C
+         MSN(K) = MPAB(KRN)
+         MIS(K) = 0
+         MRN(K) = KRN
+         IF (KRN.EQ.3) GO TO 20
+         IF (KRN.EQ.5) GO TO 20
+         IF (KRN.NE.6) GO TO 40
+   20    MSN(K) = -MSN(K)
+C
+C        MSPA AND MSPB HOLD RELATIVE START POINTS
+C        FOR THE A(T) AND B(T) SETS.
+C
+   40    MSPA(K) = KSPA - KSPB*I
+         MSPB(K) = MSPA(K)
+         IF (KRN.EQ.2) GO TO 60
+         IF (KRN.NE.4) GO TO 80
+   60    MSPB(K) = KSPC - MSPA(K)
+   80 CONTINUE
+  100 RETURN
+      END

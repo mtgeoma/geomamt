@@ -1,0 +1,52 @@
+      SUBROUTINE F02WCX(M,N,A,NRA,B,NRB,WORK,LWORK)
+C     MARK 8 RELEASE. NAG COPYRIGHT 1979.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     WRITTEN BY S. HAMMARLING, MIDDLESEX POLYTECHNIC (ABMULT)
+C
+C     F02WCX RETURNS THE M*N MATRIX C GIVEN BY
+C
+C     C = A*B ,
+C
+C     WHERE A IS AN M*N MATRIX AND B IS AN N*N MATRIX.
+C
+C     C IS OVERWRITTEN ON A.
+C
+C     NRA AND NRB MUST BE THE ROW DIMENSIONS OF A AND B
+C     RESPECTIVELY AS DECLARED IN THE CALLING PROGRAM. NRA
+C     MUST BE AT LEAST M AND NRB MUST BE AT LEAST N.
+C
+C     THE LWORK ELEMENT VECTOR WORK IS REQUIRED FOR INTERNAL
+C     WORKSPACE. LWORK MUST BE AT LEAST 2*N.
+C
+C     .. Scalar Arguments ..
+      INTEGER           LWORK, M, N, NRA, NRB
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(NRA,N), B(NRB,N), WORK(LWORK)
+C     .. Local Scalars ..
+      INTEGER           I, J, NP1
+C     .. External Subroutines ..
+      EXTERNAL          F02WCW
+C     .. Executable Statements ..
+      DO 20 J = 1, N
+         WORK(J) = A(1,J)
+   20 CONTINUE
+C
+      NP1 = N + 1
+      DO 60 I = 1, M
+C
+         CALL F02WCW(N,N,B,NRB,WORK,WORK,WORK(NP1))
+C
+         IF (I.EQ.M) GO TO 60
+         DO 40 J = 1, N
+            A(I,J) = WORK(J)
+            WORK(J) = A(I+1,J)
+   40    CONTINUE
+C
+   60 CONTINUE
+C
+      DO 80 J = 1, N
+         A(M,J) = WORK(J)
+   80 CONTINUE
+C
+      RETURN
+      END

@@ -1,0 +1,123 @@
+      SUBROUTINE G13BFZ(STTF,NSTTF,MT,NXSP,PARA,NPARA,MR,XXYN,IXXYN,NNV,
+     *                  KZEF,RES,WA,IWA)
+C     MARK 11 RELEASE. NAG COPYRIGHT 1983.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     AUXILIARY ROUTINE TO DO STATE SET UPDATE CALCULATIONS
+C
+C
+C     BREAK DOWN MR(ORDERS ARRAY FOR Y) INTO COMPONENT PARTS
+C
+C     .. Scalar Arguments ..
+      INTEGER           IWA, IXXYN, KZEF, NNV, NPARA, NSTTF, NXSP
+C     .. Array Arguments ..
+      DOUBLE PRECISION  PARA(NPARA), RES(NNV), STTF(NSTTF), WA(IWA),
+     *                  XXYN(IXXYN,NXSP)
+      INTEGER           MR(7), MT(4,NXSP)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  C
+      INTEGER           I, J, K, KPPA, KPST, KSE, KST, KSXC, KSZC, KSZN,
+     *                  L, LXC, LZC, MXA, ND, NDD, NDS, NGW, NNB, NNP,
+     *                  NNQ, NNR, NP, NPAR, NPD, NPS, NPX, NQ, NQD, NQS,
+     *                  NS, NWD, NXS
+C     .. Local Arrays ..
+      INTEGER           MPQS(4)
+C     .. External Subroutines ..
+      EXTERNAL          G13AEZ, G13AGZ, G13AJY, G13BEX, G13BHX
+C     .. Intrinsic Functions ..
+      INTRINSIC         MAX
+C     .. Executable Statements ..
+      CALL G13AJY(MR,NP,ND,NQ,NPS,NDS,NQS,NS,NPD,NDD,NQD,MPQS,NPAR)
+C
+C     DERIVE SUBSCRIPTS WHICH DEFINE START POINTS OF E, XC,
+C     ZC, ZN WORKING ARRAYS WITHIN WA
+C
+      MXA = MAX(4*NPAR,NNV)
+      KSE = MXA + 1
+      KSXC = KSE + NNV
+      KSZC = KSXC + NSTTF
+      KSZN = KSZC + NSTTF
+C
+C     PUT NEW Y VALUES INTO E
+C
+      K = KSE - 1
+      DO 20 J = 1, NNV
+         K = K + 1
+         WA(K) = XXYN(J,NXSP)
+   20 CONTINUE
+C
+C     KPPA AND KPST ARE USED IN DEFINING THE POSITION OF THE
+C     CURRENT INPUT SERIES BLOCKS OF DATA IN PARA AND STTF
+C
+      KPPA = NPAR
+      KPST = 0
+      NXS = NXSP - 1
+      IF (NXS.LE.0) GO TO 120
+C
+C     PROCESS EACH INPUT(X)SERIES IN TURN
+C
+      DO 80 I = 1, NXS
+C
+C        DERIVE LENGTHS OF XS AND ZS IN STATE SET FOR CURRENT
+C        INPUT SERIES
+C
+         CALL G13BEX(MT,I,NXSP,NNB,NNP,NNQ,NNR,NWD,NGW,NPX)
+         LXC = NNB + NNQ + 1
+         LZC = NNP + 1
+C
+C        TRANSCRIBE NEW VALUES OF X FOR THIS SERIES INTO WA
+C
+         DO 40 J = 1, NNV
+            WA(J) = XXYN(J,I)
+   40    CONTINUE
+C
+C        DERIVE VALUES OF Z RELATING TO NEW XS AND UPDATE THE
+C        STATE SET
+C
+         CALL G13BHX(STTF,NSTTF,KPST,NWD,WA(KSXC),LXC,WA(KSZC)
+     *               ,LZC,PARA,NPARA,KPPA,WA(1),WA(KSZN),NNV,1)
+C
+C        DERIVE E = Y - Z1 - Z2 ETC AND TRANSFER TO XXYN
+C        IF KZEF IS NOT ZERO
+C
+         K = KSE - 1
+         L = KSZN - 1
+         DO 60 J = 1, NNV
+            K = K + 1
+            L = L + 1
+            WA(K) = WA(K) - WA(L)
+            IF (KZEF.EQ.0) GO TO 60
+            XXYN(J,I) = WA(L)
+   60    CONTINUE
+C
+C        UPDATE KPST AND KPPA TO POINT TO END OF STTF AND PARA
+C        BLOCKS ASSOCIATED WITH THIS CURRENT INPUT SERIES
+C
+         KPST = KPST + NNB + NNQ + NNP
+         KPPA = KPPA + NWD
+   80 CONTINUE
+C
+C     TRANSFER E INTO XXYN IF KZEF IS NOT ZERO
+C
+      IF (KZEF.EQ.0) GO TO 120
+      K = KSE - 1
+      DO 100 J = 1, NNV
+         K = K + 1
+         XXYN(J,NXSP) = WA(K)
+  100 CONTINUE
+  120 IF (NPAR.LE.0) GO TO 140
+C
+C     FORM PHI, THETA, SPHI AND STHETA ARRAYS EACH OF LENGTH
+C     NPAR IN WA
+C
+      CALL G13AEZ(PARA,NPAR,MPQS,WA,IWA,1)
+      C = PARA(NPARA)
+      KST = NSTTF - KPST
+C
+C     UPDATE NON-TRANSFER FUNCTION PART OF STATE SET
+C
+      CALL G13AGZ(STTF(KPST+1),KST,NP,ND,NQ,NPS,NDS,NQS,NS,WA(1)
+     *            ,WA(NPAR+1),WA(2*NPAR+1),WA(3*NPAR+1),NPAR,C,WA(KSE)
+     *            ,NNV,WA(KSZN),WA(KSXC),WA(KSZC),RES)
+  140 RETURN
+      END

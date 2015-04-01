@@ -1,0 +1,12 @@
+Parameters:
+  primitives: values stored in ats header.
+    label: see 2nd column in ats-header.info;
+    type: char(string), double, float, qint16, qint32, quint32;
+    addr: see 3th column in ats-header.info;
+    size: see 4th column in ats-header.info;
+
+  derived: deriving from others parameters or from file attributes.
+    label: see labels.derived
+    type: (?)
+    do not have addr.
+    could not have a fixed size.

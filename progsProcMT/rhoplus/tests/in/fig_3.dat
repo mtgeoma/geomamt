@@ -1,0 +1,67 @@
+echo on          % echo the commands
+data *           % Read data table at end of this file
+task *           % Read table of bounds from end of this file
+bands 9 26 1 8 -1 % find optimum offset of band 1-8 with 9-26 held fixed
+root fig_3
+surface conduct  % Use conductive BC at surface
+criterion 0.95   % Misfit goal for tasks corresponds to 95% confidence
+plot xyplot      % make a plot file of given name
+model            % Compute delta function model
+matrix           % output in matrix form
+execute          % Begin calculations
+
+  48.000      6.8780     0.31550      48.500      1.3000        1    1
+  36.000      6.5140     0.26050      44.700      1.1500        1    1
+  24.000      6.4490     0.30100      45.800      1.3000        1    1
+  18.000      6.5240     0.32900      44.600      1.4500        1    1
+  12.000      6.7140     0.24600      46.700      1.0500        1    1
+  9.0000      6.7080     0.30250      44.900      1.3000        1    1
+  6.0000      6.7860     0.45550      45.700      1.9000        1    1
+  4.5000      5.9590     0.38900      39.000      1.9000        0    0
+  3.0000      7.8370     0.14050      41.500     0.50000        1    1
+  2.2500      7.9180     0.15200      38.100     0.55000        1    1
+  1.5000      8.6770     0.23050      33.700     0.75000        1    1
+  1.1250      9.7540     0.29100      30.600     0.85000        1    1
+ 0.75019      11.600     0.69000      27.800      1.7000        1    1
+ 0.56243      13.660     0.57500      26.600      1.2000        1    1
+ 0.37495      17.400      1.8450      24.800      3.0500        1    1
+ 0.28129      21.360      1.9150      25.700      2.5500        1    1
+ 0.18751      25.610      3.5250      26.000      3.9500        1    1
+ 0.14061      30.650      2.3000      30.500      2.1500        1    1
+ 0.93721E-01  33.150      3.3450      34.600      2.9000        1    1
+ 0.70323E-01  33.940      2.5400      43.000      2.1500        1    1
+ 0.46882E-01  36.650      4.8550      45.300      3.7500        1    1
+ 0.35162E-01  35.040      4.2600      48.700      3.5000        1    1
+ 0.23441E-01  32.040      4.3200      54.000      3.8500        1    1
+ 0.17581E-01  30.020      4.1500      56.600      3.9500        1    1
+ 0.11721E-01  26.970      3.8500      61.300      4.1000        1    1
+ 0.87873E-02  24.920      3.6950      63.900      4.2000        1    1
+0            % End of data table
+
+  48.000      rho  phi
+  36.000      rho  phi
+  24.000      rho  phi
+  18.000      rho  phi
+  12.000      rho  phi
+  9.0000      rho  phi
+  6.0000      rho  phi
+  4.5000      rho  phi
+  3.0000      rho  phi
+  2.2500      rho  phi
+  1.5000      rho  phi
+  1.1250      rho  phi
+ 0.75019      rho  phi
+ 0.56243      rho  phi
+ 0.37495      rho  phi
+ 0.28129      rho  phi
+ 0.18751      rho  phi
+ 0.14061      rho  phi
+ 0.93721E-01  rho  phi
+ 0.70323E-01  rho  phi
+ 0.46882E-01  rho  phi
+ 0.35162E-01  rho  phi
+ 0.23441E-01  rho  phi
+ 0.17581E-01  rho  phi
+ 0.11721E-01  rho  phi
+ 0.87873E-02  rho  phi
+0      % End of task table

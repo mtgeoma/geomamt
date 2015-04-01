@@ -1,0 +1,280 @@
+#!/bin/bash
+source gmt_defaults
+
+# set local gmt_defaults
+gmt_defaults[HEADER_FONT_SIZE]=14p
+gmt_defaults[LABEL_FONT_SIZE]=9p
+gmt_defaults[ANNOT_FONT_SIZE_PRIMARY]=8p
+gmt_defaults[TICK_LENGTH]=0.12c
+gmt_defaults[HEADER_OFFSET]=1.5c
+gmt_defaults[ANNOT_OFFSET_PRIMARY]=0.1c
+gmt_defaults[ANNOT_OFFSET_SECONDARY]=0.01c
+gmt_defaults[MEASURE_UNIT]=cm
+
+# default optional arguments
+declare -A options
+options=(['slice']="z0" ['R']="default" ['scale']="0.1/0.1" \
+    ['unit']="km" ['ps']="default" ['BH']="default" ['BV']="default" \
+    ['grid']="default" ['cpt_range']="0/4/0.25" ['colortable']="wysiwyg" \
+    ['gmt_cmd']="default" ['rho']="linear")
+
+usage ()
+{
+    printf "\nusage: %s input_model [parameter=value]\n" $1
+    printf "where:\n"
+    printf "\tinput_model\tis a wsinv3D model file.\n\n"
+    printf "parameters could be:\n"
+    printf "\tslice\tselect slice in format [x|y|z]distance.\n"
+    printf "\t\t\tDefault is ${options['slice']}.\n"
+    printf "\tR\trange in format HMIN/HMAX/VMIN/VMAX.\n"
+    printf "\t\t\tDefault is all slice range.\n"
+    printf "\tscale\tscale in format Hscale/Vscale to be used in -Jx.\n"
+    printf "\t\t\tDefault is ${options['scale']}.\n"
+    printf "\tunit\tdistance unit to be used in model.\n"
+    printf "\t\t\tMust be km (default) or m.\n"
+    printf "\tps\tpostscript file name\n"
+    printf "\t\t\tDefault is input_model_slice.ps\n"
+    printf "\tBH\tHorizontal boundary anotation in format a<stride>f<stride>\n"
+    printf "\t\t\tDefault is a<range/5>f<range/20>.\n"
+    printf "\tBV\tVertical boundary anotation in format a<stride>f<stride>\n"
+    printf "\t\t\tDefault is a<range/5>f<range/20>.\n"
+    printf "\tgrid\tplot grid model using gmt pen format (ex: thinnest,black)\n"
+    printf "\t\t\tDefault is do not plot grid.\n"
+    printf "\tcpt_range\trange to be used in the log10(rho) scale.\n"
+    printf "\t\t\tDefault is ${options['cpt_range']}\n"
+    printf "\t\t\tAppend a 'L' to force a linear scale.\n"
+    printf "\tcolortable\tcolortable to be used in makecpt or a cpt file.\n"
+    printf "\t\t\tDefault is ${options['colortable']}.\n"
+    printf "\trho\tset rho values to a linear or log10 scale.\n"
+    printf "\t\t\tDefault is ${options['rho']}.\n"
+    printf "\tgmt_cmd\tset file with extra gmt commands.\n"
+    printf "\t\t\tDefault is nothing.\n"
+    printf "\nparameters could be any one listed by gmtdefaults, example:\n"
+    printf "\tLABEL_FONT_SIZE=10p\n\n"
+    exit 1
+}
+
+if [[ ${#} == 0 ]]
+then
+    usage $0
+fi
+
+# mandatory option
+model=$1
+shift
+
+if [[ !(-f $model) ]] ; then
+    echo "couldn't find $model file"
+    exit 1
+fi
+
+while [[ -n $1 ]] ; do
+    option=($(echo $1 | awk '{gsub("="," ");print $0}'))
+    if [[ ${#option[*]} -eq 2 ]] ; then
+        # check if is a valid option
+        if [[ -z ${options[${option[0]}]} ]] ; then
+            if [[ -z ${gmt_defaults[${option[0]}]} ]] ; then
+                echo "'${option[0]}' isn't a valid option"
+                usage $0
+            else
+                gmt_defaults[${option[0]}]=${option[1]}
+            fi
+        else
+            options[${option[0]}]=${option[1]}
+        fi
+    else
+        echo "error in option:$1"
+        usage $0
+    fi
+    shift
+done
+
+slice=${options['slice']}
+unit=${options['unit']}
+if [[ ${slice:0:1} == "z" ]] ; then
+    labelH="Y ($unit)"
+    labelV="X ($unit)"
+    Vsignal="+"
+elif [[ ${slice:0:1} == "x" ]] ; then
+    labelH="Y ($unit)"
+    labelV="Z ($unit)"
+    Vsignal="-"
+elif [[ ${slice:0:1} == "y" ]] ; then
+    labelH="X ($unit)"
+    labelV="Z ($unit)"
+    Vsignal="-"
+else
+    echo "option slice must start with 'x' or 'y' or 'z'"
+    exit 1
+fi
+
+# set gmt options: fast
+gmtset_options=""
+for index in $(echo ${!gmt_defaults[*]}) ; do
+    if [[ $index != "UNIX_TIME_FORMAT" ]] ; then
+        gmtset_options="$gmtset_options $index=${gmt_defaults[$index]}"
+    fi
+done
+
+# running GMT in isolation mode
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+
+gmtset UNIX_TIME_FORMAT="${gmt_defaults[UNIX_TIME_FORMAT]}"
+gmtset $gmtset_options
+
+# convert to something GMT could read
+if [[ $unit == "km" ]] ; then
+    wsinv3Dmodel2gmt.py model=$model slice=$slice rho=${options['rho']} \
+	scale=1e-3 > $GMT_TMPDIR/model
+elif [[ $unit == "m" ]] ; then
+    wsinv3Dmodel2gmt.py model=$model slice=$slice rho=${options['rho']} \
+	> $GMT_TMPDIR/model
+else
+    echo "option unit must be km or m"
+    rm -rf $GMT_TMPDIR
+    exit 1
+fi
+
+# check if wsinv3Dmodel2gmt.py exit properly
+if [[ $? != 0 ]] ; then
+    cat $GMT_TMPDIR/model
+    rm -rf $GMT_TMPDIR
+    exit 1
+fi
+
+declare -a R
+if [[ ${options['R']} == "default" ]] ; then
+    R=$(minmax $M -I1 $GMT_TMPDIR/model)
+    R=($(echo ${R:2} | gawk '{gsub("/"," ");print $0}'))
+else
+    R=($(echo ${options['R']} | gawk '{gsub("/"," ");print $0}'))
+    test=$(echo ${R[*]} | \
+	awk '{if(NF != 4 || $1 >= $2 || $3 >= $4){
+                print "fail"}else{print "pass"}}')
+    if [[ test == "fail" ]] ; then
+	echo "option R must be in format R=HMIN/HMAX/VMIN/VMAX"
+        rm -rf $GMT_TMPDIR
+	exit 1
+    fi
+fi
+
+if [[ ${options['BH']} == "default" ]] ; then
+    BH=$(echo ${R[1]} ${R[0]} | \
+        gawk '{d=($1-$2);printf "a%ff%f",d/5,d/20}')
+else
+    BH=${options['BH']}
+fi
+
+if [[ ${options['BV']} == "default" ]] ; then
+    BV=$(echo ${R[3]} ${R[2]} | \
+        gawk '{d=($1-$2);printf "a%ff%f",d/5,d/20}')
+else
+    BV=${options['BV']}
+fi
+
+scale=($(echo ${options['scale']} | gawk '{gsub("/"," ");print $0}'))
+    if (( ${#scale[*]} != 2 )) ; then
+	echo "option scale must be in format scale=Hscale/Vscale"
+        rm -rf $GMT_TMPDIR
+	exit 1
+    fi
+
+if [[ ${options['ps']} == "default" ]] ; then
+    ps=${model}_${slice}.ps
+else
+    ps=${options['ps']}
+    if [[ ${ps##*.} != "ps" ]] ; then
+        echo "$ps: expected a file with extention .ps"
+        echo
+        rm -rf $GMT_TMPDIR
+        exit 1
+    fi
+fi
+
+grid=""
+if [[ ${options['grid']} != "default" ]] ; then
+    grid="-W"${options['grid']}
+fi
+
+# cm
+Xo=2.5
+Yo=3.5
+Ypos=-1.5
+len=8
+width=0.25
+if [[ ${gmt_defaults['MEASURE_UNIT']} == "inch" ]] ; then
+    Xo=$(echo "${Xo}/2.54" | bc -l)
+    Yo=$(echo "${Yo}/2.54" | bc -l)
+    Ypos=$(echo "${Ypos}/2.54" | bc -l)
+    len=$(echo "${len}/2.54" | bc -l)
+    width=$(echo "${width}/2.54" | bc -l)
+elif [[ ${gmt_defaults['MEASURE_UNIT']} == "m" ]] ; then
+    Xo=$(echo "${Xo}/100" | bc -l)
+    Yo=$(echo "${Yo}/100" | bc -l)
+    Ypos=$(echo "${Ypos}/100" | bc -l)
+    len=$(echo "${len}/100" | bc -l)
+    width=$(echo "${width}/100" | bc -l)
+elif [[ ${gmt_defaults['MEASURE_UNIT']} == "point" ]] ; then
+    Xo=$(echo "(${Xo}/2.54)*72" | bc -l)
+    Yo=$(echo "(${Yo}/2.54)*72" | bc -l)
+    Ypos=$(echo "(${Ypos}/2.54)*72" | bc -l)
+    len=$(echo "(${len}/2.54)*72" | bc -l)
+    width=$(echo "$({width}/2.54)*72" | bc -l)
+elif [[ ${gmt_defaults['MEASURE_UNIT']} != "cm" ]] ; then
+    echo "GMT MEASURE_UNIT must be cm, m, inch or point"
+    rm -rf $GMT_TMPDIR
+    exit 1
+fi
+
+TITLE=$(printf "%s %s" $model $slice)
+PROJ=-Jx${scale[0]}/${Vsignal}${scale[1]}
+psbasemap -X$Xo -Y$Yo $PROJ -R${R[0]}/${R[1]}/${R[2]}/${R[3]} \
+    -B${BH}:."$TITLE"::"$labelH":/${BV}:"$labelV":SeW -K > $ps
+
+# check if is to make a linear scale
+cpt_range=${options['cpt_range']}
+if [[ ${cpt_range:(-1)} == "L" ]] ; then
+    cpt_range=${cpt_range/L/} # remove 'L'
+    Qi=""
+else
+    Qi="-Qi"
+fi
+
+if [[ -f ${options['colortable']} ]] ; then
+    cp ${options['colortable']} $GMT_TMPDIR/tab.cpt
+    grep -e '-Qi' $GMT_TMPDIR/tab.cpt > /dev/null 2>&1
+    if [[ $? == 0 ]] ; then
+	Qi="-Qi"
+    else
+	Qi=""
+    fi
+else
+    makecpt -C${options['colortable']} ${Qi} -T$cpt_range -I > \
+	$GMT_TMPDIR/tab.cpt
+fi
+
+psxy $GMT_TMPDIR/model -R -J $M $grid -H -L -C$GMT_TMPDIR/tab.cpt -K -O >> $ps
+
+if [[ ${options['gmt_cmd']} != "default" ]] ; then
+    source ${options['gmt_cmd']}
+fi
+
+Xpos=$(gawk -v hmin=${R[0]} -v hmax=${R[1]} -v s=${scale[0]} \
+    'BEGIN{print (hmax-hmin)*s/2}')
+if [[ -n ${Qi} ]] ; then
+    psscale -C$GMT_TMPDIR/tab.cpt -D${Xpos}/${Ypos}/${len}/${width}h \
+	-Ba1pf3:"rho (@~W@~m)":wSne -Q -E -O >> $ps
+else
+    psscale -C$GMT_TMPDIR/tab.cpt -D${Xpos}/${Ypos}/${len}/${width}h \
+	-Ba2f1:"rho (@~W@~m)":wSne -E -O >> $ps
+fi
+
+rm -rf $GMT_TMPDIR
+
+ps2raster $ps -A -P -Tg
+
+if [[ -n $VIEWER_PNG ]] ; then
+    $VIEWER_PNG ${ps/.ps/.png}&
+else
+    echo "figure ${ps/.ps/.png} done"
+fi

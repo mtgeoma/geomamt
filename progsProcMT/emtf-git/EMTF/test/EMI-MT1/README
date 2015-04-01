@@ -1,0 +1,74 @@
+TESTING RFEMI:
+Follow general instrucions in  test.
+All files needed for processing the test data set are included.
+Note that sensors files needed for system callibration are in
+subdirectory /sensors
+
+* First you need to make and install rfemi (exactly as for making rfasc)
+  as well as dnff, tranmt
+
+* Then test rfemi.  THere is an MT-1 data file called d05l1_ts1.mt1
+  in EMI-MT1/DATA .  Change into this directory , and type
+                 ../../bin/rfemi
+  Here are prompts from the program (>>>) and appropriate answers 
+  for the test case:
+	>>> station id
+	D05
+	>>> enter output file name
+	d05l1_ts1.bin
+	>>> input file name
+	d05l1_ts1.mt1
+	>>> enter clock reset file name
+	d05l1_ts1.clk
+	>>> another input file? (append to current output file)
+	n
+	>>> continue?
+	n
+
+ After this run completes you will find two new files in DATA:
+ d05l1_ts1.bin (reformatted binary data file), and d05l1_ts1.sp
+ (system paramter file taken from header of EMI-MT1 data file)
+
+* Go up, one directory to EMI-MT1.  Run 
+            ../bin/dnff
+  Note that paths.cfg is set up to look for the *.sp file in the DATA
+  directory (along with the data file)
+
+  Here are prompts from the program (>>>) and appropriate answers
+  for the test case:
+
+	>>> Enter input file name:  d05l1_ts1.bin
+	>>> FT another data file?  n
+
+  After this completes you will find a Fourier coefficent file in 
+  subdirectory FC called   d05l1_ts1.f5
+
+* Run   ../bin/tranmt
+
+  Here are prompts from the program (>>>) and appropriate answers
+  for the test case:
+
+	>>> enter control file name
+	tranmt.cfg
+
+  There will now be a file in subdirectory MT called: d05l1_1.zss
+
+* Plot in matlab; set up matlab search path (as described in test/README) 
+  and type apresplt in matlab.  Use the dialogue box that opens to pick
+  the Z-file d05l1_1.zss.  A plot of apparent resistivity and phase
+  should appear.
+
+*  Compare resulst to the corresponding Z-file in Results.
+  Note that there are two other files in this directory.  
+  You can further test the code, and get more experience with some of
+  the options by replicating these other runs also.
+
+   d05l1_NR.zss  was run with robust features turned off
+   (to replicate this: (1) set robust to 'n' in options.cfg,
+   and (2) change the name of the output file in tranmt.cfg,
+   and (3) re-run tranmt).
+    
+   d05l1_COH.zss  was run using the coherence sorting paramters set
+   to non-zero values as in optionsCOH.cfg.  To replicate this,
+   change the name of the options file, and the output file name in
+   tranmt.cfg and re-run.

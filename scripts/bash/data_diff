@@ -1,0 +1,66 @@
+#!/bin/bash
+
+if [[ ${#} != 2 ]] ; then
+    echo
+    echo "usage: $0 file1 file2"
+    echo "return nothing if files are identical or"
+    echo "return minmax values of relative errors in percentage"
+    echo "expect only numerical differences"
+    echo
+    exit 1
+fi
+
+# input files
+F1=$1
+F2=$2
+cmp $F1 $F2 > /dev/null 2>&1
+if [[ $? -eq 0 ]] ; then
+    exit 0
+fi
+
+export TMPDIR=$(mktemp -d /tmp/data_diff.XXXXXX)
+BF1=input1
+BF2=input2
+
+awk '{print NF}' $F1 > $TMPDIR/${BF1}.NF
+awk '{print NF}' $F2 > $TMPDIR/${BF2}.NF
+
+cmp $TMPDIR/${BF1}.NF $TMPDIR/${BF2}.NF > /dev/null 2>&1
+if [[ $? -ne 0 ]] ; then
+    echo "$F1 $F2 don't have same number of lines and columns"
+    rm -rf $TMPDIR
+    exit 1
+fi
+
+paste $F1 $F2 |\
+awk -v dir=$TMPDIR 'BEGIN{
+  non_numerical=sprintf("%s/non_numerical",dir)
+}
+{
+  for(c=1;c<=NF/2;c++) {
+    if($c!=$(c+NF/2)) {
+      d=($c-$(c+NF/2))
+      m=($c+$(c+NF/2))/2.
+      if(d==0) {
+        printf "%s %s\n",$c,$(c+NF/2) >> non_numerical
+      }
+      else {
+        printf "%g\n",100*sqrt(d*d)/sqrt(m*m)
+      }
+    }
+  }
+}' > $TMPDIR/diff
+
+if [[ -s $TMPDIR/non_numerical ]] ; then
+    echo "$F1 $F2 have non numerical differences"
+    cat $TMPDIR/non_numerical
+fi
+
+if [[ !(-s $TMPDIR/diff) ]] ; then
+    rm -rf $TMPDIR
+    exit 0
+fi
+
+MinMax=$(minmax -C $TMPDIR/diff)
+echo "$F1 $F2 minmax diff: $MinMax [%]"
+rm -rf $TMPDIR

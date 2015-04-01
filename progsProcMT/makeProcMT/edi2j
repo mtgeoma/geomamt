@@ -1,0 +1,3 @@
+cd dist
+gfortran -o ~/bin/edi2j *.f
+cd ..

@@ -1,0 +1,428 @@
+      SUBROUTINE E04MBX(ORTHOG,UNITQ,VERTEX,LCRASH,N,NCLIN,NCLIN0,
+     *                  NCTOTL,NQ,NROWA,NROWRT,NCOLRT,NACTIV,NCOLZ,
+     *                  NFREE,ISTATE,KACTIV,KFREE,BIGBND,TOLACT,XNORM,A,
+     *                  ANORM,AX,BL,BU,X,QTG,RT,ZY,P,WRK1,WRK2)
+C     MARK 12 RE-ISSUE. NAG COPYRIGHT 1986.
+C     MARK 12B REVISED. IER-538 (FEB 1987).
+C     MARK 13 REVISED. IER-637 (APR 1988).
+C     MARK 14C REVISED. IER-889 (NOV 1990).
+C
+C *********************************************************************
+C     E04MBX COMPUTES DETAILS ASSOCIATED WITH THE WORKING SET AT A POINT
+C     X.  THE COMPUTATION DEPENDS UPON THE VALUE OF THE INPUT PARAMETER
+C     LCRASH.   AS  FOLLOWS ...
+C
+C     LCRASH = 0  MEANS THAT  E04MBX SHOULD FIND (1) AN INITIAL WORKING
+C              SET, (2) THE  TQ  FACTORS OF THE CONSTRAINT COEFFICIENTS
+C              FOR THE WORKING SET, AND (3) THE POINT CLOSEST TO  X
+C              THAT LIES ON THE WORKING SET.
+C     LCRASH = 1  MEANS THAT  E04MBX  SHOULD COMPUTE (1) THE  TQ
+C              FACTORS OF A WORKING SET SPECIFIED BY THE INTEGER ARRAY
+C              ISTATE, AND (2) THE POINT CLOSEST TO  X  THAT SATISFIES
+C              THE WORKING SET.
+C     LCRASH = 2  MEANS THAT  E04MBX  ESSENTIALLY DOES NOTHING BUT
+C              COMPUTE AUXILIARY INFORMATION ABOUT THE POINT  X  THAT
+C              LIES ON THE CONSTRAINTS IN THE GIVEN WORKING SET.
+C
+C     VALUES OF ISTATE(J)....
+C
+C     - 2         - 1         0           1          2         3
+C     A*X LT BL   A*X GT BU   A*X FREE   A*X = BL   A*X = BU   BL = BU
+C
+C     ISTATE(J) = 4  MEANS THAT X(J) IS ON A TEMPORARY BOUND.
+C
+C     SYSTEMS OPTIMIZATION LABORATORY, STANFORD UNIVERSITY.
+C     VERSION OF JANUARY 1982.  REV. NOV. 1982.  APR. 1984.
+C *********************************************************************
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  BIGBND, TOLACT, XNORM
+      INTEGER           LCRASH, N, NACTIV, NCLIN, NCLIN0, NCOLRT, NCOLZ,
+     *                  NCTOTL, NFREE, NQ, NROWA, NROWRT
+      LOGICAL           ORTHOG, UNITQ, VERTEX
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(NROWA,N), ANORM(NCLIN0), AX(NROWA),
+     *                  BL(NCTOTL), BU(NCTOTL), P(N), QTG(N),
+     *                  RT(NROWRT,NCOLRT), WRK1(N), WRK2(N), X(N),
+     *                  ZY(NQ,NQ)
+      INTEGER           ISTATE(NCTOTL), KACTIV(N), KFREE(N)
+C     .. Scalars in Common ..
+      DOUBLE PRECISION  ASIZE, DTMAX, DTMIN
+      INTEGER           ISTART, MSG, NOUT
+C     .. Arrays in Common ..
+      DOUBLE PRECISION  WMACH(15)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  AMIN, B1, B2, BND, COLMIN, COLSIZ, CONDMX,
+     *                  CSLAST, FLMAX, ONE, RES, RESL, RESMIN, RESU,
+     *                  RNORM, ROWMAX, RTEPS, SNLAST, TOOBIG, ZERO
+      INTEGER           I, IADD, IDIAG, IDUMMY, IFIX, IMIN, INFORM, IS,
+     *                  J, JADD, JMIN, K, KB, LENQ, LROWA, NACT1,
+     *                  NARTIF, NCOLZ1, NFIXED
+      LOGICAL           NOLOW, NOUPP
+C     .. Local Arrays ..
+      CHARACTER*80      REC(3)
+C     .. External Functions ..
+      DOUBLE PRECISION  DDOT, DNRM2
+      EXTERNAL          DDOT, DNRM2
+C     .. External Subroutines ..
+      EXTERNAL          E04VDN, E04VDP, E04VDZ, F04YAZ, F06FBF, F06FLF,
+     *                  DAXPY, DCOPY, X04BAF
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS, MIN
+C     .. Common blocks ..
+      COMMON            /AE04VC/NOUT, MSG, ISTART
+      COMMON            /AX02ZA/WMACH
+      COMMON            /HE04VC/ASIZE, DTMAX, DTMIN
+C     .. Save statement ..
+      SAVE              /AX02ZA/
+C     .. Data statements ..
+      DATA              ZERO, ONE/0.0D+0, 1.0D+0/
+C     .. Executable Statements ..
+C
+      RTEPS = WMACH(4)
+      FLMAX = WMACH(7)
+C
+      LROWA = NROWA*(N-1) + 1
+C
+C     SET THE MAXIMUM ALLOWABLE CONDITION ESTIMATOR OF THE CONSTRAINTS
+C     IN THE WORKING SET.  NOTE THAT THE CONSERVATIVE VALUE USED IN
+C     E04MBX IS SMALLER THAN THAT USED WHEN A CONSTRAINT IS ADDED TO
+C     THE WORKING SET DURING A TYPICAL ITERATION.
+C
+      CONDMX = ONE/RTEPS
+C
+      IF (MSG.GE.80) THEN
+         WRITE (REC,FMT=99996) LCRASH, NCLIN, NCTOTL
+         CALL X04BAF(NOUT,REC(1))
+         CALL X04BAF(NOUT,REC(2))
+         CALL X04BAF(NOUT,REC(3))
+         WRITE (REC,FMT=99998)
+         CALL X04BAF(NOUT,REC(1))
+         CALL X04BAF(NOUT,REC(2))
+         DO 20 I = 1, N, 5
+            WRITE (REC,FMT=99995) (X(J),J=I,MIN(N,I+4))
+            CALL X04BAF(NOUT,REC(1))
+   20    CONTINUE
+      END IF
+      NFIXED = 0
+      NACTIV = 0
+      NARTIF = 0
+C
+C     IF A COLD START IS BEING MADE, INITIALIZE  ISTATE.
+C     IF  BL(J) = BU(J),  SET  ISTATE(J)=3  FOR ALL VARIABLES AND LINEAR
+C     CONSTRAINTS.
+C
+      IF (LCRASH.GT.0) GO TO 60
+      DO 40 J = 1, NCTOTL
+         ISTATE(J) = 0
+         IF (BL(J).EQ.BU(J)) ISTATE(J) = 3
+   40 CONTINUE
+      GO TO 100
+   60 DO 80 J = 1, NCTOTL
+         IF (ISTATE(J).GT.3 .OR. ISTATE(J).LT.0) ISTATE(J) = 0
+   80 CONTINUE
+C
+C     INITIALIZE  NFIXED,  NACTIV  AND  KACTIV.
+C     ENSURE THAT THE NUMBER OF BOUNDS AND GENERAL CONSTRAINTS IN THE
+C     WORKING SET DOES NOT EXCEED  N.
+C
+  100 DO 140 J = 1, NCTOTL
+         IF (NFIXED+NACTIV.EQ.N) ISTATE(J) = 0
+         IF (ISTATE(J).LE.0) GO TO 140
+         IF (J.GT.N) GO TO 120
+         NFIXED = NFIXED + 1
+         IF (ISTATE(J).EQ.1) X(J) = BL(J)
+         IF (ISTATE(J).GE.2) X(J) = BU(J)
+         GO TO 140
+  120    NACTIV = NACTIV + 1
+         IF (LCRASH.LT.2) KACTIV(NACTIV) = J - N
+  140 CONTINUE
+C
+      NFREE = N - NFIXED
+      NCOLZ = NFREE - NACTIV
+C
+C     IF A HOT START IS REQUIRED, THE  TQ  FACTORIZATION IS ALREADY
+C     KNOWN.
+C
+      IF (LCRASH.GT.1) GO TO 680
+      DTMAX = ONE
+      DTMIN = ONE
+      UNITQ = .TRUE.
+C
+C     COMPUTE THE 2-NORMS OF THE CONSTRAINT ROWS.
+C
+      ASIZE = ONE
+      IF (NCLIN.EQ.0) GO TO 180
+      DO 160 J = 1, NCLIN
+         ANORM(J) = DNRM2(N,A(J,1),NROWA)
+  160 CONTINUE
+      CALL F06FLF(NCLIN,ANORM,1,ASIZE,AMIN)
+C
+  180 IF (LCRASH.GT.0) GO TO 360
+C
+C ---------------------------------------------------------------------
+C     IF A COLD START IS REQUIRED, AN ATTEMPT IS MADE TO ADD AS MANY
+C     CONSTRAINTS AS POSSIBLE TO THE WORKING SET.
+C ---------------------------------------------------------------------
+      IF (NFIXED+NACTIV.EQ.N) GO TO 540
+C
+C     SEE IF ANY VARIABLES ARE OUTSIDE THEIR BOUNDS.
+C
+      DO 240 J = 1, N
+         IF (ISTATE(J).NE.0) GO TO 240
+         B1 = BL(J)
+         B2 = BU(J)
+         NOLOW = B1 .LE. (-BIGBND)
+         NOUPP = B2 .GE. BIGBND
+         IS = 0
+         IF (NOLOW) GO TO 200
+         IF (X(J)-B1.LE.(ONE+ABS(B1))*TOLACT) IS = 1
+  200    IF (NOUPP) GO TO 220
+         IF (B2-X(J).LE.(ONE+ABS(B2))*TOLACT) IS = 2
+  220    IF (IS.EQ.0) GO TO 240
+C
+C        SET VARIABLE EQUAL TO ITS BOUND.
+C
+         ISTATE(J) = IS
+         IF (IS.EQ.1) X(J) = B1
+         IF (IS.EQ.2) X(J) = B2
+         NFIXED = NFIXED + 1
+         IF (NFIXED+NACTIV.EQ.N) GO TO 540
+  240 CONTINUE
+C
+C ---------------------------------------------------------------------
+C     THE FOLLOWING LOOP FINDS THE LINEAR CONSTRAINT THAT IS CLOSEST
+C     TO BEING SATISFIED.  IF IT IS SUFFICIENTLY CLOSE, IT WILL BE ADDED
+C     TO THE WORKING SET AND THE PROCESS WILL BE REPEATED.
+C ---------------------------------------------------------------------
+C     FIRST, COMPUTE  AX  FOR INEQUALITY LINEAR CONSTRAINTS.
+C
+      IF (NCLIN.EQ.0) GO TO 360
+      DO 260 I = 1, NCLIN
+         J = N + I
+         IF (ISTATE(J).GT.0) GO TO 260
+         AX(I) = DDOT(N,A(I,1),NROWA,X,1)
+  260 CONTINUE
+C
+      TOOBIG = TOLACT + TOLACT
+C
+      DO 340 IDUMMY = 1, N
+         RESMIN = TOOBIG
+         IS = 0
+C
+         DO 320 I = 1, NCLIN
+            J = N + I
+            IF (ISTATE(J).GT.0) GO TO 320
+            B1 = BL(J)
+            B2 = BU(J)
+            NOLOW = B1 .LE. (-BIGBND)
+            NOUPP = B2 .GE. BIGBND
+            RESL = TOOBIG
+            RESU = TOOBIG
+            IF (NOLOW) GO TO 280
+            RESL = ABS(AX(I)-B1)/(ONE+ABS(B1))
+  280       IF (NOUPP) GO TO 300
+            RESU = ABS(AX(I)-B2)/(ONE+ABS(B2))
+  300       RES = MIN(RESL,RESU)
+            IF (RES.GE.TOLACT) GO TO 320
+            IF (RES.GE.RESMIN) GO TO 320
+            RESMIN = RES
+            IMIN = I
+            IS = 1
+            IF (RESL.GT.RESU) IS = 2
+  320    CONTINUE
+C
+         IF (IS.EQ.0) GO TO 360
+         NACTIV = NACTIV + 1
+         KACTIV(NACTIV) = IMIN
+         J = N + IMIN
+         ISTATE(J) = IS
+         IF (NFIXED+NACTIV.EQ.N) GO TO 540
+  340 CONTINUE
+C
+C ---------------------------------------------------------------------
+C     IF NECESSARY, ADD TEMPORARY BOUNDS TO MAKE A VERTEX.
+C ---------------------------------------------------------------------
+  360 NCOLZ = N - NFIXED - NACTIV
+      IF ( .NOT. VERTEX .OR. NCOLZ.EQ.0) GO TO 540
+C----------------------------------------------------------------------
+C     ONLY FEASIBLE VARIABLES CAN BE FIXED AT THEIR CURRENT VALUES.
+C     SET ANY INFEASIBLE VARIABLES ON THEIR BOUNDS.
+C
+      DO 400 J = 1, N
+         IF (ISTATE(J).NE.0) GO TO 400
+         B1 = BL(J)
+         B2 = BU(J)
+         NOLOW = B1 .LE. (-BIGBND)
+         NOUPP = B2 .GE. BIGBND
+         IS = 0
+         IF (NOLOW) GO TO 380
+         IF (X(J)-B1.LE.ZERO) X(J) = B1
+  380    IF (NOUPP) GO TO 400
+         IF (B2-X(J).LE.ZERO) X(J) = B2
+  400 CONTINUE
+C----------------------------------------------------------------------
+C     COMPUTE LENGTHS OF COLUMNS OF SELECTED LINEAR CONSTRAINTS
+C     (JUST THE ONES CORRESPONDING TO FREE VARIABLES).
+C
+      DO 460 J = 1, N
+         IF (ISTATE(J).NE.0) GO TO 460
+         COLSIZ = ZERO
+         IF (NCLIN.EQ.0) GO TO 440
+         DO 420 K = 1, NCLIN
+            I = N + K
+            IF (ISTATE(I).GT.0) COLSIZ = COLSIZ + ABS(A(K,J))
+  420    CONTINUE
+  440    WRK1(J) = COLSIZ
+  460 CONTINUE
+C
+C     FIND THE  NARTIF  SMALLEST SUCH COLUMNS.
+C     THIS IS AN EXPENSIVE LOOP.  LATER WE CAN REPLACE IT
+C     BY A 4-PASS PROCESS (SAY), ACCEPTING THE FIRST COL THAT
+C     IS WITHIN  T  OF  COLMIN, WHERE  T = 0.0, 0.001, 0.01, 0.1 (SAY).
+C
+      DO 520 IDUMMY = 1, NCOLZ
+         COLMIN = FLMAX
+         JMIN = 1
+         DO 480 J = 1, N
+            IF (ISTATE(J).NE.0) GO TO 480
+            IF (NCLIN.EQ.0) GO TO 500
+            COLSIZ = WRK1(J)
+            IF (COLMIN.LE.COLSIZ) GO TO 480
+            COLMIN = COLSIZ
+            JMIN = J
+  480    CONTINUE
+         J = JMIN
+  500    ISTATE(J) = 4
+         NARTIF = NARTIF + 1
+  520 CONTINUE
+C
+C ---------------------------------------------------------------------
+C     A TRIAL WORKING SET HAS NOW BEEN SELECTED.
+C ---------------------------------------------------------------------
+C     SET  KFREE  TO POINT TO THE FREE VARIABLES.
+C
+  540 NFREE = 0
+      DO 560 J = 1, N
+         IF (ISTATE(J).NE.0) GO TO 560
+         NFREE = NFREE + 1
+         KFREE(NFREE) = J
+  560 CONTINUE
+C
+C     COMPUTE THE TQ FACTORIZATION FOR THE SELECTED LINEAR CONSTRAINTS.
+C     FIRST, THE COLUMNS CORRESPONDING TO SIMPLE BOUNDS IN THE WORKING
+C     SET ARE REMOVED. THE RESULTING  NACTIV BY NFREE  MATRIX (NACTIV
+C     LE NFREE) IS FACTORIZED BY ADDING THE CONSTRAINTS ONE AT A TIME
+C     AND UPDATING USING PLANE ROTATIONS OR STABILIZED ELIMINATIONS.
+C     THE  NACTIV BY NACTIV  TRIANGULAR MATRIX  T  AND THE NFREE BY
+C     NFREE MATRIX  Q  ARE STORED IN THE ARRAYS  RT  AND  ZY.
+C
+      NCOLZ = NFREE
+      IF (NACTIV.EQ.0) GO TO 620
+      NACT1 = NACTIV
+      NACTIV = 0
+      CALL E04VDP(ORTHOG,UNITQ,INFORM,1,NACT1,NACTIV,NCOLZ,NFREE,N,
+     *            NCTOTL,NQ,NROWA,NROWRT,NCOLRT,ISTATE,KACTIV,KFREE,
+     *            CONDMX,A,QTG,RT,ZY,WRK1,WRK2)
+C
+C     IF A VERTEX IS REQUIRED BUT  E04VDP  WAS UNABLE TO ADD ALL OF THE
+C     SELECTED GENERAL CONSTRAINTS, ADD MORE TEMPORARY BOUNDS.
+C
+      IF ( .NOT. VERTEX .OR. NCOLZ.EQ.0) GO TO 620
+      LENQ = NQ*(NQ-1) + 1
+      NCOLZ1 = NCOLZ
+      DO 600 IDUMMY = 1, NCOLZ1
+         ROWMAX = ZERO
+         DO 580 I = 1, NFREE
+            RNORM = DNRM2(NCOLZ,ZY(I,1),NQ)
+            IF (ROWMAX.GE.RNORM) GO TO 580
+            ROWMAX = RNORM
+            IFIX = I
+  580    CONTINUE
+         JADD = KFREE(IFIX)
+         CALL E04VDZ(.FALSE.,.FALSE.,ORTHOG,UNITQ,INFORM,IFIX,IADD,JADD,
+     *               NACTIV,NCOLZ,NCOLZ,NFREE,N,NQ,NROWA,NROWRT,NCOLRT,
+     *               KFREE,CONDMX,CSLAST,SNLAST,A,QTG,RT,ZY,WRK1,WRK2)
+C
+         NFREE = NFREE - 1
+         NCOLZ = NCOLZ - 1
+         NARTIF = NARTIF + 1
+         ISTATE(JADD) = 4
+  600 CONTINUE
+C
+C     SET ELEMENTS  NACTIV + 1, ......, NACTIV + NFIXED  OF  KACTIV TO
+C     POINT TO THE FIXED VARIABLES.
+C
+  620 KB = NACTIV
+      DO 640 J = 1, N
+         IF (ISTATE(J).EQ.0) GO TO 640
+         KB = KB + 1
+         KACTIV(KB) = J
+  640 CONTINUE
+C
+C ---------------------------------------------------------------------
+C     THE TQ FACTORIZATION HAS BEEN COMPUTED.  FIND THE POINT CLOSEST TO
+C     THE USER-SUPPLIED  X  THAT LIES ON THE INITIAL WORKING SET.
+C ---------------------------------------------------------------------
+C     SET WRK1 = RESIDUALS FOR CONSTRAINTS IN THE WORKING SET.
+C
+      IF (NACTIV.EQ.0) GO TO 680
+      DO 660 I = 1, NACTIV
+         K = KACTIV(I)
+         J = N + K
+         BND = BL(J)
+         IF (ISTATE(J).GT.1) BND = BU(J)
+         WRK1(I) = BND - DDOT(N,A(K,1),NROWA,X,1)
+  660 CONTINUE
+C
+C     SOLVE FOR P, THE SMALLEST CORRECTION TO X THAT GIVES A POINT
+C     ON THE CONSTRAINTS IN THE WORKING SET.
+C     FIRST SOLVE  T*WRK1 = RESIDUALS, THEN GET  P = Y*WRK1.
+C
+      IDIAG = 1
+      CALL F04YAZ(2,NACTIV,RT(1,NCOLZ+1),NROWRT,WRK1,IDIAG)
+      CALL F06FBF(N,ZERO,P,1)
+      CALL DCOPY(NACTIV,WRK1,1,P(NCOLZ+1),1)
+      CALL E04VDN(2,N,NACTIV,NCOLZ,NFREE,NQ,UNITQ,KACTIV,KFREE,P,ZY,
+     *            WRK1)
+      CALL DAXPY(N,ONE,P,1,X,1)
+C
+C ---------------------------------------------------------------------
+C     COMPUTE THE 2-NORM OF  X.
+C     INITIALIZE  AX  FOR ALL GENERAL CONSTRAINTS.
+C ---------------------------------------------------------------------
+  680 XNORM = DNRM2(N,X,1)
+      IF (NCLIN.EQ.0) GO TO 720
+      CALL F06FBF(NCLIN,ZERO,AX,1)
+      DO 700 J = 1, N
+         IF (X(J).NE.ZERO) CALL DAXPY(NCLIN,X(J),A(1,J),1,AX,1)
+  700 CONTINUE
+C
+C     A POINT THAT SATISFIES THE INITIAL WORKING SET HAS BEEN FOUND.
+C
+  720 NCOLZ = NFREE - NACTIV
+      NFIXED = N - NFREE
+      IF (MSG.GE.80) THEN
+         WRITE (REC,FMT=99999) NFIXED, NARTIF, NACTIV
+         CALL X04BAF(NOUT,REC(1))
+         CALL X04BAF(NOUT,REC(2))
+         CALL X04BAF(NOUT,REC(3))
+         WRITE (REC,FMT=99997)
+         CALL X04BAF(NOUT,REC(1))
+         CALL X04BAF(NOUT,REC(2))
+         DO 740 I = 1, N, 5
+            WRITE (REC,FMT=99995) (X(J),J=I,MIN(N,I+4))
+            CALL X04BAF(NOUT,REC(1))
+  740    CONTINUE
+      END IF
+      RETURN
+C
+C
+C     END OF E04MBX (LPCRSH)
+99999 FORMAT (/' E04MBX.  WORKING SET SELECTED ...',/' BOUNDS =',I5,4X,
+     *       'TEMPORARY BOUNDS =',I5,4X,'GENERAL LINEAR =',I5)
+99998 FORMAT (/' LP VARIABLES BEFORE CRASH...')
+99997 FORMAT (/' LP VARIABLES AFTER  CRASH...')
+99996 FORMAT (/' //E04MBX//  LCRASH NCLIN NCTOTL',/' //E04MBX//',3I7)
+99995 FORMAT (5G12.3)
+      END

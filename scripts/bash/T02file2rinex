@@ -1,0 +1,41 @@
+#!/bin/bash
+# needed_commands runpkr00 teqc echo
+
+. "$scripts_bash_dir"/utilities.bash
+
+if [[ $# -lt 1 || $# -gt 2 ]] ; then
+    echo 'usage: T02file2rinex file.T02 [week]'
+    exit 1
+fi
+
+T02="$1"
+nw=$(echo "$T02" | wc -w)
+if [[ $nw != 1 ]] ;then
+    echo "can't handle file with space"
+    exit $EX_SOFTWARE
+fi
+
+week=""
+if [[ -n $2 ]] ; then
+    week="-week $2"
+fi
+
+check_file $T02
+
+file=$(basename $T02)
+txt=${file/.T02/.txt}
+tgd=${file/.T02/.tgd}
+rnx=${file/.T02/.O}
+err=${file/.T02/.err}
+
+for f in $(echo "$txt $tgd $rnx $err") ; do
+    if [[ -e $f ]] ; then
+	echo "file $f already exist!"
+	echo "none of these files could exist: $txt $tgd $rnx $err"
+	exit $EX_SOFTWARE
+    fi
+done
+
+echo $T02 > $txt
+runpkr00 -g -d @$txt $tgd
+teqc $week $tgd > $rnx 2> $err

@@ -1,0 +1,295 @@
+\documentstyle[12pt]{article}
+\setlength{\textheight}{23cm}
+\setlength{\textwidth}{16cm}
+\setlength{\oddsidemargin}{0.25in}
+\setlength{\topmargin}{-0.5in}
+%\setlength{\parskip}{.5in}
+\title{Errors Bars for Transfer Function Elements in Z--files}
+\author{Gary D. Egbert\thanks{College of Oceanic and Atmospheric Sciences, Oregon State University, Corvallis; egbert@oce.orst.edu}}
+
+\begin{document}
+
+\maketitle
+
+\section{File Format}
+
+The Z--files contain all information needed to compute standard
+transfer functions (e.g., impedances), with error bars in any coordinate
+system.  Here is an overview of the format, followed by an
+artificial example, with some annotation off to the side.
+The basic idea is that there are {\it NCH} channels, with the first
+two used as the ``local reference''i.e., these are the input
+or predictor channels (classically the local horizontal  magnetics), and
+the remaining {\it NCH-2} are the output or predicted channels (the electrics,
+and/or vertical magnetics).  Note that there might also have been
+another pair of channels (or a whole array) used as a remote reference.
+These possible other channels are not referred to explicitly in this
+file (but they were used to compute the contents of the file).  A
+file of this same format can in principle be produced from single
+station, standard remote reference, or the multiple station program.
+This effects how the contents of this file was created, but not
+any subsequent calculations using this file.
+
+In overview, the file is ASCII, with a short header block
+which identifies the {\it NCH} channels.
+There are then a series of {\it NBANDS} blocks,
+one for each period for which an estimate has been computed.
+Each period block contains three complex arrays:
+
+1) {\bf Z} : the transfer function (TF) array.  This array is {\it NCH-2} rows
+by 2 columns.  For {\it NCH = 4},
+with two reference channels $H_x$ and $H_y$,
+and two predicted channels $E_x$ and $E_y$, {\bf Z} is just the impedance
+tensor.
+
+2) {\bf S} : the ``inverse signal covariance'' array.  This is a $2 \times 2$
+Hermitian matrix.  Only the 3 elements corresponding to the part
+on and below the diagonal are actually in the file.  These elements
+are given in the order $S_{11}$, $S_{21}$, $S_{22}$.  The missing element
+satisfies $S_{12}$ = ${S_{21}}^*$, where the superscript asterisk denotes
+the complex conjugate.  Note that in the case of a single station
+impedance estimate {\bf S} is just the inverse of the ${\bf H}$ cross power
+matrix.  The exact form is slightly different for the case of remote reference
+or array results.  This matrix is needed for the error calculation.
+(Actually only the diagonal elements, which are real,
+are needed unless you rotate the coordinate systems).
+
+3) {\bf N} the residual covariance matrix.  
+This is an $(NCH-2) \times (NCH-2)$ Hermitian matrix,
+output in the same symmetric form as {\bf S}.  This
+gives the covariance of the residuals
+for all predicted channels.  Again,
+only the diagonals (also real) of this matrix are needed for 
+error calculations in the ``default'' coordinate system, but 
+other parts of the matrix will be used for a correct treatment of 
+coordinate changes/rotations.
+
+
+(Mike: Actually there might be a slight difference
+in the header block format in the version you have; this is
+for the most recent version, and I'm not sure exactly what Clark is
+using).
+
+\small
+\begin{verbatim}
+ TRANSFER FUNCTIONS IN MEASUREMENT COORDINATES    <====  line 1 of file
+ ********** WITH FULL ERROR COVARAINCE*********
+                                                                                
+S2                                             <===== some sort of "station" id
+coordinate    49.28   102.91 declination    0.00    <=== station coordinates
+number of channels   5   number of frequencies  26  <===  NCH, NBANDS
+ orientations and tilts of each channel 
+    5     0.00     0.00 S2H  Hx     <===  for each channel in this "station":
+    6    90.00     0.00 S2H  Hy     (1) channel number (this came from multmtrn
+    7     0.00     0.00 S2H  Hz         and so the #s aren't 1,2 ... ;
+    8     0.00     0.00 S2E  Ex      (2) orientation (deg. E of N);  (3) tilt ;
+    9    90.00     0.00 S2E  Ey      (4) Data loger ID  (5) channel type
+ 
+period :      4.65455    decimation level   1    freq. band from   25 to   30
+number of data point   2496 sampling freq.   1.000 Hz   <=== info about 1 band
+ Transfer Functions
+  0.2498E+00 -0.2049E-03 -0.9341E-04  0.2517E+00
+ -0.6246E-02 -0.5245E-01 -0.7291E+01 -0.7318E+01       <=== Z
+  0.7292E+01  0.7346E+01 -0.3806E-01  0.5754E-02
+ Inverse Coherent Signal Power Matrix
+  0.2947E-07  0.5753E-16                               <=== S
+ -0.1575E-09  0.1391E-09  0.2895E-07  0.2386E-15
+ Residual Covariance
+  0.3198E+02  0.0000E+00
+  0.2252E+03 -0.2185E+03  0.2660E+05  0.0000E+00        <=== N
+  0.2424E+03  0.2418E+03  0.4577E+03  0.3710E+03  0.2781E+05  0.0000E+00
+\end{verbatim}
+\normalsize
+
+The block given above for one period should be pretty much self explanatory.
+Note that the last two rows of the TF matrix are the
+local impedance tensor.
+
+\section{Error Calculation}
+
+First I just give the formula for calculating errors in the
+TF given in the files (i.e., in the ``default''
+measurement coordinate system).  Next, I'll give formulas for
+transforming the matrices {\bf Z, S, N} into a different
+coordinate system (not necessarily by rotation).  The initial formulas
+for TF error in the measurement coordinate system
+can then be applied to the transformed 
+matrices.  Finally, linear error propagation is applied to give
+the standard error estimates for $\rho_a$ and $\phi$ computed
+from the off-diagonal elements of the impedance.
+
+\subsection{Errors In Transfer Functions}
+
+The error covariance for the elements of the transfer
+function matrix {\bf Z} is given by:
+\begin{equation}
+{\bf Cov} [ Z_{ij} Z_{i'j'} ] = N_{ii'} S_{jj'} \,\,\,\,\,\,\, j, j' = 1,2 
+\,\,\,\,\,\,,\  i, i' = 1,NCH-2   .
+\label{eq1}
+\end{equation}
+You will normally only care about the variances (i.e., the case where
+$i = i'$ and $j = j'$).  In this case you would use only the
+diagonal elements of {\bf S} and {\bf N}.  In the following I
+refer to these variances as
+\begin{equation}
+{\sigma_{ij}}^2 = 
+{\bf Var} [ Z_{ij} ] = {\bf Cov} [ Z_{ij} Z_{ij} ] = 
+N_{ii} S_{jj} .
+\label{eq2}
+\end{equation}
+For example, the impedance element $Z_{xy} ( = E_x / H_y )$
+in the above example is element (2,2) (row = i = 2, column = j = 2)
+in the TF matrix {\bf Z}.  The error variance is obtained from the product
+of the second diagonal element of the inverse coherent signal
+power matrix $S_{22}$, and the second diagonal element of the residual
+covariance $N_{22}$.  The other off-diagonal impedance element $Z_{yx}$
+corresponds to $i = 3$ and $j = 1$, and the variance 
+is $\sigma_{31} = N_{33} S_{11}$.
+Note that this gives the variances of the complex transfer
+functions; variances of real and
+imaginary parts separately are each one half of the complex variance
+given by (\ref{eq1}).
+
+\subsection{Transformation Of Transfer Functions and Errors}
+
+The transformation of error covariance can be computed for
+any linear transformation of the predicted and predictor
+channels.  Here I just give expressions
+for the most standard rotations.  Denote by $\theta_1 , \theta_2 , ...
+\theta_{NCH}$ the channel orientations (these are given in the header
+block of the Z\_ file).
+Let $\theta$ be the desired rotation of the $x-$axis, relative to
+the same reference direction used to define the channel orientations
+(e.g., geographic or geomagnetic north).  Note that the sort of coordinate
+changes we focus on here implicitly involve pairs of channels (the two
+reference magnetics; a pair of electric channels).  Vertical magnetics
+are not rotated (well ... we {\it could} get into allowing for tilt ...),
+and when there are multiple electrics, it will be necessary to identify
+pairs of channels to transform together.  I thus describe transformation
+of one pair of channels at a time, say channels $l, m$.  Form the matrix
+\begin{equation}
+{\bf U_{lm}}  =
+\left [
+\matrix { \cos ( \theta_l - \theta ) & \sin ( \theta_l - \theta ) \cr
+          \cos ( \theta_l - \theta ) & \sin ( \theta_m - \theta ) \cr}
+\right ] ^{-1}
+\label{rotmat}
+\end{equation}
+
+Note that if you form the 2-vector ${\bf x }$ from the $(l, m)$
+pair of measured data channels, then ${\bf U_{lm}} { \bf x}$ gives the
+vector expressed in the new right-handed orthogonal coordinate system
+(with $x-$axis pointing
+in the direction $\theta$ degrees E of the reference direction).
+Note that in the ``usual'' MT case where
+there is one pair of reference channels $H_x$, $H_y$ and one pair
+of predicted channels $E_x$, $E_y$, and both are expressed in
+the same orthogonal coordinate system, then the same matrix ${\bf U_{lm}}$
+would be used for coordinate transformation of
+both pairs, and we would also have
+$\theta_m = \theta_l + 90$.  In this case ${\bf U_{lm}}$ would
+reduce to the more familiar form for the impedance tensor
+rotation matrix.  The formulas given here work for any orientations,
+including the case of non-orthogonal measurment component pairs.
+
+First consider transformation of the predicting channels $l = 1$,
+$m = 2$ (normally these would be $H_x$, $H_y$).
+${\bf Z}$ and ${\bf S}$ are effected
+by this part of the transformation.  In the new coordinate system the
+matrices are:
+\begin{equation}
+{\bf Z'} = {\bf Z U_{12}}^T    \,\,\,\,\,\,\,\,\,\,\,\,
+{\bf S'} = {\bf U_{12} S U_{12}}^T
+\label{hxf}
+\end{equation}
+The output residual covariance ${\bf N}$ of course remains unchanged
+by a transformation of only the input channels. 
+
+Next consider transformation of two 
+of the output channels, $3 \le l, m \le NCH$.
+(Note the numbering convention: output channels start with 3, and go to $NCH$,
+for a total of $NCH-2$).  The simplest way to express the result in
+general is to define an $(NCH-2) \times (NCH-2)$ 
+transformation matrix ${\bf V_{lm}}$ which rotates only channels $l$ and $m$.
+For the example file above, where $NCH = 5$,
+the matrix for
+rotating the coordinate system for the pair of electric field channels
+(i.e., $l = 4, m = 5$), ${\bf V_{45}}$ would take the form
+\begin{equation}
+{\bf V_{45}}  =
+\left [
+\matrix {   1 & 0 & 0 \cr
+         0 & \cos ( \theta_4 - \theta ) & \cos ( \theta_5 - \theta ) \cr
+         0 & \sin ( \theta_4 - \theta ) & \sin ( \theta_5 - \theta ) \cr}
+\right]  .
+\label{vdef}
+\end{equation}
+More generally the following pseudo-code defines ${\bf V_{lm}}$,
+assuming $l < m$:
+
+\begin{list} {} {\leftmargin=2em}
+\item ${\bf V_{lm}} = (NCH-2) \times (NCH-2)$ identity  matrix
+\item ${\bf V_{lm}}(l-2,l-2) =  \cos ( \theta_l - \theta )$
+\item ${\bf V_{lm}}(m-2,l-2) =  \sin ( \theta_l - \theta )$
+\item ${\bf V_{lm}}(l-2,m-2) =  \cos ( \theta_m - \theta )$
+\item ${\bf V_{lm}}(m-2,m-2) =  \sin ( \theta_m - \theta )$
+\end{list}
+With ${\bf V_{lm}}$ thus defined the transformations of {\bf Z} and {\bf N} are:
+\begin{equation}
+{\bf Z'} = {\bf V_{lm} Z }   \,\,\,\,\,\,\,\,\,\,\,\,
+{\bf N'} = {\bf V_{lm} N V_{lm} }^T
+\label{rxf}
+\end{equation}
+In general both input and output channels will be rotated, so
+both (\ref{hxf}) and (\ref{rxf}) will be used.  In the 5 channel
+example given above the full transfromation of all arrays is thus:
+\begin{equation}
+{\bf Z'} = {\bf V_{45} Z U_{12} } \sp {T}   \,\,\,\,\,\,\,\,\,\,\,\,
+{\bf S'} = {\bf U_{12} S U_{12} } \sp {T}   \,\,\,\,\,\,\,\,\,\,\,\,
+{\bf N'} = {\bf V_{45} N V_{45} }^T .
+\label{hexf}
+\end{equation}
+More generally
+there may be a series of electric field pairs, requiring that
+(\ref{rxf}) be applied for each pair.  Note that in this case
+a single matrix {\bf V} can be derived which transforms all
+channel pairs, by starting with the $(NCH-2) \times (NCH-2)$
+identity matrix and modifying the
+appropriate four elements of {\bf V} for each pair $l, m$.
+Error (co)variances for the transformed impedance elements are then as
+given in (\ref{eq2}) and (\ref{eq1}), with ${\bf N'}$ and ${\bf S'}$
+replacing {\bf N} and {\bf S}.
+
+\section{Apparent Resistivities and Phases}
+
+After transforming all three arrays,
+apparent resistivities ($\rho_a$), phases ($\phi$) and error
+bars ($\sigma_{\rho}; \sigma_{\phi}$) can be computed from 
+the appropriate off-diagonal impedance
+elements (say $Z_{ij}$), the period $T$,
+and the associated error variance $\sigma_{ij}$ given above.
+For completness here are the expressions derived from linear
+propogation of errors, under the assumption that errors are small
+compared to the impedance.
+
+$$
+\rho_a = { { T | Z_{ij} |^2 } \over {5} }
+$$
+
+$$
+\sigma_{\rho} = \left [ {{ ( 2T \rho {\sigma_{ij}}^2 } \over 5 } \right ]
+\sp {1/2}
+$$
+
+$$
+\phi = { 180 \over \pi }  \arctan [ \Im ( Z_{ij} ) / \Re ( Z_{ij} ) ] 
+$$
+
+$$
+\sigma_{\phi}  = { 180 \over { \pi | Z_{ij} | } }
+\left [ { {\sigma_{ij}}^2 \over 2 }
+\right ] \sp {1/2}
+$$
+
+\end{document}
+

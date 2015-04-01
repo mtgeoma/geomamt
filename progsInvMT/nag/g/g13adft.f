@@ -1,0 +1,101 @@
+      SUBROUTINE G13ADF(MR,R,NK,XV,NPAR,WA,NWA,PAR,RV,ISF,IFAIL)
+C     MARK 9 RELEASE. NAG COPYRIGHT 1981.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     G13ADF CALCULATES PRELIMINARY ESTIMATES OF THE
+C     PARAMETERS OF AN AUTOREGRESSIVE MOVING-AVERAGE
+C     (ARMA) MODEL FROM AN AUTOCORRELATION FUNCTION.
+C
+C     CONTRIBUTORS - G. TUNNICLIFFE WILSON, M. HURLEY (LANCASTER U.)
+C     VALIDATOR    - T. LAMBERT (NAG CENTRAL OFFICE)
+C
+C     ALGORITHM DUE TO G.E.P. BOX AND G.M. JENKINS,
+C     TIME SERIES ANALYSIS FORECASTING AND CONTROL
+C     (HOLDEN DAY) PART 5 PROGRAM 2
+C
+C     USES NAG LIBRARY ROUTINES G13ADZ, P01AAF
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='G13ADF')
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  RV, XV
+      INTEGER           IFAIL, NK, NPAR, NWA
+C     .. Array Arguments ..
+      DOUBLE PRECISION  PAR(NPAR), R(NK), WA(NWA)
+      INTEGER           ISF(4), MR(7)
+C     .. Local Scalars ..
+      INTEGER           I, IERROR, M1, M2, M3, M4
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      INTEGER           P01ABF
+      EXTERNAL          P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          G13ADZ
+C     .. Intrinsic Functions ..
+      INTRINSIC         MAX
+C     .. Executable Statements ..
+      IERROR = 1
+C
+C     CHECK ORDERS VECTOR
+C
+      DO 20 I = 1, 7
+         IF (MR(I).LT.0) GO TO 80
+   20 CONTINUE
+      M4 = MR(1) + MR(3) + MR(4) + MR(6)
+      IF (M4.LE.0) GO TO 80
+      IF (MR(7).EQ.1) GO TO 80
+      M2 = MR(4) + MR(5) + MR(6)
+      IF (MR(7).EQ.0 .AND. M2.GT.0) GO TO 80
+      IF (MR(7).NE.0 .AND. M2.EQ.0) GO TO 80
+C
+C     CHECK THE VALUE OF NK
+C
+      IERROR = 2
+      M1 = MR(1) + MR(3)
+      M3 = MR(7)*(MR(4)+MR(6))
+      IF (NK.LT.M1 .OR. NK.LT.M3) GO TO 80
+C
+C     CHECK THE AUTOCORRELATIONS VECTOR
+C
+      IERROR = 3
+      DO 40 I = 1, NK
+         IF (R(I).GT.1.0D0 .OR. R(I).LT.(-1.0D0)) GO TO 80
+   40 CONTINUE
+C
+C     CHECK SAMPLE VARIANCE
+C
+      IERROR = 4
+      IF (XV.LE.0.0D0) GO TO 80
+C
+C     CHECK VALUE OF NPAR
+C
+      IERROR = 5
+      IF (NPAR.NE.M4) GO TO 80
+C
+C     CHECK WORK ARRAY SIZE
+C
+      IERROR = 6
+      M1 = MAX(MR(1),MR(4))
+      M2 = M1*M1 + M1
+      M3 = MAX(MR(3),MR(6))
+      M4 = 4*(M3+1)
+      M1 = MAX(M2,M4)
+      IF (NWA.LT.M1) GO TO 80
+C
+C     IF THIS POINT IS REACHED, PARAMETER VALUES ACCEPTABLE
+C
+      CALL G13ADZ(R,NK,MR,XV,PAR,NPAR,WA,NWA,RV,ISF)
+      IERROR = 7
+      DO 60 I = 1, 4
+         IF (ISF(I).EQ.-1) GO TO 80
+   60 CONTINUE
+      IFAIL = 0
+      RETURN
+C
+C     COME HERE IF ERRORS
+C
+   80 IFAIL = P01ABF(IFAIL,IERROR,SRNAME,0,P01REC)
+      RETURN
+      END

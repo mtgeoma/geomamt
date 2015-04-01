@@ -1,0 +1,10 @@
+#!/bin/csh
+# os arquivos de calibracao fazem a correcao para [T]^-1 e [V/m]^-1
+# estre script recupera (em amplitude) a correcao para [nT] e [uV]
+# obs: [uV/m]=[mV/km]
+#
+# canais magneticos:
+awk '{if(NR>0) {printf "%12.6f\n",sqrt($2*$2 + $3*$3)}}' ./sys/1174909ahx.cal | awk 'BEGIN{x=0; x2=0}{x=x+$1; x2=x2+$1*$1}END{printf "%d %12.6f %12.6f\n", NR, sqrt((x2-(x*x)/NR)/NR), sqrt((x2-(x*x)/NR)/NR)*NR/x}'
+awk '{if(NR>8) {printf "%12.6f\n",sqrt($2*$2 + $3*$3)}}' ./sys/1174909ahx.cal | awk 'BEGIN{x=0; x2=0}{x=x+$1; x2=x2+$1*$1}END{printf "%d %12.6f %12.6f\n", NR, sqrt((x2-(x*x)/NR)/NR), sqrt((x2-(x*x)/NR)/NR)*NR/x}'
+awk '{if(NR>16) {printf "%12.6f\n",sqrt($2*$2 + $3*$3)}}' ./sys/1174909ahx.cal | awk 'BEGIN{x=0; x2=0}{x=x+$1; x2=x2+$1*$1}END{printf "%d %12.6f %12.6f\n", NR, sqrt((x2-(x*x)/NR)/NR), sqrt((x2-(x*x)/NR)/NR)*NR/x}'
+awk '{if(NR>24) {printf "%12.6f\n",sqrt($2*$2 + $3*$3)}}' ./sys/1174909ahx.cal | awk 'BEGIN{x=0; x2=0}{x=x+$1; x2=x2+$1*$1}END{printf "%d %12.6f %12.6f\n", NR, sqrt((x2-(x*x)/NR)/NR), sqrt((x2-(x*x)/NR)/NR)*NR/x}'

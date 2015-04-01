@@ -1,0 +1,72 @@
+      SUBROUTINE G13BFS(F,R,ALPHA,NPD,PHI,NP,SPHI,NPS,DVA,IDDV,NS,V)
+C     MARK 11 RELEASE. NAG COPYRIGHT 1983.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     SUBROUTINE G13BFS OBTAINS THE DERIVATIVE VECTOR USED
+C     IN THE ALGORITHM WHICH SUPPLIES ADDITIONAL CORRECTIONS
+C     TO THE AUTO-REGRESSIVE PARAMETER DERIVATIVES WHEN
+C     EXACT OR MARGINAL ESTIMATION IS SPECIFIED
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  V
+      INTEGER           IDDV, NP, NPD, NPS, NS
+C     .. Array Arguments ..
+      DOUBLE PRECISION  ALPHA(NPD), DVA(IDDV), F(NPD), PHI(NPD), R(NPD),
+     *                  SPHI(NPD)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  ZERO
+      INTEGER           I, J, K, KDV, L
+C     .. External Subroutines ..
+      EXTERNAL          G13BFU
+C     .. Data statements ..
+      DATA              ZERO/0.0D0/
+C     .. Executable Statements ..
+      DO 20 I = 1, IDDV
+         DVA(I) = ZERO
+   20 CONTINUE
+      DO 40 I = 1, NPD
+         ALPHA(I) = ZERO
+   40 CONTINUE
+      KDV = 0
+      IF (NP.LE.0) GO TO 100
+C
+C     PROCESS THE PHI PARAMETERS
+C
+      DO 80 I = 1, NP
+         KDV = KDV + 1
+C
+C        CALCULATE ALPHA, THE G-MULTIPLIER, FOR THE FIRST TERM
+C
+         CALL G13BFU(F,R,ALPHA,NPD,I,V)
+         DVA(KDV) = -ALPHA(I)
+         IF (NPS.LE.0) GO TO 80
+         DO 60 J = 1, NPS
+            K = I + J*NS
+C
+C           CALCULATE THE G-MULTIPLIER FOR THE REMAINING TERMS
+C
+            CALL G13BFU(F,R,ALPHA,NPD,K,V)
+C
+C           BUILD UP THE DERIVATIVE VECTOR
+C
+            DVA(KDV) = DVA(KDV) + SPHI(J)*ALPHA(K)
+   60    CONTINUE
+   80 CONTINUE
+  100 IF (NPS.LE.0) GO TO 160
+C
+C     REPEAT THE ABOVE PROCESS FOR THE SPHI PARAMETERS
+C
+      DO 140 I = 1, NPS
+         KDV = KDV + 1
+         K = I*NS
+         CALL G13BFU(F,R,ALPHA,NPD,K,V)
+         DVA(KDV) = -ALPHA(K)
+         IF (NP.LE.0) GO TO 140
+         DO 120 J = 1, NP
+            L = K + J
+            CALL G13BFU(F,R,ALPHA,NPD,L,V)
+            DVA(KDV) = DVA(KDV) + PHI(J)*ALPHA(L)
+  120    CONTINUE
+  140 CONTINUE
+  160 RETURN
+      END

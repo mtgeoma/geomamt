@@ -1,0 +1,65 @@
+
+rhoplus.f     Fortran program to invert MT data (self-contained)
+
+              After compiling this program, running it with no
+                arguments or re-directed input enters interactive mode.
+              Entering "?" displays on-line documentation.
+
+              It is our intention to make this code as portable as possible.
+
+              This program has been compiled in the following environments:
+                Solaris 1 (BSD 4.1) on Sparc
+                Solaris 2 on Sparc
+                WATCOM fortran on Pentium PC
+                Convex
+
+              If you successfully compile in a different environment
+                and the test cases run properly, please send a message
+                to:
+
+                     booker@geophys.washington.edu
+
+              If you have have to modify anything to compile or run
+                successfully, please also send a message. We will
+                incorporate changes that do not lead to problems with
+                other compilers.
+
+****************************************************************************
+              ALWAYS IDENTIFY THE RELEASE DATE in any message!
+              The date is in the fifth line of the code. It will be
+                in the first line of screen output and appears in
+                the first line of the general output and debug files.
+****************************************************************************
+
+SUB-DIRECTORIES
+
+tests:          directory with test cases
+
+  in/name.dat   Input files for tests discussed in documentation.
+                These files are to be re-directed to standard input of the
+                  compiled program -OR- can be run using the command
+                  "read name.dat" if you are running interactively
+                  in the directory containing the file name.dat.
+                  If you are running in another directory, you will need
+                  to specify the path to the .dat file relative to the
+                  directory you are in when you start the program.
+
+  out/files     Output files for tests in documentation
+
+docs:         directory with following files
+
+  rhoplus.doc   Documentation text file that can be typeset with troff.
+                It has both equations and tables and uses ms macros.
+                This file can be read in any text editor if you cannot
+                  read postscript or use troff. The meanings of the
+                  equations and tables is obvious.
+
+Following can be sent to a postscript printer or viewed with ghostscript
+
+  doc.ps        postscript file of documentation
+
+  fig1.ps       postscript file to accompany doc.ps
+  fig2.ps       postscript file to accompany doc.ps
+  fig3.ps       postscript file to accompany doc.ps
+
+

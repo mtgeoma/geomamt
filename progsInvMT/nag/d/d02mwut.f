@@ -1,0 +1,146 @@
+      SUBROUTINE D02MWU(T,K,YH,NYH,DKY,IFLAG,NEQ,H,TN,HU)
+C     MARK 14 RELEASE. NAG COPYRIGHT 1989.
+C-----------------------------------------------------------------------
+C  TIME INTERPOLATION ROUTINE FOR THETA METHODS.
+C  THIS ROUTINE IMPLEMENTS A C1 CONTINUOUS INTERPOLANT BASED ON A
+C  HERMITE CUBIC INTERPOLATING POLYNOMIAL.
+C----------------------------------------------------------------------
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  H, HU, T, TN
+      INTEGER           IFLAG, K, NEQ, NYH
+C     .. Array Arguments ..
+      DOUBLE PRECISION  DKY(*), YH(NYH,4)
+C     .. Scalars in Common ..
+      DOUBLE PRECISION  DUNFLO, THETB, UROUND
+      INTEGER           IOVFLO
+C     .. Arrays in Common ..
+      DOUBLE PRECISION  DUMMY(1)
+      INTEGER           IDUMMY(2)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  C1, C2, C3, C4, D1, D2, HRAT, OVTH, S, SSQ,
+     *                  THETA, TP
+      INTEGER           I, N
+C     .. External Subroutines ..
+      EXTERNAL          D02NNQ
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS
+C     .. Common blocks ..
+      COMMON            /AD02MW/THETB, DUMMY, IDUMMY
+      COMMON            /FD02NM/DUNFLO, UROUND, IOVFLO
+C     .. Save statement ..
+      SAVE              /AD02MW/, /FD02NM/
+C     .. Executable Statements ..
+C-----------------------------------------------------------------------
+C D02MWU COMPUTES INTERPOLATED VALUES OF THE K-TH DERIVATIVE OF THE
+C DEPENDENT VARIABLE VECTOR Y, AND STORES IT IN DKY.  THIS ROUTINE
+C IS CALLED WITHIN THE PACKAGE WITH K = 0 AND T = TOUT, BUT MAY
+C ALSO BE CALLED BY THE USER FOR ANY K UP TO TWO.
+C THE INPUT PARAMETERS ARE..
+C
+C T         = VALUE OF INDEPENDENT VARIABLE WHERE ANSWERS ARE DESIRED
+C             (NORMALLY THE SAME AS THE T LAST RETURNED BY INTEGRATOR).
+C             FOR VALID RESULTS, T MUST LIE BETWEEN TCUR - HU AND TCUR.
+C             (SEE OPTIONAL OUTPUTS FOR TCUR AND HU.)
+C K         = INTEGER ORDER OF THE DERIVATIVE DESIRED.  K MUST SATISFY
+C             0 .LE. K .LE. TWO . THE CAPABILITY CORRESPONDING
+C             TO K = 0, I.E. COMPUTING Y(T), IS ALREADY PROVIDED
+C             BY THE INTEGRATOR DIRECTLY.  THE FIRST  DERIVATIVE DY/DT I
+C             ALWAYS AVAILABLE WITH D02MWU.
+C YH        = THE HISTORY ARRAY YH.
+C             YH(I,1) CONTAINS SOLUTION AT TN
+C             YH(I,2) CONTAINS DY/DT*H AT TN
+C             YH(I,4) CONTAINS Y(TN+1) - Y(TN)
+C
+C NYH       = COLUMN LENGTH OF YH, EQUAL TO THE INITIAL VALUE OF NEQMAX
+C             IN THE CALL TO THE INTEGRATOR
+C NEQ(1)    = THE NUMBER OF ORDINARY DIFFERENTIAL EQUATIONS
+C
+C   THE NEXT THREE PARAMETERS ARE PASSED ACROSS BY COMMON BLOCKS.
+C H         = STEPSIZE PROPOSED   *
+C             FOR THE NEXT STEP   *
+C HU        = LAST STEPSIZE USED. *  THESE ARE PASSED ACROSS BY
+C TN        = THE LAST TIME LEVEL.*  THE COMMON BLOCKS LSTATS AND LSIZES
+C
+C THE OUTPUT PARAMETERS ARE..
+C
+C DKY       = A REAL ARRAY OF LENGTH NEQ CONTAINING THE COMPUTED VALUE
+C             OF THE K-TH DERIVATIVE OF Y(T).
+C IFLAG     = INTEGER FLAG, RETURNED AS 0 IF K AND T WERE LEGAL,
+C             -1 IF K WAS ILLEGAL, AND -2 IF T WAS ILLEGAL.
+C             ON AN ERROR RETURN, A MESSAGE IS ALSO WRITTEN.
+C-----------------------------------------------------------------------
+C THE COMPUTED VALUES IN DKY ARE COMPUTED BY INTERPOLATION USING THE
+C HISTORY ARRAY YH AND A CUBIC HERMITE POLYNOMIAL. DKY IS SET
+C TO THE K-TH DERIVATIVE OF THIS POLYNOMIAL AT T.
+C IFLAG IS RETURNED NEGATIVE IF EITHER K OR T IS OUT OF BOUNDS.
+C-----------------------------------------------------------------------
+      IFLAG = 0
+      N = NEQ
+      IF (K.LT.0 .OR. K.GT.2) GO TO 100
+      TP = TN - HU*(1.0D0+100.0D0*UROUND)
+      IF ((ABS(T-TN)).LE.(ABS(T*UROUND)*100.0D0) .OR. T.EQ.TN) THEN
+         S = 0.0D0
+         GO TO 20
+      END IF
+      IF ((T-TP)*(T-TN).GT.0.0D0) GO TO 120
+      S = (T-TN)/HU
+      SSQ = S*S
+C     S MUST BE IN THE RANGE (-1 , 0)
+C
+C      SET UP THE C AND D  COEFFS FOR THE INTERPOLANT
+C
+   20 CONTINUE
+      HRAT = HU/H
+      THETA = THETB
+      OVTH = 1.0D0/(1.D0-THETA)
+      C1 = -3.D0 + OVTH
+      C2 = -2.D0 + OVTH
+      C4 = HRAT*(1.0D0-THETA*OVTH)
+      C3 = C4 + HRAT
+C
+C       SET UP THE INTERPOLATION COEFFICIENTS.
+C
+      IF (K.EQ.0) THEN
+         D1 = (C1+C2*S)*SSQ
+         D2 = (C3+C4*S)*SSQ
+      ELSE IF (K.EQ.1) THEN
+         D1 = (2.0D0*C1+3.0D0*C2*S)*S/HU
+         D2 = (2.0D0*C3+3.0D0*C4*S)*S/HU
+      ELSE IF (K.EQ.2) THEN
+         D1 = (2.0D0*C1+6.0D0*C2*S)/HU**2
+         D2 = (2.0D0*C3+6.0D0*C4*S)/HU**2
+      END IF
+C
+C  NOW PERFORM THE INTERPOLATION
+C
+      IF (K.EQ.0) THEN
+         DO 40 I = 1, N
+            DKY(I) = YH(I,1) + YH(I,2)*(S*HRAT+D2) + YH(I,4)*D1
+   40    CONTINUE
+      ELSE IF (K.EQ.1) THEN
+         DO 60 I = 1, N
+            DKY(I) = YH(I,2)*(1.D0/H+D2) + YH(I,4)*D1
+   60    CONTINUE
+      ELSE IF (K.EQ.2) THEN
+         DO 80 I = 1, N
+            DKY(I) = YH(I,2)*(+D2) + YH(I,4)*D1
+   80    CONTINUE
+      END IF
+      RETURN
+C
+  100 CONTINUE
+      CALL D02NNQ(
+     *' INTERNAL TIME INTERPOLATION ROUTINE D02MWU ERROR :
+     * THE ORDER K (=I1) IS ILLEGAL',1,1,K,0,0,0.0D0,0.0D0)
+      IFLAG = -1
+      RETURN
+  120 CONTINUE
+      CALL D02NNQ(
+     *' INTERNAL TIME INTERPOLATION ROUTINE D02MWU ENTERED
+     * WITH T (=R1) ILLEGAL',1,0,0,0,1,T,0.0D0)
+      CALL D02NNQ(' T NOT IN INTERVAL TCUR - HU (= R1) TO TCUR (=R2)',1,
+     *            0,0,0,2,TP,TN)
+      IFLAG = -2
+      RETURN
+C----------------------- END OF SUBROUTINE D02MWU ----------------------
+      END

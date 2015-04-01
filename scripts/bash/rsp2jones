@@ -1,0 +1,173 @@
+#!/bin/bash
+#  rsp2jones: lê arquivos de saída xy*.rsp e yx*.rsp do rhoplus e
+#+ solta na saída padrão um arquivo no formato jones.
+# uso: ./rsp2jones arquivo_xy_rhoplus.rsp  arquivo_xy_rhoplus.rsp [saida]
+# onde a opção saida pode ser:
+#   dados: sempre toma o valor do dado
+#   modelo: sempre toma o valor do modelo
+#   composto: se dado foi descartado, toma valor do modelo, senão toma valor do dado (opção padrão)
+# ATENÇÃO: o programa é frágil, no sentido em que há poucos testes da consistência dos dados de entrada
+
+E_USAGE=64    # command line usage error
+E_DATAERR=65  # data format error
+E_NOINPUT=66  # cannot open input
+
+# função para verificar se arquivo existe e se tem permissão de leitura
+verifica_arquivo ()
+{
+    if [[ !(-f $1 && -r $1) ]]
+    then
+        if [[ !(-f $1) ]]
+        then
+            echo "arquivo \"$1\" não exite"
+        else
+            echo "arquivo \"$1\" não tem permissão de leitura"
+        fi
+        exit $E_NOINPUT
+    else
+        return 0
+    fi
+}
+
+# função rsp2comp_jones
+# transforma o arquivo *.rsp no formato jones de uma componente
+rsp2comp_jones ()
+# $1=arquivo_rhoplus.rsp
+# $2=fator_multiplicação_tensor (normalmente 1 para xy e -1 para yx)
+# $3=dados|modelo|composto
+#    dados: sempre toma o valor do dado
+#    modelo: sempre toma o valor do modelo
+#    composto: se dado foi descartado, toma valor do modelo, senão toma valor do dado
+{
+    awk -v mult=$2 -v saida=$3 'BEGIN{
+	pi=atan2(1,1)*4.0   # valor de pi
+	d2r=atan2(1,1)/45.0 # graus para radianos
+	mu=pi*4.0e-7        # valor de mu
+	EZrelativo=0.05     # erro relativo do tensor de impedância (para o caso do erro de rho e phi zerados)
+    }
+    {
+	f=$1
+	rho=$2
+	Erho=$3
+	rhoM=$4
+	phi=$5
+	Ephi=$6
+	phiM=$7
+	Z=sqrt(rho*2*pi*f*mu)
+	ZM=sqrt(rhoM*2*pi*f*mu)
+
+	if(Erho==0) { # rho foi descartado do modelo rhoplus
+	    rho_descartado=1
+	}
+	else { # rho NÃO foi descartado do modelo rhoplus
+	    rho_descartado=0
+	}
+
+	if(Ephi==0) { # phi foi descartado do modelo rhoplus
+	    phi_descartado=1
+	}
+	else { # phi NÃO foi descartado do modelo rhoplus
+	    phi_descartado=0
+	}
+	# cálculo do erro da impedância
+	# Se phi não foi descartado, calcula o erro da impedância a partir do erro phi
+	if (!phi_descartado) {
+	    EZ=(Ephi*d2r)*Z*sqrt(2)
+	}
+	else if (!rho_descartado) {
+	    EZ=Erho*sqrt(pi*f*mu/rho)
+            # EZ=Erho*sqrt(2)*pi*f*mu/Z
+	}
+	else { # se não há valor de erros, use o porcentual definido no BEGIN
+	    EZ=EZrelativo*Z
+	}
+
+        # escreve a saída de dados:
+	if (saida=="dados") {
+	    printf "%14.4e%14.4e%14.4e%14.4e%4d\n",1.0/f,mult*Z*cos(phi*d2r),mult*Z*sin(phi*d2r),EZ,1
+	}
+	else if (saida=="modelo") {
+	    printf "%14.4e%14.4e%14.4e%14.4e%4d\n",1.0/f,mult*ZM*cos(phiM*d2r),mult*ZM*sin(phiM*d2r),EZrelativo*ZM,1
+	}
+	else {
+	    if(rho_descartado) {
+		Z=ZM
+	    }
+	    if(phi_descartado) {
+		phi=phiM
+	    }
+	    printf "%14.4e%14.4e%14.4e%14.4e%4d\n",1.0/f,mult*Z*cos(phi*d2r),mult*Z*sin(phi*d2r),EZ,1
+	}
+    }' $1
+}
+
+# começo do bloco principal
+if [[ $# < 3 || $# > 4 ]]
+then
+    echo "Uso: $(basename $0) arquivo_formato_jones_original.dat xy_rhoplus.rsp yx_rhoplus.rsp [saida] > arquivo_formato_jones_rho_plus.dat"
+    echo "  onde a opção saida pode ser:"
+    echo "  dados   : sempre toma o valor do dado"
+    echo "  modelo  : sempre toma o valor do modelo"
+    echo "  composto: se dado foi descartado, toma valor do modelo, senão toma valor do dado [padrão]"
+    exit $E_USAGE
+else
+    arquivo_jones=$1
+    xy_rho_plus=$2
+    yx_rho_plus=$3
+    if [[ $# == 4 ]]
+    then
+	modo=$4
+    else
+	modo='composto'
+    fi
+fi
+
+# verifica se arquivos existem e se têm permissões de leitura
+verifica_arquivo $arquivo_jones
+verifica_arquivo $xy_rho_plus
+verifica_arquivo $yx_rho_plus
+
+# verifica se os arquivos rho_plus possuem 7 colunas:
+if [[ $(awk '{if(NF!=7)print $0}' $xy_rho_plus | wc -l) != 0 ]]
+then
+    echo "arquivo \"$xy_rho_plus\" não tem 7 colunas"
+    exit $E_DATAERR
+fi
+if [[ $(awk '{if(NF!=7)print $0}' $yx_rho_plus | wc -l) != 0 ]]
+then
+    echo "arquivo \"$yx_rho_plus\" não tem 7 colunas"
+    exit $E_DATAERR
+fi
+
+# verifica se os arquivos rho_plus possuem as mesmas frequências:
+if [[ $(paste $xy_rho_plus $yx_rho_plus | awk '{if($1!=$8)print $0}' | wc -l) != 0 ]]
+then
+    echo "arquivos \"$xy_rho_plus\" e \"$yx_rho_plus\" não têm as mesmas frequências"
+    exit $E_DATAERR
+fi
+
+# linha em que começa o bloco ZXX
+NRZXX=$(awk '{if($1=="ZXX")print NR}' $arquivo_jones)
+
+# escreve o cabeçalho (assume que é qualquer coisa antes de NRZXX)
+awk -v nr=$NRZXX '{if(NR<nr)print $0}' $arquivo_jones
+
+# escreve o bloco ZXX (todos os valores de impedância serão zeros)
+echo "ZXX SI units (ohms)" # identificação do bloco
+awk 'END{print NR}' $xy_rho_plus # No. de períodos no bloco
+awk '{printf "%14.4e%14.4e%14.4e%14.4e%4d\n",1.0/$1,0,0,0,1}' $xy_rho_plus # dados do bloco
+
+# escreve o bloco ZXY
+echo "ZXY SI units (ohms)" # identificação do bloco
+awk 'END{print NR}' $xy_rho_plus # No. de períodos no bloco
+rsp2comp_jones $xy_rho_plus 1 $modo # dados do bloco
+
+# escreve o bloco ZYX
+echo "ZYX SI units (ohms)" # identificação do bloco
+awk 'END{print NR}' $yx_rho_plus # No. de períodos no bloco
+rsp2comp_jones $yx_rho_plus -1 $modo # dados do bloco
+
+# escreve o bloco ZYY (todos os valores de impedância serão zeros)
+echo "ZYY SI units (ohms)" # identificação do bloco
+awk 'END{print NR}' $yx_rho_plus # No. de períodos no bloco
+awk '{printf "%14.4e%14.4e%14.4e%14.4e%4d\n",1.0/$1,0,0,0,1}' $yx_rho_plus # dados do bloco

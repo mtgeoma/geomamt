@@ -1,0 +1,3 @@
+[submodule "cmake/modules"]
+	path = cmake/modules
+	url = 150.163.12.77:/scratch/vcs/cmake-modules.git

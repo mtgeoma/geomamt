@@ -1,0 +1,90 @@
+      SUBROUTINE G13AFZ(MR,PAR,NPAR,C,KFC,ICOUNT,S,G,H,IH,IGH,ITC,ZSP)
+C     MARK 9 RELEASE. NAG COPYRIGHT 1981.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     G13AFZ IS THE OPTIONAL MONITORING ROUTINE FOR G13AEF
+C
+C     USES NAG LIBRARY ROUTINE X04ABF
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  C, S
+      INTEGER           IGH, IH, ITC, KFC, NPAR
+C     .. Array Arguments ..
+      DOUBLE PRECISION  G(IGH), H(IH,IGH), PAR(NPAR), ZSP(4)
+      INTEGER           ICOUNT(6), MR(7)
+C     .. Local Scalars ..
+      INTEGER           I, II, J, K, NADV, NP, NPS, NQ, NQS
+C     .. Local Arrays ..
+      CHARACTER*70      REC(2)
+C     .. External Subroutines ..
+      EXTERNAL          X04ABF, X04BAF
+C     .. Intrinsic Functions ..
+      INTRINSIC         MIN
+C     .. Executable Statements ..
+      CALL X04ABF(0,NADV)
+      NP = MR(1)
+      NQ = MR(3)
+      NPS = MR(4)
+      NQS = MR(6)
+      WRITE (REC,FMT=99999) ITC
+      CALL X04BAF(NADV,REC(1))
+      CALL X04BAF(NADV,REC(2))
+      IF (NP.GT.0) THEN
+         WRITE (REC,FMT=99998)
+         CALL X04BAF(NADV,REC(1))
+         DO 20 I = 1, NP, 5
+            WRITE (REC,FMT=99997) (PAR(J),J=I,MIN(I+4,NP))
+            CALL X04BAF(NADV,REC(1))
+   20    CONTINUE
+      END IF
+      J = NP + 1
+      K = NP + NQ
+      IF (NQ.GT.0) THEN
+         WRITE (REC,FMT=99996)
+         CALL X04BAF(NADV,REC(1))
+         DO 40 I = J, K, 5
+            WRITE (REC,FMT=99997) (PAR(II),II=I,MIN(I+4,K))
+            CALL X04BAF(NADV,REC(1))
+   40    CONTINUE
+      END IF
+      J = NP + NQ + 1
+      K = NP + NQ + NPS
+      IF (NPS.GT.0) THEN
+         WRITE (REC,FMT=99995)
+         CALL X04BAF(NADV,REC(1))
+         DO 60 I = J, K, 5
+            WRITE (REC,FMT=99997) (PAR(II),II=I,MIN(I+4,K))
+            CALL X04BAF(NADV,REC(1))
+   60    CONTINUE
+      END IF
+      J = NP + NQ + NPS + 1
+      K = NPAR
+      IF (NQS.GT.0) THEN
+         WRITE (REC,FMT=99994)
+         CALL X04BAF(NADV,REC(1))
+         DO 80 I = J, K, 5
+            WRITE (REC,FMT=99997) (PAR(II),II=I,MIN(I+4,K))
+            CALL X04BAF(NADV,REC(1))
+   80    CONTINUE
+      END IF
+      IF (KFC.EQ.1) THEN
+         WRITE (REC,FMT=99993)
+         CALL X04BAF(NADV,REC(1))
+         WRITE (REC,FMT=99997) C
+         CALL X04BAF(NADV,REC(1))
+      END IF
+      WRITE (REC,FMT=99992)
+      CALL X04BAF(NADV,REC(1))
+      WRITE (REC,FMT=99997) S
+      CALL X04BAF(NADV,REC(1))
+      RETURN
+C
+99999 FORMAT (1X,/' G13AFZ MONITORING OUTPUT - ITERATION ',I3)
+99998 FORMAT (' AUTOREGRESSIVE PARAMETERS')
+99997 FORMAT (1X,5D13.4)
+99996 FORMAT (' MOVING AVERAGE PARAMETERS')
+99995 FORMAT (' SEASONAL AUTOREGRESSIVE PARAMETERS')
+99994 FORMAT (' SEASONAL MOVING AVERAGE PARAMETERS')
+99993 FORMAT (' CONSTANT TERM')
+99992 FORMAT (' RESIDUAL SUM OF SQUARES')
+      END

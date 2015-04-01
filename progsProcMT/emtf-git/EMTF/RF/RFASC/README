@@ -1,0 +1,45 @@
+This directory contains source code to make
+a simple reformatting program to convert an ASCII
+file to the standard data file format required
+by the Fourier transform program, dnff.
+
+The file input.bin.f contains source code for reading the
+input file.  Change this file to change input file format
+
+There are three subroutines in this file:
+  ininit - opens data file, gets clock info (could read from header, do
+            other fancy things ... see rfemi)
+  frstdat - positions file at start of data (skips any header records)
+  indo - reads enough data to make one more output block
+
+Make sure that any replacement routines have the same functions,
+and the same arguments, and the rest of the program should be OK.
+
+Note that the output routines are in ../out.bin.f 
+
+Two examples of input.###.f files are provided.
+These two files give examples of how to allow for different input
+formats by changing input.###.f to suit your own needs.
+
+==> rfasc is made by linking with input.asc.f
+
+This version of input reads an ASCII file
+with format = cformat (specified in the header file format.h).
+This version assumes that the input ASCII data
+file has one sample (all channels in integers) per line, no record number,
+all data points contiguous (no gaps, no time markers),
+no data file header.
+
+A separate "clock reset file"  is required.  The clock
+file has three lines: (1) sampling rate in seconds (NOT hz !!!!),
+(2) the time of the first record in the file (yr,mo,day,hr,min, all integers)
+(3) the time of record number zero (yr,mo,day,hr,min, all integers)
+(this will be the same for all simultaneous stations, and serves
+to align data from separate files)
+With this reformatting program you have to make system parameter files
+yourself.
+
+NOTE:  THE EXACT NUMBER OF CHANNELS, AND THE INPUT FILE FORMAT
+NEED TO BE SET IN THE HEADER FILES nch.h AND format.h BEFORE COMPILATION
+The header files should come set up to test reformatting the 5 channel
+ascii file test/D/a_test

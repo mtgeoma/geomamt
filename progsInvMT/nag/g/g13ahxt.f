@@ -1,0 +1,73 @@
+      SUBROUTINE G13AHX(AEX,NST,ND,NDS,NS,KDR,UV,DV)
+C     MARK 9 RELEASE. NAG COPYRIGHT 1981.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     G13AHX SUPPLIES THE DIFFERENCED VALUE WHICH RELATES
+C     TO A NEW UNDIFFERENCED VALUE OF A TIME SERIES, AND VICE VERSA.
+C     IT ALSO MODIFIES AEX, THE ARRAY WHICH HOLDS THE
+C     DIFFERENCING INFORMATION
+C
+C
+C     CHECK ON REQUIRED OPTION
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  DV, UV
+      INTEGER           KDR, ND, NDS, NS, NST
+C     .. Array Arguments ..
+      DOUBLE PRECISION  AEX(NST)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  Q
+      INTEGER           J, K
+C     .. Executable Statements ..
+      IF (KDR.EQ.0) GO TO 80
+C
+C     START WITH DIFFERENCED VALUE
+C
+      UV = DV
+      K = NST - ND - NDS*NS + 1
+      IF (NDS.LE.0) GO TO 40
+C
+C     MODIFY AEX BY REVERSING THE SEASONAL DIFFERENCING OPERATION
+C
+      DO 20 J = 1, NDS
+         Q = UV + AEX(K)
+         AEX(K) = UV
+         UV = Q
+         K = K + NS
+   20 CONTINUE
+   40 IF (ND.LE.0) GO TO 160
+C
+C     MODIFY AEX BY REVERSING THE SIMPLE DIFFERENCING OPERATION
+C
+      DO 60 J = 1, ND
+         Q = UV + AEX(K)
+         AEX(K) = UV
+         UV = Q
+         K = K + 1
+   60 CONTINUE
+      GO TO 160
+C
+C     START WITH UNDIFFERENCED VALUE
+C
+   80 DV = UV
+      K = NST + 1
+      IF (ND.LE.0) GO TO 120
+C
+C     MODIFY AEX USING SIMPLE DIFFERENCING
+C
+      DO 100 J = 1, ND
+         K = K - 1
+         AEX(K) = DV - AEX(K)
+         DV = AEX(K)
+  100 CONTINUE
+  120 IF (NDS.LE.0) GO TO 160
+C
+C     MODIFY AEX USING SEASONAL DIFFERENCING
+C
+      DO 140 J = 1, NDS
+         K = K - NS
+         AEX(K) = DV - AEX(K)
+         DV = AEX(K)
+  140 CONTINUE
+  160 RETURN
+      END

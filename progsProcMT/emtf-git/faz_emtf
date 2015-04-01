@@ -1,0 +1,37 @@
+#!/bin/bash
+DIR_SRC=$1
+DIR_PAR=$2
+DIR_LOCAL=$PWD
+
+if [[ !(-d ${DIR_SRC}/D) || !(-d ${DIR_SRC}/T) ]] ; then
+    echo "couldn't find src directory ${DIR_SRC}/D and/or ${DIR_SRC}/T"
+    exit 1
+fi
+if [[ !(-d ${DIR_PAR}) ]] ; then
+    echo "couldn't find parameter directory ${DIR_PAR}"
+    exit 1
+fi
+for file in $(ls ${DIR_PAR}/params1.inc*) ; do
+    window=$(basename $file)
+    window=$(echo $window | gawk '{print substr($1,index($1,".inc")+4)}')
+    cp $file ${DIR_SRC}/D/params1.inc
+    cd ${DIR_SRC}/D
+    make clean
+    make dnff
+    make clean
+    cp dnff ~/bin/dnff${window}
+    cp -p ../../v0/lpack_true/params1.inc .
+    cd ${DIR_LOCAL}
+done
+for file in $(ls ${DIR_PAR}/iosize.inc*) ; do
+    window=$(basename $file)
+    window=$(echo $window | gawk '{print substr($1,index($1,".inc")+4)}')
+    cp $file ${DIR_SRC}/T/iosize.inc
+    cd ${DIR_SRC}/T
+    make clean
+    make tranmt
+    make clean
+    cp tranmt ~/bin/tranmt${window}
+    cp -p ../../v0/lpack_true/iosize.inc .
+    cd ${DIR_LOCAL}
+done

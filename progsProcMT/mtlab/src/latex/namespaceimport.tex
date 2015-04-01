@@ -1,0 +1,95 @@
+\section{import Namespace Reference}
+\label{namespaceimport}\index{import@{import}}
+funções para importar os valores de impedâncias de arquivos  
+
+
+\subsection*{Functions}
+\begin{CompactItemize}
+\item 
+transfer\_\-function::impedance\_\-collection\_\-type::size\_\-type {\bf number\_\-of\_\-transfer\_\-functions} (std::ifstream \&file)
+\begin{CompactList}\small\item\em Retorna o número de funções de transferência em {\em file\/}. \item\end{CompactList}\item 
+void {\bf import\_\-impedances} ({\bf transfer\_\-function::impedance\_\-collection\_\-type} \&tf, std::ifstream \&file)
+\begin{CompactList}\small\item\em função para adquirir as funções de transferência de um arquivo \item\end{CompactList}\item 
+bool {\bf is\_\-egbert} (std::ifstream \&file)
+\begin{CompactList}\small\item\em verifica se {\em file\/} é do tipo egbert \item\end{CompactList}\item 
+bool {\bf is\_\-jones} (std::ifstream \&file)
+\begin{CompactList}\small\item\em verifica se {\em file\/} é do tipo jones \item\end{CompactList}\end{CompactItemize}
+
+
+\subsection{Detailed Description}
+funções para importar os valores de impedâncias de arquivos 
+
+\subsection{Function Documentation}
+\index{import@{import}!import\_\-impedances@{import\_\-impedances}}
+\index{import\_\-impedances@{import\_\-impedances}!import@{import}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}void import::import\_\-impedances ({\bf transfer\_\-function::impedance\_\-collection\_\-type} \& {\em tf}, \/  std::ifstream \& {\em file})}\label{namespaceimport_c840ffac738fcbb69a16a76457b67ca5}
+
+
+função para adquirir as funções de transferência de um arquivo 
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[\mbox{$\rightarrow$} {\em tf}]container com as funções de transferência \item[\mbox{$\leftarrow$} {\em file}]arquivo em um formato conhecido \end{description}
+\end{Desc}
+
+
+References import\_\-jones::import\_\-impedances(), import\_\-egbert::import\_\-impedances(), is\_\-egbert(), and is\_\-jones().\index{import@{import}!is\_\-egbert@{is\_\-egbert}}
+\index{is\_\-egbert@{is\_\-egbert}!import@{import}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}bool import::is\_\-egbert (std::ifstream \& {\em file})}\label{namespaceimport_6f888d3c8ca5c103c4bdb3e004ba4d8c}
+
+
+verifica se {\em file\/} é do tipo egbert 
+
+Um arquivo é identificado como do tipo egbert se conter uma linha que inicie com o texto \char`\"{} Transfer Functions\char`\"{} (o espaço no início é importante
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[\mbox{$\leftarrow$} {\em file}]arquivo\end{description}
+\end{Desc}
+\begin{Desc}
+\item[Returns:]true se {\em file\/} for do tipo egbert \end{Desc}
+
+
+Referenced by import\_\-impedances(), and number\_\-of\_\-transfer\_\-functions().\index{import@{import}!is\_\-jones@{is\_\-jones}}
+\index{is\_\-jones@{is\_\-jones}!import@{import}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}bool import::is\_\-jones (std::ifstream \& {\em file})}\label{namespaceimport_324200f4b44890acf4bb90483d663ddb}
+
+
+verifica se {\em file\/} é do tipo jones 
+
+Um arquivo é identificado como do tipo jones se conter uma linha que inicie com o texto \char`\"{}$>$AZIMUTH =\char`\"{}
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[\mbox{$\leftarrow$} {\em file}]arquivo\end{description}
+\end{Desc}
+\begin{Desc}
+\item[Returns:]true se {\tt file} for do tipo jones \end{Desc}
+
+
+Referenced by import\_\-impedances(), and number\_\-of\_\-transfer\_\-functions().\index{import@{import}!number\_\-of\_\-transfer\_\-functions@{number\_\-of\_\-transfer\_\-functions}}
+\index{number\_\-of\_\-transfer\_\-functions@{number\_\-of\_\-transfer\_\-functions}!import@{import}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}transfer\_\-function::impedance\_\-collection\_\-type::size\_\-type import::number\_\-of\_\-transfer\_\-functions (std::ifstream \& {\em file})}\label{namespaceimport_57b67112e3fbc0d5dfd7cffb22b0beae}
+
+
+Retorna o número de funções de transferência em {\em file\/}. 
+
+\begin{Desc}
+\item[Precondition:]{\em file\/} deve ser um arquivo válido \end{Desc}
+\begin{Desc}
+\item[Invariant:]a posição de leitura de {\em file\/} \end{Desc}
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[\mbox{$\leftarrow$} {\em file}]stream de um arquivo válido no formato jones\end{description}
+\end{Desc}
+\begin{Desc}
+\item[Returns:]o número de funções de transferência em {\em file\/} \end{Desc}
+\begin{Desc}
+\item[{\bf Todo}]implementar exception \end{Desc}
+
+
+References is\_\-egbert(), is\_\-jones(), import\_\-jones::number\_\-of\_\-transfer\_\-functions(), and import\_\-egbert::number\_\-of\_\-transfer\_\-functions().

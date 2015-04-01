@@ -1,0 +1,100 @@
+#!/bin/bash
+
+usage ()
+{
+  printf "\nuso: $1 arquivo.txt\n"
+  printf "formato do arquivo.txt:\n"
+  printf "# AB/3[m] R[ohm] p[m]\n"
+  printf "> SIM101\n"
+  printf "1 79\n"
+  printf "2 39.6\n"
+  printf "4 18.3\n"
+  printf "8 10.6\n"
+  printf "16 7.4\n"
+  printf "> SIM102\n"
+  printf "...\n\n"
+  exit 1
+}
+
+if [[ ${#} == 0 ]]
+then
+    usage $0
+fi
+
+txt=$1
+
+if [[ !(-f $txt) ]] ; then
+    echo "$txt: arquivo não encontrado."
+    exit 1
+fi
+
+# calcula número total de sondagens (começa com ">"):
+Ns=$(grep ^\> $txt | wc -l)
+
+# espaçamentos:
+# Ve será algo como "1/2/4/8/16"
+Ve=$(awk '{if(substr($1,1,1)!="#"&&$1!=">"&&NF>0)print $1}' $txt | sort -nu | \
+     awk '{if(NR!=1){printf "/"};printf "%s",$1}END{printf "\n"}')
+
+# calcula número de espaçamentos
+Ne=$(awk -v v=$Ve 'BEGIN{n=split(v,a,"/");print n}')
+
+# duas linhas de comentário:
+printf "# gerado por $0\n"
+printf "# arquivo de entrada: $txt\n"
+VES_MODE=0
+ARRAY_TYPE="W"
+
+printf "%d $VES_MODE %d $ARRAY_TYPE\n" $Ns $Ne
+
+awk -v v=$Ve 'BEGIN{gsub("/"," ",v);print v}'
+
+grep -v \^# $txt |\
+awk -v v=$Ve 'BEGIN{n=split(v,a,"/");stn="";Nr=0;pi=atan2(1,1)*4}
+              {
+                if($1==">") {
+                  if(length(stn)>0) {
+                    print stn
+                    print Nr
+                    for(i=1;i<=Nr;i++) {
+                      printf " %.2f",r[i]
+                    }
+                    printf "\n"
+                    Nr=0
+                    delete r
+                  }
+                  stn=substr($2,1,10)
+                }
+                else {
+                  if(NF>0)
+                  {
+                  Nr++
+                  if(a[Nr]!=$1) {
+                    printf "ERRO! espaçamento não esperado em"
+                    printf " %s: %d!=%d\n",stn,a[Nr],$1
+                    nextfile
+                  }
+                  if(NF==2) {
+                    D=$1
+                    R=$2
+                    r[Nr]=2*pi*R*D
+                  }
+                  else {
+                    D=$1
+                    R=$2
+                    p=$3
+                    r[Nr]=(4*pi*R*D)/(1+(2*D/sqrt(D*D+4*p*p))-(D/sqrt(D*D+p*p)))
+                  }
+                }
+                }
+              }
+              END{
+                if(length(stn)>0) {
+                  print stn
+                  print Nr
+                  for(i=1;i<=Nr;i++) {
+                    printf " %.2f",r[i]
+                  }
+                  printf "\n"
+                }
+              }'

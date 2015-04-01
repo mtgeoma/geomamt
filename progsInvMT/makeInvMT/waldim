@@ -1,0 +1,4 @@
+cd src
+make WALDIMALL
+mv WALDIM ~/bin/
+cd ..

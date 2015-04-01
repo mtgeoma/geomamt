@@ -1,0 +1,103 @@
+\section{transfer\_\-function::impedance Struct Reference}
+\label{structtransfer__function_1_1impedance}\index{transfer\_\-function::impedance@{transfer\_\-function::impedance}}
+A impedância.  
+
+
+{\tt \#include $<$transfer\_\-functions.hpp$>$}
+
+\subsection*{Public Member Functions}
+\begin{CompactItemize}
+\item 
+void {\bf rotate} ({\bf real\_\-type} angle)
+\begin{CompactList}\small\item\em gira a matriz \item\end{CompactList}\end{CompactItemize}
+\begin{Indent}{\bf Construtores}\par
+\begin{CompactItemize}
+\item 
+{\bf impedance} ({\bf real\_\-type} period\_\-=0.0, impedance\_\-tensor\_\-type Z\_\-=impedance\_\-tensor\_\-type(2, 2))
+\begin{CompactList}\small\item\em Construtor. \item\end{CompactList}\end{CompactItemize}
+\end{Indent}
+\begin{Indent}{\bf Componentes do Tensor de Impedância}\par
+{\em Retorna a componente de mesmo nome do tensor de impedância }\begin{CompactItemize}
+\item 
+complex\_\-measurement\_\-type \textbf{Zxx} () const \label{structtransfer__function_1_1impedance_30d01d7b1f7dc8b559e1236f763dc8fb}
+
+\item 
+complex\_\-measurement\_\-type \textbf{Zxy} () const \label{structtransfer__function_1_1impedance_1ad9ec803c6d74324f0b4884cdae4eb8}
+
+\item 
+complex\_\-measurement\_\-type \textbf{Zyx} () const \label{structtransfer__function_1_1impedance_65a4c4e77faf88f03ba973ce80e9b99d}
+
+\item 
+complex\_\-measurement\_\-type \textbf{Zyy} () const \label{structtransfer__function_1_1impedance_f632fb957e207a879287eebcdc40eeb7}
+
+\end{CompactItemize}
+\end{Indent}
+\subsection*{Public Attributes}
+\begin{CompactItemize}
+\item 
+{\bf real\_\-type} {\bf period}
+\item 
+impedance\_\-tensor\_\-type {\bf Z}
+\end{CompactItemize}
+
+
+\subsection{Detailed Description}
+A impedância. 
+
+A estrutura associa um tensor de impedância a um período 
+
+\subsection{Constructor \& Destructor Documentation}
+\index{transfer\_\-function::impedance@{transfer\_\-function::impedance}!impedance@{impedance}}
+\index{impedance@{impedance}!transfer_function::impedance@{transfer\_\-function::impedance}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}transfer\_\-function::impedance::impedance ({\bf real\_\-type} {\em period\_\-} = {\tt 0.0}, \/  impedance\_\-tensor\_\-type {\em Z\_\-} = {\tt impedance\_\-tensor\_\-type(2,~2)})\hspace{0.3cm}{\tt  [inline]}}\label{structtransfer__function_1_1impedance_6fb0b0947f5dec8e6c28bbea3bd904fa}
+
+
+Construtor. 
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[{\em period\_\-}]período do tensor de impedância \item[{\em Z\_\-}]tensor de impedância\end{description}
+\end{Desc}
+\begin{Desc}
+\item[Returns:]Um objeto do tipo \doxyref{impedance}{p.}{structtransfer__function_1_1impedance} \end{Desc}
+
+
+\subsection{Member Function Documentation}
+\index{transfer\_\-function::impedance@{transfer\_\-function::impedance}!rotate@{rotate}}
+\index{rotate@{rotate}!transfer_function::impedance@{transfer\_\-function::impedance}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}void transfer\_\-function::impedance::rotate ({\bf real\_\-type} {\em angle})}\label{structtransfer__function_1_1impedance_643510144937f8923fc9f8bcbb211dfb}
+
+
+gira a matriz 
+
+A matriz é girada em torno do eixo Z no sentido Norte-Leste \begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[{\em angle}]angulo de giro em graus \end{description}
+\end{Desc}
+\begin{Desc}
+\item[{\bf Todo}]verificar se a matriz precisar ser rotacionada ou não com boost/fp\_\-comparison.hpp que pode ser encontrado em {\tt Boost Vault/Math - Numerics},\end{Desc}
+
+
+References Z.
+
+\subsection{Member Data Documentation}
+\index{transfer\_\-function::impedance@{transfer\_\-function::impedance}!period@{period}}
+\index{period@{period}!transfer_function::impedance@{transfer\_\-function::impedance}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}{\bf real\_\-type} {\bf transfer\_\-function::impedance::period}}\label{structtransfer__function_1_1impedance_bb46f27409ceb90c5a2e2e80472528c9}
+
+
+Período \index{transfer\_\-function::impedance@{transfer\_\-function::impedance}!Z@{Z}}
+\index{Z@{Z}!transfer_function::impedance@{transfer\_\-function::impedance}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}impedance\_\-tensor\_\-type {\bf transfer\_\-function::impedance::Z}}\label{structtransfer__function_1_1impedance_201ee5c3e37df1cc5660cf83c12640f1}
+
+
+Tensor de impedância 
+
+Referenced by rotate().
+
+The documentation for this struct was generated from the following files:\begin{CompactItemize}
+\item 
+transfer\_\-functions/transfer\_\-functions.hpp\item 
+transfer\_\-functions/transfer\_\-functions.cpp\end{CompactItemize}

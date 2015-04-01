@@ -1,0 +1,449 @@
+README file updated 9 January, 1997
+
+Multmtrn :: this is a preliminary version of the robust multiple station
+transfer function program described in Egbert, 1996 (Robust multiple station
+magnetotelluric data processing; submitted to GJI).  The program uses
+Fourier Coefficient files output by dnff -- the same files used by the
+single station/remote reference  processing program "tranmt".  To run the
+program a file (called cf_array by default) is required which tells
+how many "stations" (i.e., grouping of channels, each of which is contained
+in a separate file (or set of files)), names of FC files, output file root,
+and some preliminary "weights", which can be used as one way to emphasize 
+certain channels in the definition of plane wave sources.  The program
+produces a vaiety of output files, some of which have the same format
+as the outputs procduced by tranmt.  The input control file and the output
+files are described below.
+
+WARNING:::  This program is complicated -- in many places more 
+complicated than necessary.  It takes considerable computer resources 
+to run, particularly for large data files, or for many stations.  
+The program is under development (slowly due to funding limitations),
+and is only partially documented.  It will be impossible to understand
+many of the options for multmtrn without reading Egbert (1996).  Some
+options are not described anywhere, and have not even been tried by me
+for over a year.  There are almost certainly bugs which will show up when
+the code is used in ways that I don't usually use it.  If used
+blindly, this program is quite capable of yielding dreadful results.
+User beware.
+
+Before making the program there are several things to be aware of.
+First, maximum number of data channels (for one station), and maximum
+number of station need to be set in the header file nstamx.h.
+There are other parameters which might have to be modified in  iosize.h.
+This file is basicaly the same as the file used for tranmt.  If the
+length of the time series is very long, some dimension limits may
+need to be increased in this file.  Converseley, depending on how
+many stations/channels are to be procesed, it might be necessary
+to reduce some of these dimensions on some systems.  Second,
+the program links to the lapack library.  I have included the necessary
+routines in the tar file lapack_qr.tar.Z in this directory.
+If you don't have lapack on your system, uncompress and untar this file, then
+go into the source directories blas_src and qr_src, and make libblas.a
+and libqr.a .  Then in this directory (MMT), edit the Makefile and/or
+move the libraries so that the linker will find these libraries when you
+compile.  (If lapack is on your system, you might still need to edit the 
+library path.) With all of this done, just make multmtrn.
+
+A few notes:
+
+In principal, the program works for one station ... but this only makes
+sense if there are multiple E or H setups (e.g., an EM profiling data set
+with 10 channels -- e.g., 2 orth H and 4 setups of orth E.)  Even in this
+case there may be problems (suggestion: run with the option -GA).
+
+If everything looks garbled, and your sure the data is pretty good,
+timing errors are a likely problem.  Double check that timing is OK.
+Also make sure the parameters in nstamx.h are set correctly!
+(suggestion:  the -C option output correlaton matrices ... so you
+can check the simple coherence between any pair of channels.)
+
+
+The cf_array file.
+
+Here is an annotated array control file for "multmtrn" .   This file tells which data files to
+use, and also controls relative weighting of normalized data vector components for determining
+the reference fields for plane wave (quasi-uniform) source transfer functions.
+
+2                                  <===  # of stations in the array
+../CF/bs_nod                       <=== path for band set up file (as for tranmt)
+1 10                                 ##### First station ... number of FC files, # of comp.
+1. 1. 1. 1. 1. 1. 1. 1. 1. 1.         - inverse weighting for each component for defining PW reference
+../FC/f10spa121.ts4                   - FC file (repeat line for each file for station #1)
+S12                                   - Site name (used in some output file names, plotting etc.)
+1 5                                  ##### Second station ... number of FC files, # of comp.
+1. 1. 1. 1. 1.                                  as for station # 1
+../FC/f5remw11.ts4
+R02                                   - Site name (end of station 2)
+spa12.ts4                           <===  Array name ... used for all array output files
+                                    <===OPTIONAL : 
+                                    <===OPTIONAL : 
+                                    <===OPTIONAL : 
+                                    <===OPTIONAL : 
+
+
+NOTE ON OPTIONAL ARGUMENTS:  As soon as the EOF is reached, the program stops looking
+    for options.   To specify the second optional argument, you also provide the first, etc.
+                                              
+NOTE ON Weighting for each component:  set inverse weighting to zero to omit 
+a component from definition of reference (this is equivalent to assinging a 
+very large inverse weight)
+
+OUTPUT FILES:
+
+Following is a brief description of the STANDARD output files produced
+by multmtrn ... additional output files are generated when certain command
+line options are used.  These are discussed separately.  Also, there are
+MATLAB routines for reading all of these files.  This allows for plotting,
+merging results from different processing bands/sites, reformatting for
+input into other programs, or whatever other manipulations might interest
+the user.  This matlab interface is currently only in the initial stages
+of development, but if your'e at all familiar with matlab, this will be
+the easiest way to interact with these output files.  See limited documentation 
+in the matlab directory for more details.  (NOTE:  the matlab functions and
+scripts use other functions and scripts from various of the subdirectories
+(matlab/IN, matlab/MISC, etc.).  It will be easiest to put all of these subdirectories
+(i.e., matlab/* in the matlab search path (defined by the environment variable
+MATLABPATH, or by the matlab command "path").
+
+Note that there are two general classes of output files: those which
+refer to array results (things which make sense for the whole set of
+stations together) and those which refer to a single station (e.g.,
+MT impedance estimates).  The latter sort of files are output for
+EACH appropriate station in the array.  Where possible these have
+the same format as that used for output from "tranmt".  This makes
+it relatively easy to merge results from array processing, with more
+conventional robust transfer function results.
+
+Note:  There is an advanced feature of the code which allows for
+processing of "sub-arrays" ... that is, portions of the data which
+are avaialable for only a subset of stations.  We will not discuss this
+(only partially debugged) feature here, but note that when this
+feature is invoked, additional "sub-array" output files will be produced.
+For completeness we note these here. We cannot guarantee any functionality
+of any aspect of this advanced feature.  [Current status 1/9/97: worse than ever!]
+
+STANDARD ARRAY OUTPUT FILES:
+  o   M_spa12.ts4  : This ASCII file gives eigenvalues for each period band,
+        along with the vectors which span the coherence space (i.e., the
+        columns of W in Egbert (1995).  Output is in a tabular form, with numerous
+        explanatory headers.  Results are given in a separate
+        table for each period.   All "significant" eigenvectors are output;
+        the number of vectors per band is variable.  See the example file
+        for further explanations. This file might be useful for an initial look,
+        but is in an awkward format for further manipulation/plotting.
+        Note that before outputing the columns of W, H components are scaled to
+        be of order one, and E components are converted to the same units as H (nT)
+        by assuming a 100 ohm m apparent resistivity (i.e., for plane wave sources
+        over with an apparent resistivity of 100, E components will also be of order 1;
+        for rho = 10**4, E components will be of order 10, etc.).  For vectors which
+        do not have much plane wave content, E could be much bigger than H, and things
+        could get ugle.  Also, note that the output format is really only reasonable for "standard"
+        arrays.  In particular it was designed for MV arrays with many 3 channel sites.
+        With the scaling described above, it also works OK for multiple 5 channel MT arrays.
+        However, for for more general arrays table headers are wrong, and some entries
+        may fail to fit into the allowed format (so you'll get lots of *****).  
+        Formats can be changed by editing subroutine prteig.f .
+
+   o  S0spa12.ts4  : This is a "RAW" BINARY SDM file which contains all
+        information needed to specify the array (station locations and IDs,
+        orientations and IDs for each data channel, etc.), together with
+        estimates of incorent noise variances, and the SDM of the cleaned data.
+        This file can be read by the matlab scripts IN/uev_init and IN/sdm_in.
+        Note that when the sub-array feature is used results for sub-arrays will
+        be output in files named S1********, S2******* etc (NOT TESTEED).
+        ALSO NOTE:  In previous releases S0***** files contained the leading
+        eigenvectors/values instead of the full SDM.  These, along with
+        canonical coherences/covariances, eigenvalues for subsets of channels,
+        etc. are easily computed in matlab.  An interactive/GUI set of scripts
+        will be available soon for analysis of the SDM in matlab using results
+        ouput in this file.  (If you have matlab: lookat/try sdm_plot.m)
+   
+    o  SN_spa12.ts4  : This ASCII files gives a frequency domain summary of
+        all signal and noise spectra, including eigenvalues (but excluding
+        eigenvectors).   Useful for plotting signal and noise spectra; could
+        be eliminated, since this info is also in S0*******  .  This file
+        can be read into matlab with the command sn_in('SN_spa12.ts4'),
+        and plots can be made in matlab using plt_eval, plt_snr, plt_pwr.
+        NOTE: a file called sta_comp must be in the working directory,
+        to map the correct channel/station to each channel in the array.  See
+        directory "test" for an example of this file; matlab/MISC/set_comp.m
+        for the routine which reads the sta_comp file.
+
+     o Pw_spa12.ts4  : binary file containing the full estimated "array TF" for
+        an assumed plane wave source.  All info necessary for computing TFs 
+        relative to any chosen pair of reference channels (along with error bars)
+        is given in the file.  Read with matlab routines Pw_hd and Pw_in.
+        See matlab routine MISC/Pw.m MISC/Pw_rot MISC/ref_site MISC/Pw_rho,
+        for examples of how to rotate pairs of components of the array TF vectors,
+        how to compute TFs relative to fixed reference channels,
+        how to compute errors, apparent resistivities, phases, etc., and how to plot.
+        Command line option -L supresses this output.
+        NEW OUTPUT FILE:  1/9/97
+       
+
+INDIVIDUAL STATION FILES:
+
+     o  Z.R02.spa12.ts4,Z.S12.spa12.ts4   :  These files are local transfer
+         function files.   They are identical in form to the impedance files
+         Z.****** output by "tranmt".  By default they contain transfer
+         function estimates relating the last nch-2 channels at each site
+         to the first 2 channels at that site.  For a standard 5 channel 
+         MT station, the first two channels are the horizontal magnetic
+         channels, so these files contain vertical field TFs, along with 
+         the impedance tensors.  For an EMAP site all E-field TFs are given.
+         In all cases everything is output in the MEASUREMENT coordinate 
+         system, along with all necessary orientations.   For each frequency
+         band two complex Hermitian matrices are also output (one 2x2 matrix
+         specifying the "input signal covariance", plus a nch-2 x nch-2 
+         matrix specifying the residual covariance for the predicted channels).
+         Together these matrices can be used to compute error bars for
+         components expressed in any rotated coordinate system.
+         This file can be read into matlab with routine Z_in.  Apparent
+         apparent resistivites and phases can be calculated using matlab
+         routine ap_res.  To plot rho and phi in matlab use Z_MT.m
+
+         NOTE:  SEE Z_files.ps , A POSTSCRIPT DOCUMENT CONTAINING A MORE DETAILED
+         DESCRIPTION OF THE Z_**** file FORMAT
+ 
+         NEW FEATURE:  With the option -s (see below under options) it is possible
+         to change the default grouping of channels by stations, so that
+         channels in separate FC files can be combined into a single group.
+         This allows, for instance, for H fields in one file to be used as the "local reference"
+         fields for one or more sets of E fields present in separate file(s).
+
+         NOTE:  These error matrices are computed differently for different
+         processing schemes (e.g., single station, Remote reference, 
+         multiple station), but formulae used to convert these matrices
+         to error bars are identical for all schemes.   Z.****** files can
+         thus be merged across processing schemes.  
+
+         NOTE: in the example here there are two Z.****** files produced,
+         one for a 10 channel EMAP site (Z.S12.spa12.ts4) and the other
+         for a 5 channel MT site which was installed as a remote.
+
+
+NOTE:   mt****   and em****** files are no longer output by multmtrn
+
+
+RUNNING multmtrn:
+
+General command format: multmtrn [-Aargument -b  ... ]
+
+By default information about the array (number and location of data files,
+names for output files, some program control options) are found in the
+file "cf_array" (e.g., see the example above).  The name of 
+this main program control file, and a number of processing
+and output features can be changed with the following command line options.
+Note that the following only provides a summary, using terminology and ideas
+developed in detail in Egbert (1997; "Robust Multiple Station Magnetotelluric
+Data Processing, GJI, in press").  Understanding this paper is more-or-less a prerequisite
+for understanding many of the options.   Options marked with an asterisk (*)
+are unlikely to be of interest to casual users, and are more for debugging/testing.
+Those marked with an ampersand (&) are partially (often barely) tested "advanced"
+features which are too hard for me to try explaining at this point ... most are
+probably not worth pursuing, and will probably dissapear from future releases.
+Among these latter sort of options, not all possible combinations
+have ever been tried or even make sense.  
+
+Command Line Options:
+
+ --    "multmtrn --"  generates a summary of usage and command line options
+
+ -n   turn off all robust features (runs MUCH faster, but sometimes you get what
+      you pay for)
+
+ -m   turn off robust RMEV (downweighting of outliers in individual data
+      channels), but still do robust (rotationally invariant) SDM stack)
+
+ -f<array_file>  change default array file name to <array_file>
+
+ -T   turn ON automatic timing error correction
+         In this case a file called TERR_spa12.ts4 is sought; if this is found
+         timing offsets are read from the file for each station and used to
+         phase shift appropriate channels.  If the file is not found, the program
+         estimates  the timing corrections and writes a file of this name.
+         If times are all correct, the timing shifts should be zero.   With 
+         default usage, multmtrn tries to open this file to find any 
+         needed timing shifts (in seconds).   If the file does not exist,
+         the program estimates timing shifts by looking at the variation of 
+         phase with frequency of interstation magnetic field TFs near the 
+         Nyquist frequency.  The estimated timing shifts are then output in this
+         file, so any further runs for this array can skip the timing error
+         estimation step.  This file also provides a way for the user to 
+         intervene and manually adjust the timing correction.  NOTE THAT 
+         ALL TIMING CORRECTIONS ARE NOW TURNED OFF BY DEFAULT;  use the -T option 
+         to multmtrn to turn this on.
+
+
+ -N   Don't transform eigenvectors in M_ output file (default is to oputput
+      linear combinations of the first two eigenvectors for which the
+      magnetic fields are, on average, polarized N-S and E-W
+
+ -Goption  change channel grouping for coherent noise variance estimation.
+     option should be one of:
+        T ==> all components of a type at a single site (default)
+        S ==> all components at a single site
+        A ==> each component by itself
+
+  -L  don't output Pw***** file
+
+  -z  rotate channels into a common coordinate system before outputing in M_*** file.
+      Coordinate rotations require channels to be paired.  When this option is invoked
+      the program tries to make reasonable assumptions about channel pairings.   In particular
+      it assumes that an Hx is always followed by an Hy, and an Ex by an Ey.  If this isn't
+      the case (e.g., in an emap type configuration) things will be screwed up.
+
+& -g   try to sort out plane wave/gradient sources geometrically
+       (NOT FOR SMALL (# of stations OR spatial extent) ARRAYS!!!!)
+
+ -R#   use magnetics from station # to define the reference fields (see Egbert, 1996)
+
+ -s<file_name>   change default definition of channel groupings for individual station
+     TF output.   By default channels are grouped by "stations", with all channels
+     in a single FC file are assumed to be a single station.  For each such station with
+     at least 3 channels an individual station TF file (named Z.****) is output.
+     With this option the groupings of channels to use for the Z.*** files are given in
+     a file,  denoted here as <file_name>.   Here is an example used for an array in
+     which the E and H channels were in separate FC files.  There were 3 H setups (2 with
+     2 channels, 1 with 3), and 3 2 channel E setups, for a total of 6 FC files.  The
+      cf_array file for this array looked like this:
+
+      6
+      ../bs_nod
+      1 2
+      1. 1.
+      ../../F5TEST/f2H1
+      S1H
+      1 2
+      1 1
+      ../../F5TEST/f2E1
+      S1E
+      1 3
+      1. 1. 1.
+      ../../F5TEST/f3H2
+      S2H
+      1 2
+      1. 1.
+      ../../F5TEST/f2E2
+      S2E
+      1 2
+      1. 1.
+      ../../F5TEST/f2H3
+      S3H
+      1 2
+      1 1
+      ../../F5TEST/f2E3
+      S3E
+      TEST3
+
+To have S1H and S1E together treated as a station (and S2H S2E, etc.), run multmtrn with the
+option -scf_grp  where file "cf_grp" contains the following text:
+      3                <===== # of channel groupings
+      S1               <===== name for first group
+      4                <===== number of channels in first group
+      1 2 3 4          <===== channel numbers ... following order determined by cf_array file
+      S2               <====  name for second group ... etc.
+      5
+      5 6 7 8 9        <===== channel numbers for second group ... corresponds to files f3H2, f2E2
+      S3
+      4
+      10 11 12 13
+    
+
+To always use the two H channels at the first site for a reference, and to omit the
+Hz TF at site 2 "cf_grp" would be changed to:
+      3                <===== # of channel groupings
+      S1               <===== name for first group 
+      4                <===== number of channels in first group  
+      1 2 3 4          <===== channel numbers ... following order determined by cf_array file 
+      S2               <===== name for second group ... etc.
+      4  
+      1 2 8 9          <===== channel numbers for second group ... corresponds to files f3H2, f2E2 
+      S3 
+      4 
+      1 2 12 13 
+
+Note in particular that channels may be used in multiple groups, or omitted.
+
+OPTIONS WHICH PRODUCE ADDITIONAL OUTPUT FILES
+
+ -coption     where options is one of H, R, or N ... output canonical coherence
+     file.  The file will be named CC<array_name>.  The options essentially
+     control normalization of channels...are as follows:
+          R = canonical coherence, the default if only -c is specified, normalizes
+               each data channel by the square root of its total variance.
+          N = canonical covariance, normalizes each channel the estimated 
+               incoherent noise scale
+          H = canonical covariance also, but with H channels expressed in nT, and
+              E channels scaled to nT using a crude estimate of the array average impedance
+
+       The output file has the format:
+       >  ASCII
+       >  one header record with two integers : total number of channels (all stations,
+          number of frequency bands)
+       >  followed by one more "record" for each frequency band : period, canonical coherences
+          (or canonical covariances) for each station relative to all other stations.
+          In general there are as many canonical coherences at each site as there are
+          data channels.  Thus, with 3 5 channel sites, the first 5 channesl are coherences
+          of site 1 relative to sites 2&3, the next 5 are for site 2 relative to 1&3, etc.
+          Up to 15 coherences are plotted on each line.  Multiple lines are used if the
+          total number of constituents exceeds 15.  If there are more components at one
+          site than there are at all other sites combined (e.g., 2 sites, one with 10 the
+          other with 5 channels, as with remote reference EM profilling) some coherences
+          will be zero.
+
+ -C    output correlation matrices for data, and for all incoherent noise groupings.
+       (For incoherent noise groupings, the correlation matrix is estimated from
+        the correlation among residuals for all channels in each group, as
+        predicted by all channels in all other groups.  Note that the correction
+        applied to variances to make these nearly diagonal is not allowed for in
+        this calculation).
+
+       The output file has the format:
+       > ASCII file ... with lost of "informative" headers ... self explanatory?
+
+
+* -P    Output principal component (PC) "time series" file PC*******.  The frequency domain array 
+       data vectors X_i can be expanded as a linear combination of the significant PCs:
+                   X_i = sum a_j W_ij 
+       The PC file contains the coefficients a_j ... useful for reconstructing the coherent part
+       of the time series ...
+
+       The output file has the format:
+       >  Binary ;   see output routines in pc_out.f
+
+* -t   output transfer function files used in local noise variance estimation
+      
+* -r     Output the PC******** file AND output the raw array data vectors X_i (in a single file,
+       still called PC*******).
+
+       The output file has the format:
+       >  Binary ;   see output routines in pc_out.f
+
+OPTIONS FOR COHERENT NOISE DOWNWEIGHTING:
+
+   (all this stuff is very experimental, and will only be useful in some
+    special cases, e.g., as discussed in Egbert, 1995.)
+
+& -a    omit data sets specified at end of cf_array file only on first 
+        coherent noise downweighting iteration; on subsequent iterations 
+        coherent noise/signal ratios are used to decide which data should be omitted
+        (This is a way to use the coherent noise downweighting feature when a 
+        time window of "clean" data can be specified  a priori.  On the first
+        only data sets in a specified time range are used for initial processing;
+        based on initial results, a preliminary separation of the total coherent
+        signal into coherent noise and MT signal is made.  Based on this separation
+        weights are determined for all data sets, and a refined estimate is computed.
+
+& -u   assume signal and coherent noise are uncorrelated for computing weights
+
+& -w#   change default number of iterations for coherent noise downweighting to #
+&
+-p#   change default cutoff for coherent noise downweighting to #
+
+Gary D. Egbert
+Associate Professor
+College of Oceanic and Atmospheric Sciences
+Oregon State University
+Oceanography Admin Bldg 104
+Corvallis, OR 97331-5503

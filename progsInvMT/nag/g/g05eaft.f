@@ -1,0 +1,103 @@
+      SUBROUTINE G05EAF(A,N,C,IC,EPS,R,NR,IFAIL)
+C     MARK 10 RELEASE. NAG COPYRIGHT 1982.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 13 REVISED. USE OF MARK 12 X02 FUNCTIONS (APR 1988).
+C
+C     G05EAF CONVERTS A VECTOR OF MEANS AND A COVARIANCE
+C     MATRIX INTO A FORM THAT IS EFFICIENT FOR THE GENERATION OF
+C     MULTIVARIATE NORMAL VECTORS WITH THE SPECIFIED PARAMETERS.
+C
+C     THE REFERENCE VECTOR HAS THE FOLLOWING VALUES AT THE
+C     FOLLOWING LOCATIONS -
+C     1) THE DIMENSION OF THE DISTRIBUTION (N)
+C     2) THE MEAN OF THE DISTRIBUTION
+C     N+2) THE LOWER TRIANGULAR MATRIX L SUCH THAT L.L(T) IS
+C     THE COVARIANCE MATRIX, STORED BY COLUMNS.
+C
+C     WRITTEN BY N.M.MACLAREN
+C     UNIVERSITY OF CAMBRIDGE COMPUTER LABORATORY
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='G05EAF')
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  EPS
+      INTEGER           IC, IFAIL, N, NR
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(N), C(IC,N), R(NR)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  ACC, EPSM, HALF, X, Y
+      INTEGER           I, IERR, IJ, IK, IM1, J, JK, K
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      DOUBLE PRECISION  X02AJF
+      INTEGER           P01ABF
+      EXTERNAL          X02AJF, P01ABF
+C     .. Intrinsic Functions ..
+      INTRINSIC         MAX, DBLE, SQRT
+C     .. Data statements ..
+      DATA              HALF/0.5D0/
+C     .. Executable Statements ..
+C
+C     CHECK THE ARGUMENTS FOR SENSIBLE VALUES AND CONSISTENCY.
+C
+      IERR = 1
+      IF (N.LT.1) GO TO 180
+      IERR = 2
+      IF (NR.LT.(N+1)*(N+2)/2) GO TO 180
+      IERR = 3
+      IF (IC.LT.N) GO TO 180
+      IERR = 4
+      IF (EPS.LT.0.0D0 .OR. EPS.GT.1.0D0/DBLE(10*N)) GO TO 180
+C
+C     COPY THE MEANS
+C
+      R(1) = DBLE(N) + HALF
+      DO 20 I = 1, N
+         R(I+1) = A(I)
+   20 CONTINUE
+C
+C     NOW PERFORM THE CHOLESKY DECOMPOSITION OF THE COVARIANCE
+C     MATRIX AND TEST THAT IT IS POSITIVE SEMI-DEFINITE WITHIN THE
+C     USER-SPECIFIED ACCURACY. ONLY THE UPPER TRIANGLE OF C IS
+C     USED, AND L IS STORED IN THE REFERENCE VECTOR BY COLUMNS
+C     AS IT IS FORMED. THE ALGORITHM IMPLICITLY PERTURBS THE
+C     DIAGONAL ELEMENTS OF C TO ENSURE THAT THE DECOMPOSITION
+C     IS STABLE.
+C
+      EPSM = X02AJF()
+      ACC = 0.0D0
+      DO 40 I = 1, N
+         ACC = MAX(ACC,C(I,I))
+   40 CONTINUE
+      ACC = ACC*(MAX(EPS,EPSM)*DBLE(N)+EPSM*DBLE(N+3)/2.0D0)
+      IERR = 5
+      IJ = N + 2
+      DO 160 I = 1, N
+         IM1 = I - 1
+         DO 140 J = I, N
+            X = C(I,J)
+            IF (IM1.EQ.0) GO TO 80
+            IK = N + 1 + I
+            JK = N + 1 + J
+            DO 60 K = 1, IM1
+               X = X - R(IK)*R(JK)
+               IK = IK + N - K
+               JK = JK + N - K
+   60       CONTINUE
+   80       IF (J.GT.I) GO TO 100
+            X = X + ACC
+            IF (X.LE.0.0D0) GO TO 180
+            Y = SQRT(X)
+            R(IJ) = Y
+            GO TO 120
+  100       R(IJ) = X/Y
+  120       IJ = IJ + 1
+  140    CONTINUE
+  160 CONTINUE
+      IFAIL = 0
+      RETURN
+  180 IFAIL = P01ABF(IFAIL,IERR,SRNAME,0,P01REC)
+      RETURN
+      END

@@ -1,0 +1,112 @@
+      SUBROUTINE E04YCF(JOB,M,N,FSUMSQ,S,V,LV,CJ,WORK,IFAIL)
+C     MARK 11 RELEASE. NAG COPYRIGHT 1983.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     E04YCF RETURNS ESTIMATES OF ELEMENTS OF THE VARIANCE-COVARIANCE
+C     MATRIX FOR THE ESTIMATED REGRESSION COEFFICIENTS OF A NONLINEAR
+C     LEAST SQUARES PROBLEMS.
+C
+C     FOR A DESCRIPTION OF THE PARAMETERS AND USE OF THIS ROUTINE SEE
+C     THE NAG LIBRARY MANUAL.
+C
+C     -- WRITTEN ON 10-JANUARY-1984.  S.J. HAMMARLING.
+C
+C     NAG FORTRAN 66 ROUTINE.
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='E04YCF')
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  FSUMSQ
+      INTEGER           IFAIL, JOB, LV, M, N
+C     .. Array Arguments ..
+      DOUBLE PRECISION  CJ(N), S(N), V(LV,N), WORK(N)
+C     .. Arrays in Common ..
+      DOUBLE PRECISION  WMACH(15)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  SIGMA, TEN, TOL, ZERO
+      INTEGER           I, IDIAG, IRANK, J, JM1
+      LOGICAL           OK
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      INTEGER           P01ABF
+      EXTERNAL          P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          E04GDV, F04YAF, X02ZAZ
+C     .. Intrinsic Functions ..
+      INTRINSIC         DBLE, SQRT
+C     .. Common blocks ..
+      COMMON            /AX02ZA/WMACH
+C     .. Save statements ..
+      SAVE              /AX02ZA/
+C     .. Data statements ..
+      DATA              ZERO/0.0D+0/, TEN/10.0D+0/
+C     .. Executable Statements ..
+C
+C     CHECK THE INPUT PARAMETERS.
+C
+      OK = (JOB.GE.(-1)) .AND. (N.GE.1) .AND. (JOB.LE.N) .AND. (N.LE.M)
+     *      .AND. (FSUMSQ.GE.ZERO)
+      IF (OK) GO TO 20
+      IFAIL = P01ABF(IFAIL,1,SRNAME,0,P01REC)
+      RETURN
+   20 CONTINUE
+C
+      CALL X02ZAZ
+C
+C     SADLY WE HAVE TO TRANSPOSE V IN ORDER TO CALL F04YAF.
+C     ALTERNATIVE WOULD BE TO USE IN LINE CODE IN PLACE OF F04YAF.
+C
+      CALL E04GDV(N,V,LV)
+C
+C     ESTIMATE THE RANK OF THE JACOBIAN. FAIL IF THE RANK IS ZERO.
+C
+      TOL = TEN*WMACH(3)*S(1)
+      DO 40 J = 1, N
+         IF (S(J).LE.TOL) GO TO 60
+   40 CONTINUE
+      J = N + 1
+   60 IRANK = J - 1
+      IF (IRANK.GT.0) GO TO 80
+      IFAIL = P01ABF(IFAIL,2,SRNAME,0,P01REC)
+      RETURN
+   80 CONTINUE
+C
+C     COMPUTE SIGMA.
+C
+      IF (IRANK.EQ.M) SIGMA = ZERO
+      IF (IRANK.LT.M) SIGMA = SQRT(FSUMSQ/DBLE(M-IRANK))
+C
+C     NOW CALL F04YAF TO PERFORM THE REQUIRED JOB.
+C
+      IDIAG = 1
+      CALL F04YAF(JOB,N,SIGMA,V,LV,.TRUE.,IRANK,S,CJ,WORK,IDIAG)
+C
+C     UNLESS JOB = -1 TRANSPOSE V BACK AGAIN.
+C
+      IF (JOB.EQ.(-1)) GO TO 100
+      CALL E04GDV(N,V,LV)
+      GO TO 160
+  100 IF (N.EQ.1) GO TO 160
+C
+C        COPY THE UPPER TRIANGLE OF C INTO THE LOWER TRIANGLE.
+C
+      DO 140 J = 2, N
+         JM1 = J - 1
+         DO 120 I = 1, JM1
+            V(J,I) = V(I,J)
+  120    CONTINUE
+  140 CONTINUE
+  160 CONTINUE
+C
+      IF (IRANK.LT.N) GO TO 180
+      IFAIL = 0
+      RETURN
+  180 CONTINUE
+      IFAIL = P01ABF(IFAIL,IRANK+2,SRNAME,0,P01REC)
+      RETURN
+C
+C     END OF E04YCF.
+C
+      END

@@ -1,0 +1,140 @@
+      SUBROUTINE D01GZF(N,NP1,NP2,VK,IFAIL)
+C     MARK 10 RELEASE. NAG COPYRIGHT 1982.
+C     MARK 10C REVISED. IER-426 (JUL 1983).
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 13 REVISED. USE OF MARK 12 X02 FUNCTIONS (APR 1988).
+C
+C     CALCULATION OF THE KOROBOV OPTIMAL COEFFICIENTS
+C     FOR NUMBERS OF POINTS WHICH ARE PRODUCTS OF PRIMES
+C
+C     SEE KOROBOV,NUMBER THEORETIC METHODS IN APPROXIMATE ANALYSIS,
+C     FIZMATGIZ,MOSCOW,1963.
+C
+C     INPUT ARGUMENTS
+C
+C     N       -INTEGER NUMBER OF DIMENSIONS.
+C
+C     NP1,NP2 -PRIME INTEGERS SPECIFYING THE NUMBER OF POINTS
+C              TO BE USED AS NP1*NP2.
+C
+C     IFAIL   -INTEGER VARIABLE SPECIFYING THE ERROR
+C              REPORTING OPTION. IFAIL IS SET TO 0 FOR HARD
+C              FAIL AND TO 1 FOR SOFT FAIL REPORT.
+C
+C     OUTPUT ARGUMENTS
+C
+C     VK      -REAL ARRAY WHOSE FIRST N ELEMENTS CONTAIN
+C              THE OPTIMAL COEFFICIENTS.
+C
+C     IFAIL   -THIS REPORTS THE ERROR CONDITIONS AS FOLLOWS
+C              IFAIL=0   NO ERROR DETECTED
+C              IFAIL=1   N .LT. 1
+C              IFAIL=2   NP1.LT.5 OR NP2.LT.2 OR NP2.GE.NP1
+C              IFAIL=3   NP1*NP2 OVERFLOWS
+C              IFAIL=4   NP1 IS NOT PRIME
+C              IFAIL=5   NP2 IS NOT PRIME
+C              IFAIL=6   INSUFFICIENT PRECISION
+C
+C     VALIDITY CHECK
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='D01GZF')
+C     .. Scalar Arguments ..
+      INTEGER           IFAIL, N, NP1, NP2
+C     .. Array Arguments ..
+      DOUBLE PRECISION  VK(N)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  HMIN, PROD, SUM, T, TLIM, XJ, XN, XP
+      INTEGER           I, IA, ICHECK, IP, IQ, J, JFAIL, JJ, JMIN, K, L,
+     *                  L1, L2, LR, LS, M, M1, M2, NDIM, NP2M1, NPTS
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      DOUBLE PRECISION  X02AJF, X02ALF
+      INTEGER           D01GYZ, P01ABF, X02BBF
+      EXTERNAL          X02AJF, X02ALF, D01GYZ, P01ABF, X02BBF
+C     .. External Subroutines ..
+      EXTERNAL          D01GYF
+C     .. Intrinsic Functions ..
+      INTRINSIC         AINT, MOD, DBLE, INT
+C     .. Executable Statements ..
+      ICHECK = 1
+      IF (N.LT.1) GO TO 120
+      ICHECK = 2
+      IF (NP1.LT.5 .OR. NP2.LT.2 .OR. NP2.GE.NP1) GO TO 120
+      ICHECK = 3
+      IF (NP1.GT.X02BBF(0.0D0)/NP2) GO TO 120
+      ICHECK = 4
+      IF (D01GYZ(NP1).NE.0) GO TO 120
+      ICHECK = 5
+      IF (D01GYZ(NP2).NE.0) GO TO 120
+      ICHECK = 0
+      NDIM = N
+C     FIRST MINIMISATION WITH RESPECT TO NP1 PTS
+      JFAIL = 1
+      CALL D01GYF(NDIM,NP1,VK,JFAIL)
+      IF (JFAIL.EQ.4) GO TO 140
+      IF (NDIM.EQ.1) GO TO 120
+      IA = INT(VK(2))
+C     SECOND MINIMISATION WITH RESPECT TO NP2 PTS
+      NPTS = NP1*NP2
+C     SOLVE M*(NP1+NP2)=1(MOD NP1*NP2)
+      L1 = NPTS
+      L2 = NP1 + NP2
+      M1 = 0
+      M2 = 1
+      IQ = 1
+   20 LS = L1/L2
+      LR = L1 - LS*L2
+      M = LS*M2 + M1
+      M1 = M2
+      M2 = M
+      IQ = -IQ
+      L1 = L2
+      L2 = LR
+      IF (L2.NE.1) GO TO 20
+      IF (IQ.LT.0) M = NPTS - M
+      IQ = MOD(M,NP2)*NP1
+      M1 = MOD(MOD(M,NP1)*MOD(IA,NP1),NP1)*NP2
+      JMIN = 1
+      IP = NPTS/2
+      XN = DBLE(NPTS)
+      XP = 1.0D0/XN
+      HMIN = X02ALF()
+      TLIM = 1.0D0/X02AJF()
+C     SCAN FOR MINIMUM
+      NP2M1 = NP2 - 1
+      DO 80 J = 1, NP2M1
+C        CALCULATE H(J) FUNCTION
+         SUM = 0.0D0
+         M2 = J*NP1
+         IF (M1.LT.NPTS-M2) JJ = M1 + M2
+         IF (M1.GE.NPTS-M2) JJ = M1 - NPTS + M2
+         XJ = DBLE(JJ)
+         DO 60 K = 1, IP
+            PROD = 1.0D0
+            L1 = K
+            DO 40 L = 1, NDIM
+               PROD = PROD*DBLE(NPTS-L1-L1)*XP
+               T = DBLE(L1)*XJ
+               IF (T.GT.TLIM) GO TO 140
+               L1 = INT(MOD(T,XN)+0.5D0)
+   40       CONTINUE
+            SUM = SUM + PROD*PROD
+            IF (SUM.GE.HMIN) GO TO 80
+   60    CONTINUE
+         HMIN = SUM
+         JMIN = JJ
+   80 CONTINUE
+C     GENERATE COEFFICIENT VECTOR
+      VK(2) = DBLE(JMIN)
+      IF (NDIM.EQ.2) GO TO 120
+      XJ = DBLE(JMIN)
+      DO 100 I = 3, NDIM
+         VK(I) = AINT(MOD(VK(I-1)*XJ,XN)+0.5D0)
+  100 CONTINUE
+  120 IFAIL = P01ABF(IFAIL,ICHECK,SRNAME,0,P01REC)
+      RETURN
+  140 ICHECK = 6
+      GO TO 120
+      END

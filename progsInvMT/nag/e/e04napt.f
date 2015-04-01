@@ -1,0 +1,107 @@
+      SUBROUTINE E04NAP(N,ALPHA,X,LENX,INCX,ISWAP,ITRANS)
+C     MARK 11 RELEASE. NAG COPYRIGHT 1983.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C *********************************************************************
+C     E04NAP  GENERATES AN ELIMINATION TRANSFORMATION  E  SUCH THAT
+C
+C     E ( ALPHA )  =  ( DELTA ) ,
+C       (   X   )     (   0   )
+C
+C     WHERE  E  HAS THE FORM
+C
+C     E  = ( 1    ) P
+C          ( Z  I )
+C
+C     FOR SOME N-VECTOR  Z  AND PERMUTATION MATRIX  P  OF ORDER  N + 1.
+C
+C     IN CERTAIN CIRCUMSTANCES ( X  VERY SMALL IN ABSOLUTE TERMS OR
+C     X VERY SMALL COMPARED TO  ALPHA),  E  WILL BE THE IDENTITY MATRIX.
+C     E04NAP  WILL THEN LEAVE  ALPHA  AND  X  UNALTERED, AND WILL RETURN
+C     ISWAP = 0,  ITRANS = 0.
+C
+C     MORE GENERALLY,  ISWAP  AND  ITRANS  INDICATE THE VARIOUS POSSIBLE
+C     FORMS OF  P  AND  Z  AS FOLLOWS.
+C
+C     IF  ISWAP  =  0,  P = I.
+C     IF  ISWAP  GT 0,  P  INTERCHANGES  ALPHA  AND  X(ISWAP).
+C
+C     IF  ITRANS =  0,  Z = 0  AND THE TRANSFORMATION IS JUST  E = P.
+C     IF  ITRANS GT 0,  Z  IS NONZERO.  ITS ELEMENTS ARE RETURNED IN  X.
+C
+C     E04NAP  GUARDS AGAINST OVERFLOW AND UNDERFLOW.
+C     IT IS ASSUMED THAT  FLMIN .LT. EPSMCH**2 (I.E. RTMIN .LT. EPSMCH).
+C
+C     VERSION 1, MARCH 31 1983.
+C     SYSTEMS OPTIMIZATION LABORATORY, STANFORD UNIVERSITY.
+C *********************************************************************
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  ALPHA
+      INTEGER           INCX, ISWAP, ITRANS, LENX, N
+C     .. Array Arguments ..
+      DOUBLE PRECISION  X(LENX)
+C     .. Arrays in Common ..
+      DOUBLE PRECISION  WMACH(15)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  ABSALF, EPSMCH, RTMIN, TOL, XMAX, ZERO
+      INTEGER           I, IMAX, NINCX, NZERO
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS
+C     .. Common blocks ..
+      COMMON            /AX02ZA/WMACH
+C     .. Save statements ..
+      SAVE              /AX02ZA/
+C     .. Data statements ..
+      DATA              ZERO/0.0D+0/
+C     .. Executable Statements ..
+C
+      ISWAP = 0
+      ITRANS = 0
+      IF (N.LT.1) RETURN
+      EPSMCH = WMACH(3)
+      RTMIN = WMACH(6)
+      ABSALF = ABS(ALPHA)
+      XMAX = ZERO
+      NINCX = N*INCX
+C
+      DO 20 I = 1, NINCX, INCX
+         IF (XMAX.GE.ABS(X(I))) GO TO 20
+         XMAX = ABS(X(I))
+         IMAX = I
+   20 CONTINUE
+C
+C     EXIT IF  X  IS VERY SMALL.
+C
+      IF (XMAX.LE.RTMIN) RETURN
+C
+C     SEE IF AN INTERCHANGE IS NEEDED FOR STABILITY.
+C
+      IF (ABSALF.LT.XMAX) ISWAP = IMAX
+      IF (ISWAP.EQ.0) GO TO 40
+      XMAX = X(IMAX)
+      X(IMAX) = ALPHA
+      ALPHA = XMAX
+C
+C     FORM THE MULTIPLIERS IN  X.  THEY WILL BE NO GREATER THAN ONE
+C     IN MAGNITUDE.  CHANGE NEGLIGIBLE MULTIPLIERS TO ZERO.
+C
+   40 TOL = ABS(ALPHA)*EPSMCH
+      NZERO = 0
+C
+      DO 80 I = 1, NINCX, INCX
+         IF (ABS(X(I)).LE.TOL) GO TO 60
+         X(I) = -X(I)/ALPHA
+         GO TO 80
+C
+   60    X(I) = ZERO
+         NZERO = NZERO + 1
+   80 CONTINUE
+C
+C     Z  IS ZERO ONLY IF  NZERO = N.
+C
+      IF (NZERO.LT.N) ITRANS = 1
+      RETURN
+C
+C     END OF E04NAP  ( ETAGEN )
+      END

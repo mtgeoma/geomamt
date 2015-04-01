@@ -1,0 +1,78 @@
+#!/bin/bash
+log_dir=~/.rsync-check
+
+# default optional arguments
+declare -A options
+options=(['login']="marcelo" ['server']="150.163.47.54"
+    ['check']="awk python scripts local docs progs-dev mapas topo zotero")
+
+usage ()
+{
+    printf "\nusage: %s check[=dirs] [parameter=value]\n" $1
+    printf "\tcheck\tcheck a list of directories\n"
+    printf "\t\tDefault is: \"${options['check']}\".\n\n"
+    printf "parameters could be:\n"
+    printf "\tlogin\tlogin name. Default is \"${options['login']}\".\n"
+    printf "\tserver\tIP server. Default is \"${options['server']}\".\n"
+    exit 1
+}
+
+if [[ ${#} == 0 ]]
+then
+    usage $0
+fi
+
+while [[ -n $1 ]] ; do
+    option=($(echo $1 | awk '{gsub("="," ");print $0}'))
+    if [[ ${#option[*]} -eq 2 ]] ; then
+        # check if is a valid option
+        if [[ -z ${options[${option[0]}]} ]] ; then
+            echo "'${option[0]}' isn't a valid option"
+            usage $0
+        else
+            options[${option[0]}]=${option[1]}
+        fi
+    else
+	if [[ $1 == "check" ]] ; then
+	    # nothing to be done, will use default ${options['check']}.
+	    shift
+	elif [[ ${option[0]} == "check" ]] ; then
+	    # more than one directory selected. skip first element:
+	    options['check']="${option[@]:1}"
+	else
+	    echo "error in option:$1"
+            usage $0
+	fi
+    fi
+    shift
+done
+
+# about bash colors, see:
+# http://www.vias.org/linux-knowhow/lnag_05_05_04.html
+
+login=${options['login']}
+server=${options['server']}
+for dir in $(echo ${options['check']}); do
+    if [[ -d $dir ]] ; then
+	echo -e "will check \033[1;34m$dir\033[0m at ${login}@${server}"
+	rsync -avz --delete --dry-run ${login}@${server}:${dir}/ ${dir}/ > \
+	    ${log_dir}/${dir}.log
+	if [[ $?==0 ]] ; then # if rsync works
+	    # assume that rsync will output only 4 lines when it's up to date
+	    # something like:
+            # 1: receiving incremental file list
+            # 2:
+            # 3: sent 65 bytes  received 650 bytes  204.29 bytes/sec
+            # 4: total size is 21854  speedup is 30.57 (DRY RUN)
+
+	    if [[ $(cat ${log_dir}/${dir}.log | wc -l) -eq 4 ]] ; then
+		echo -e "\033[1;32m$dir\033[0m is up to date\n"
+	    else
+		echo -e "\033[1;31m$dir\033[0m isn't up to date"
+		echo -e "see ${log_dir}/${dir}.log\n"
+	    fi
+	fi
+    else
+	echo -e "cannot access \033[1;31m$dir\033[0m: No such directory."
+    fi
+done

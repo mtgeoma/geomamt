@@ -1,0 +1,45 @@
+      SUBROUTINE G13BFU(F,R,ALPHA,NPD,KS,V)
+C     MARK 11 RELEASE. NAG COPYRIGHT 1983.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     SUBROUTINE G13BFU CALCULATES THE G-MULTIPLIERS (OUTPUT
+C     HERE AS VALUE ALPHA(KS)) USED IN THE ALGORITHM WHICH
+C     SUPPLIES FURTHER CORRECTIONS TO THE AUTOREGRESSIVE
+C     PARAMETER DERIVATIVES
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  V
+      INTEGER           KS, NPD
+C     .. Array Arguments ..
+      DOUBLE PRECISION  ALPHA(NPD), F(NPD), R(NPD)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  VHV, ZERO
+      INTEGER           I, KA, KAQ, KRS
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS, DBLE
+C     .. Data statements ..
+      DATA              ZERO/0.0D0/, VHV/1.0D20/
+C     .. Executable Statements ..
+C
+C     SKIP OUT IF THIS G-MULTIPLIER ALREADY EXISTS
+C
+      IF (ALPHA(KS).NE.ZERO) GO TO 80
+      KAQ = NPD - KS
+      ALPHA(KS) = R(KS)*DBLE(KAQ)
+      DO 40 I = 1, NPD
+         KA = KAQ - I
+         KRS = ABS(I-KS)
+         IF (KRS.EQ.0) GO TO 20
+         ALPHA(KS) = ALPHA(KS) + R(KRS)*DBLE(KA)*F(I)
+         GO TO 40
+   20    ALPHA(KS) = ALPHA(KS) + DBLE(KA)*F(I)
+   40 CONTINUE
+      IF (V.EQ.ZERO) GO TO 60
+      ALPHA(KS) = ALPHA(KS)/V
+      GO TO 80
+C
+C     SAFETY MEASURE IN CASE V=0.0
+C
+   60 ALPHA(KS) = VHV
+   80 RETURN
+      END

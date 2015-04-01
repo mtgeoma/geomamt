@@ -1,0 +1,7 @@
+#!/bin/csh
+set FILE=./sys/egb1174909a.cts
+awk 'BEGIN { FS = ",[ \t]*|[ \t]+" ; OFMT = "%14.6g"} { if(NR>1) print $1, $3, $4}' $FILE > ./sys/1174909aex.cal
+awk 'BEGIN { FS = ",[ \t]*|[ \t]+" ; OFMT = "%14.6g"} { if(NR>1) print $1, $5, $6}' $FILE > ./sys/1174909aey.cal
+awk 'BEGIN { FS = ",[ \t]*|[ \t]+" ; OFMT = "%14.6g"} { if(NR>1) print $1, $7, $8}' $FILE > ./sys/1174909ahx.cal
+awk 'BEGIN { FS = ",[ \t]*|[ \t]+" ; OFMT = "%14.6g"} { if(NR>1) print $1, $9, $10}' $FILE > ./sys/1174909ahy.cal
+awk 'BEGIN { FS = ",[ \t]*|[ \t]+" ; OFMT = "%14.6g"} { if(NR>1) print $1, $11, $12}' $FILE > ./sys/1174909ahz.cal

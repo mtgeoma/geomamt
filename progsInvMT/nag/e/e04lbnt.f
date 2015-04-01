@@ -1,0 +1,106 @@
+      SUBROUTINE E04LBN(N,NFREE,INEW,ISTATE,GFULL,HDFULL,HLFULL,NH,
+     *                  GPROJ,HDPROJ,HLPROJ,LH,DELTA,NSPHI,LHPROJ,W,LW)
+C
+C     MARK 6 RELEASE NAG COPYRIGHT 1977
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 13 REVISED. USE OF MARK 12 X02 FUNCTIONS (APR 1988).
+C
+C     **************************************************************
+C
+C     E04LBN (UPPROJ) UPDATES THE PROJECTED GRADIENT AND THE
+C     CHOLESKY FACTORS OF THE PROJECTED HESSIAN WHEN A VARIABLE HAS
+C     BEEN RELEASED FROM ITS BOUND BUT NO MOVE HAS BEEN MADE. THE
+C     ELEMENTS OF THE COMPLETE, UNFACTORIZED HESSIAN ARE STORED IN
+C     HDFULL AND HLFULL. HDPROJ AND HLPROJ CONTAIN ON ENTRY THE
+C     CHOLESKY FACTORS OF THE PROJECTED HESSIAN OF DIMENSION (NFREE
+C     - 1) AND ON EXIT THOSE OF THE EXPANDED MATRIX OF DIMENSION
+C     NFREE.
+C
+C     PHILIP E. GILL, WALTER MURRAY, SUSAN M. PICKEN, MARGARET H.
+C     WRIGHT AND ENID M. R. LONG, D.N.A.C., NATIONAL PHYSICAL
+C     LABORATORY, ENGLAND
+C
+C     **************************************************************
+C
+C
+C     A MACHINE-DEPENDENT CONSTANT IS SET HERE. EPSMCH IS THE
+C     SMALLEST POSITIVE REAL NUMBER SUCH THAT 1.0 + EPSMCH .GT. 1.0.
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  DELTA
+      INTEGER           INEW, LH, LHPROJ, LW, N, NFREE, NH, NSPHI
+C     .. Array Arguments ..
+      DOUBLE PRECISION  GFULL(N), GPROJ(N), HDFULL(N), HDPROJ(N),
+     *                  HLFULL(NH), HLPROJ(LH), W(LW)
+      INTEGER           ISTATE(N)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  DEL, DLI, DNEW, EPSMCH, SUM, TEMP
+      INTEGER           I, IHLFL, IHLPJ, IMINUS, IPLUS, ISI, IW2, JUMP,
+     *                  KFULL, KPROJ, LW1, LW2, M
+C     .. External Functions ..
+      DOUBLE PRECISION  X02AJF
+      EXTERNAL          X02AJF
+C     .. External Subroutines ..
+      EXTERNAL          E04LBC
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS
+C     .. Executable Statements ..
+      EPSMCH = X02AJF()
+      DEL = DELTA
+      LW1 = 1
+      LW2 = LW1 + N
+      GPROJ(NFREE) = GFULL(INEW)
+      SUM = HDFULL(INEW)
+      LHPROJ = 1
+      IF (NFREE.EQ.1) GO TO 120
+      M = NFREE - 1
+      KPROJ = M*(M-1)/2
+      JUMP = INEW - 1
+      IF (INEW.EQ.1) GO TO 40
+      KFULL = JUMP*(JUMP-1)/2
+      IMINUS = JUMP
+      DO 20 I = 1, IMINUS
+         ISI = ISTATE(I)
+         IF (ISI.LE.0) GO TO 20
+         IHLFL = KFULL + I
+         TEMP = HLFULL(IHLFL)
+         W(ISI) = TEMP
+         TEMP = ABS(TEMP)*EPSMCH
+         IF (TEMP.GT.DEL) DEL = TEMP
+   20 CONTINUE
+   40 IF (INEW.EQ.N) GO TO 80
+      IHLFL = INEW*JUMP/2 + 1
+      IPLUS = INEW + 1
+      DO 60 I = IPLUS, N
+         IHLFL = IHLFL + JUMP
+         JUMP = JUMP + 1
+         ISI = ISTATE(I)
+         IF (ISI.LE.0) GO TO 60
+         TEMP = HLFULL(IHLFL)
+         W(ISI) = TEMP
+         TEMP = ABS(TEMP)*EPSMCH
+         IF (TEMP.GT.DEL) DEL = TEMP
+   60 CONTINUE
+   80 CALL E04LBC(M,NH,HLPROJ,W(LW1),W(LW2))
+      IW2 = LW2
+      DO 100 I = 1, M
+         DLI = W(IW2)
+         TEMP = DLI/HDPROJ(I)
+         IHLPJ = KPROJ + I
+         HLPROJ(IHLPJ) = TEMP
+         SUM = SUM - DLI*TEMP
+         IW2 = IW2 + 1
+  100 CONTINUE
+      LHPROJ = IHLPJ
+  120 NSPHI = 0
+      IF (SUM.LE.DEL) NSPHI = NFREE
+      SUM = ABS(SUM)
+      DNEW = DEL
+      IF (SUM.GT.DEL) DNEW = SUM
+      HDPROJ(NFREE) = DNEW
+      DELTA = DEL
+      RETURN
+C
+C     END OF E04LBN (UPPROJ)
+C
+      END

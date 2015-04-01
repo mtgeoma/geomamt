@@ -1,0 +1,110 @@
+#!/bin/bash
+
+# default optional arguments
+declare -A options
+options=(['cmp']="eff" ['c']=0.95 ['s']="conducting" ['Trho']=10 ['rot']=0 ['ef']=0)
+
+usage ()
+{
+    printf "usage: %s Zfile [parameter=value]\n" $1
+    printf "where:\n"
+    printf "\tZfile\timpedance data file\n"
+    printf "\nparameters could be:\n"
+    printf "\tcmp\timpedance component [${options['cmp']}]\n"
+    printf "\tc\tcriterion  [${options['c']}]\n"
+    printf "\ts\tsurface  [${options['s']}]\n"
+    printf "\tTrho\tclosest period used to fix rho [${options['Trho']}]\n"
+    printf "\trot\tangle to rotate Z [${options['rot']}]\n"
+    printf "\tef\terror floor in percentage [${options['ef']}]\n"
+    echo
+    exit 1
+}
+
+if [[ ${#} == 0 ]] ; then
+    usage $0
+fi
+
+Zfile=$1
+shift
+
+if [[ !(-f ${Zfile}) ]] ; then
+    echo "couldn't find file ${Zfile}"
+    echo
+    exit 1
+fi
+
+while [[ -n $1 ]] ; do
+    option=($(echo $1 | awk '{gsub("="," ");print $0}'))
+    if [[ ${#option[*]} -eq 2 ]] ; then
+        # check if is a valid option
+        if [[ -z ${options[${option[0]}]} ]] ; then
+            echo "'${option[0]}' isn't a valid option"
+            usage $0
+        else
+            options[${option[0]}]=${option[1]}
+        fi
+    else
+        echo "error in option: $1"
+        usage $0
+    fi
+    shift
+done
+
+label=$(basename ${Zfile})
+label=${label%.*} # remove anything after "."
+cmp=${options['cmp']}
+rot=${options['rot']}
+
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+if [[ $rot == 0 ]] ; then
+    parametros-mt ${Zfile} rho-${cmp} | \
+	awk '{print $1,$2}' > $GMT_TMPDIR/rho
+    parametros-mt ${Zfile} phi-${cmp} | \
+	awk '{print $2,$3}' > $GMT_TMPDIR/phi
+else
+    parametros-mt --azimute $rot ${Zfile} rho-${cmp} | \
+	awk '{print $1,$2}' > $GMT_TMPDIR/rho
+    parametros-mt --azimute $rot ${Zfile} phi-${cmp} | \
+	awk '{print $2,$3}' > $GMT_TMPDIR/phi
+fi
+
+phi_shift=$(awk 'BEGIN{p=0;n=0}{if($1>=0){p++}else{n++}}END{if(p>n){print 0}else{print 180}}' $GMT_TMPDIR/phi)
+
+Nrho=$(awk -v T=${options['Trho']} '{d=$1-T;d=sqrt(d*d);if(NR==1){n=1;Dmin=d}else{if(Dmin>d){n=NR;Dmin=d}}}END{print n}' $GMT_TMPDIR/rho)
+
+printf "data *\n"
+printf "task *\n"
+printf "period\n"
+printf "surface %s %% make upper surface boundary conducting or insulating\n" ${options['s']}
+printf "root %s_%s\n" $cmp $label
+printf "matrix\n"
+printf "criterion %s\n" ${options['c']}
+printf "model\n"
+printf "execute\n"
+paste $GMT_TMPDIR/rho $GMT_TMPDIR/phi | \
+awk -v s=$phi_shift -v N=$Nrho -v ef=${options['ef']} '{
+  phi=$3+s
+  Ephi=$4
+  if(sqrt((Ephi/phi)*(Ephi/phi))<ef/100) {
+    Ephi=sqrt((ef*phi/100)*(ef*phi/100))
+  }
+  Erho=2*$2*Ephi*(atan2(1,1)/45)
+  printf "%11.5E %11.5E %11.5E %11.5E %11.5E",$1,$2,Erho,phi,Ephi
+  if(NR==N) {
+    printf " 1"
+  }
+  else {
+    printf " 0"
+  }
+  if(phi<0||phi>90) {
+    printf " 0\n"
+  }
+  else {
+    printf " 1\n"
+  }
+}'
+printf "0\n\n"
+awk '{printf "%11.5E rho phi\n",$1}' $GMT_TMPDIR/rho
+printf "0\n"
+
+rm -rf $GMT_TMPDIR

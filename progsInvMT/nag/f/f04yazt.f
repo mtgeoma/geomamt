@@ -1,0 +1,235 @@
+      SUBROUTINE F04YAZ(JOB,N,T,NRT,B,IDIAG)
+C     MARK 11 RELEASE. NAG COPYRIGHT 1983.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     PURPOSE
+C     =======
+C
+C     F04YAZ SOLVES SYSTEMS OF REVERSE TRIANGULAR EQUATIONS.
+C
+C     IMPORTANT.  IN DOUBLE PRECISION IMPLEMENTATIONS THE REAL
+C     ---------   DECLARATIONS SHOULD BE INTERPRETED TO MEAN
+C              DOUBLE PRECISION.
+C
+C     DESCRIPTION
+C     ===========
+C
+C     F04YAZ SOLVES THE EQUATIONS
+C
+C     T*X = B ,   OR   ( T**T )*X = B ,
+C
+C     WHERE T IS AN N BY N UPPER OR LOWER REVERSE TRIANGULAR MATRIX.
+C
+C     AN UPPER REVERSE TRIANGULAR MATRIX HAS THE FORM ILLUSTRATED BY
+C
+C     T = ( X  X  X  X  X )
+C         ( X  X  X  X  0 )
+C         ( X  X  X  0  0 )
+C         ( X  X  0  0  0 )
+C         ( X  0  0  0  0 )
+C
+C     AND A LOWER REVERSE TRIANGULAR MATRIX HAS THE FORM ILLUSTRATED BY
+C
+C     T = ( 0  0  0  0  X ) .
+C         ( 0  0  0  X  X )
+C         ( 0  0  X  X  X )
+C         ( 0  X  X  X  X )
+C         ( X  X  X  X  X )
+C
+C     THE TYPE OF TRIANGULAR SYSTEM SOLVED IS CONTROLLED BY THE
+C     PARAMETER JOB AS DESCRIBED IN THE PARAMETER SECTION BELOW.
+C
+C     PARAMETERS
+C     ==========
+C
+C     JOB   - INTEGER.
+C          ON ENTRY, JOB MUST CONTAIN ONE OF THE VALUES -2, -1, 0, 1, 2
+C          TO SPECIFY THE TYPE OF REVERSE TRIANGULAR SYSTEM TO BE SOLVED
+C          AS FOLLOWS.
+C
+C          JOB =  0  T IS ASSUMED TO BE REVERSE DIAGONAL AND THE
+C                    EQUATIONS T*X = B ARE SOLVED.
+C
+C          JOB =  1  T IS ASSUMED TO BE UPPER REVERSE TRIANGULAR AND THE
+C                    EQUATIONS T*X = B ARE SOLVED.
+C
+C          JOB = -1  T IS ASSUMED TO BE UPPER REVERSE TRIANGULAR AND THE
+C                    EQUATIONS ( T**T )*X = B ARE SOLVED.
+C
+C          JOB =  2  T IS ASSUMED TO BE LOWER REVERSE TRIANGULAR AND THE
+C                    EQUATIONS T*X = B ARE SOLVED.
+C
+C          JOB = -2  T IS ASSUMED TO BE LOWER REVERSE TRIANGULAR AND THE
+C                    EQUATIONS ( T**T )*X = B ARE SOLVED.
+C
+C          UNCHANGED ON EXIT.
+C
+C     N     - INTEGER.
+C          ON ENTRY, N SPECIFIES THE ORDER OF THE MATRIX T. N MUST BE AT
+C          LEAST UNITY.
+C          UNCHANGED ON EXIT.
+C
+C     T     - REAL ARRAY OF DIMENSION ( NRT, NCT ). NCT MUST BE AT LEAST
+C          N.
+C          BEFORE ENTRY T MUST CONTAIN THE TRIANGULAR ELEMENTS. ONLY
+C          THOSE ELEMENTS CONTAINED IN THE REVERSE TRIANGULAR PART OF T
+C          ARE REFERENCED BY THIS ROUTINE.
+C          UNCHANGED ON EXIT.
+C
+C     NRT   - INTEGER.
+C          ON ENTRY, NRT SPECIFIES THE FIRST DIMENSION OF T AS DECLARED
+C          IN THE CALLING (SUB) PROGRAM. NRT MUST BE AT LEAST N.
+C          UNCHANGED ON EXIT.
+C
+C     B     - REAL ARRAY OF DIMENSION ( N ).
+C          BEFORE ENTRY, B MUST CONTAIN THE RIGHT HAND SIDE OF THE
+C          EQUATIONS TO BE SOLVED.
+C          ON SUCCESSFUL EXIT, B CONTAINS THE SOLUTION VECTOR X.
+C
+C     IDIAG - INTEGER.
+C          BEFORE ENTRY, IDIAG MUST BE ASSIGNED A VALUE. FOR USERS
+C          UNFAMILIAR WITH THIS PARAMETER (DESCRIBED IN CHAPTER P01)
+C          THE RECOMMENDED VALUE IS ZERO.
+C          ON SUCCESSFUL EXIT IDIAG WILL BE ZERO. A POSITIVE VALUE
+C          OF IDIAG DENOTES AN ERROR AS FOLLOWS.
+C
+C          IDIAG = 1     ONE OF THE INPUT PARAMETERS N, OR NRA, OR JOB
+C                        HAS BEEN INCORRECTLY SPECIFIED.
+C
+C          IDIAG .GT. 1  THE ELEMENT T( J, N - J + 1 ), WHERE
+C                        J = IDIAG - 1, IS EITHER ZERO OR IS TOO SMALL
+C                        TO AVOID OVERFLOW IN COMPUTING AN ELEMENT OF X.
+C                        NOTE THAT THIS ELEMENT IS A REVERSE DIAGONAL
+C                        ELEMENT OF T.
+C
+C     FURTHER COMMENTS
+C     ================
+C
+C     IF T IS PART OF A MATRIX A PARTITIONED AS
+C
+C     A = ( A1  A2 ) ,
+C         ( A3  T  )
+C
+C     WHERE A1 IS AN M BY K MATRIX ( M.GE.0, K.GE.0), THEN THIS ROUTINE
+C     MAY BE CALLED WITH THE PARAMETER T AS A( M + 1, K + 1 ) AND NRT AS
+C     THE FIRST DIMENSION OF A AS DECLARED IN THE CALLING (SUB) PROGRAM.
+C
+C     NAG FORTRAN 66 AUXILIARY LINEAR ALGEBRA ROUTINE. ( RTSOLV. )
+C     THE FURTHER COMMENT DOES NOT APPLY TO THE FORTRAN 66 VERSION.
+C
+C     -- WRITTEN ON 8-NOVEMBER-1982.  S.J.HAMMARLING.
+C
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='F04YAZ')
+C     .. Scalar Arguments ..
+      INTEGER           IDIAG, JOB, N, NRT
+C     .. Array Arguments ..
+      DOUBLE PRECISION  B(N), T(NRT,N)
+C     .. Arrays in Common ..
+      DOUBLE PRECISION  WMACH(15)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  TEMP
+      INTEGER           J, JLAST, K
+      LOGICAL           FAIL
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      DOUBLE PRECISION  DDOT, F06BLF
+      INTEGER           P01ABF
+      EXTERNAL          DDOT, F06BLF, P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          DAXPY, X02ZAZ
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS
+C     .. Common blocks ..
+      COMMON            /AX02ZA/WMACH
+C     .. Save statements ..
+      SAVE              /AX02ZA/
+C     .. Executable Statements ..
+      IF (N.GE.1 .AND. NRT.GE.N .AND. ABS(JOB).LE.2) GO TO 20
+      IDIAG = P01ABF(IDIAG,1,SRNAME,0,P01REC)
+      RETURN
+   20 CONTINUE
+C
+      CALL X02ZAZ
+C
+      IF (JOB.NE.0) GO TO 60
+      K = N
+      DO 40 J = 1, N
+C
+         B(J) = F06BLF(B(J),T(J,K),FAIL)
+         IF (FAIL) GO TO 280
+C
+         K = K - 1
+   40 CONTINUE
+      GO TO 140
+   60 IF (JOB.NE.1) GO TO 100
+      J = N
+      DO 80 K = 1, N
+C
+         B(J) = F06BLF(B(J),T(J,K),FAIL)
+         IF (FAIL) GO TO 280
+C
+         IF (J.GT.1) CALL DAXPY(J-1,-B(J),T(1,K),1,B,1)
+C
+         J = J - 1
+   80 CONTINUE
+      GO TO 140
+  100 IF (JOB.NE.2) GO TO 140
+      K = N
+      DO 120 J = 1, N
+C
+         B(J) = F06BLF(B(J),T(J,K),FAIL)
+         IF (FAIL) GO TO 280
+C
+         IF (J.LT.N) CALL DAXPY(N-J,-B(J),T(J+1,K),1,B(J+1),1)
+C
+         K = K - 1
+  120 CONTINUE
+  140 CONTINUE
+      IF (N.EQ.1) GO TO 180
+      JLAST = N/2
+      K = N
+      DO 160 J = 1, JLAST
+         TEMP = B(J)
+         B(J) = B(K)
+         B(K) = TEMP
+         K = K - 1
+  160 CONTINUE
+  180 CONTINUE
+      IF (JOB.NE.(-1)) GO TO 220
+      K = N
+      DO 200 J = 1, N
+C
+         IF (J.GT.1) B(J) = B(J) - DDOT(J-1,T(1,K),1,B,1)
+C
+         B(J) = F06BLF(B(J),T(J,K),FAIL)
+         IF (FAIL) GO TO 280
+C
+         K = K - 1
+  200 CONTINUE
+      GO TO 260
+  220 IF (JOB.NE.(-2)) GO TO 260
+      J = N
+      DO 240 K = 1, N
+C
+         IF (J.LT.N) B(J) = B(J) - DDOT(N-J,T(J+1,K),1,B(J+1),1)
+C
+         B(J) = F06BLF(B(J),T(J,K),FAIL)
+         IF (FAIL) GO TO 280
+C
+         J = J - 1
+  240 CONTINUE
+  260 CONTINUE
+C
+      IDIAG = 0
+      RETURN
+C
+  280 IDIAG = P01ABF(IDIAG,J+1,SRNAME,0,P01REC)
+      RETURN
+C
+C     END OF F04YAZ.
+C
+      END

@@ -1,0 +1,146 @@
+#!/bin/bash
+srtm=$SRTM
+if [[ !(-d $srtm) ]] ; then
+    echo "couldn't find directory $srtm"
+    echo "check \$SRTM value"
+    exit 1
+fi
+
+# function to check if there isn't an intersection (return 0)
+# -------------
+# |   | n |   |
+# | B | B | B |
+# |   | s |   |
+# -------------
+# |   | n |   |
+# |wBe|wAe|wBe|
+# |   | s |   |
+# -------------
+# |   | n |   |
+# | B | B | B |
+# |   | s |   |
+# -------------
+check_no_intersection()
+{
+    check=$(echo $1 $2 | awk '{
+      # W:1 E:2 S:3 N:4
+      split($1,a,"/")
+      split($2,b,"/")
+      if(a[1]>b[2]){print 0;nextfile}
+      if(a[2]<b[1]){print 0;nextfile}
+      if(a[4]<b[3]){print 0;nextfile}
+      if(a[3]>b[4]){print 0;nextfile}
+      print 1
+    }')
+    return $check
+}
+
+# function to check minmax (global variables)
+check_minmax()
+{
+    if (( $xn < $XNMIN )) ; then
+	XNMIN=$xn
+    fi
+    # XNMIN could be equal to XNMAX
+    if (( $xn > $XNMAX )) ; then
+	XNMAX=$xn
+    fi
+
+    if (( $yn < $YNMIN )) ; then
+	YNMIN=$yn
+    fi
+    # YNMIN could be equal to YNMAX
+    if (( $yn > $YNMAX )) ; then
+	YNMAX=$yn
+    fi
+}
+
+if [[ -n $2 ]] ; then
+    output_file=$2
+else
+    output_file=srtm.grd
+fi
+
+if [[ -f $output_file ]] ; then
+    echo "$output_file already exist"
+    exit 1
+fi
+
+if [[ "${1:0:2}" == "-R" ]] ; then
+    # make an array with range values
+    range=${1:2}
+    # check if range have four components and if west<east and south<north
+    check=$(echo $range | gawk '{n=split($1,a,"/");if(n==4&&(a[1]<a[2])&&(a[3]<a[4])){print "ok"}else{print "fail"}}')
+    if [[ $check == "fail" ]] ; then
+        echo "error setting option: $1"
+        echo "expected syntax: -Rwest/east/south/north"
+        echo
+        exit 1
+    fi
+fi
+
+declare -A RX
+declare -A RY
+XNMIN=1000
+XNMAX=-1
+YNMIN=1000
+YNMAX=-1
+for file in $(ls $srtm/*.grd) ; do
+    output=($(grdinfo -C $file))
+    # output is something like "grd/Z_30_14.grd -35 -30 -10 -5 -23 146 0.000833333333333 0.000833333333333 6000 6000"
+    base=$(basename $file)
+    # base is something like "Z_29_16.grd"
+    xn=${base:2:2}
+    yn=${base:5:2}
+    RX[$xn]=$(printf "%s/%s" ${output[1]} ${output[2]})
+    RY[$yn]=$(printf "%s/%s" ${output[3]} ${output[4]})
+    srtm_range=$(printf "%s/%s" ${RX[$xn]} ${RY[$yn]})
+
+    check_no_intersection $range $srtm_range
+    if [[ $? == 1 ]] ; then
+	check_minmax
+    fi
+done
+
+# Create a temporary directory. $GMT_TMPDIR will be set to its pathname.
+# XXXXXX is replaced by a unique random combination of characters.
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+
+# grdmath -F -R-45/-40/-30/-25 -I0.000833333333333 0 0 NAN = ../../topo/srtm/grd/Z_28_18.grd
+
+grd2=${GMT_TMPDIR}/col.grd
+echo "junta as colunas"
+for (( j=$YNMIN; j<=$YNMAX; j++ )) ; do
+    for (( i=$XNMIN; i<=$XNMAX; i++ )) ; do
+	grd1=$(printf "Z_%02d_%02d.grd" $i $j)
+	if [[ -f $srtm/$grd1 ]]; then
+	    grd1=$srtm/$grd1
+	else
+	    grd1=${GMT_TMPDIR}/$grd1
+	    grdmath -F -R${RX[$i]}/${RY[$j]} -I0.000833333333333 0 0 NAN = $grd1
+	fi
+	if [[ $i -eq $XNMIN ]] ; then
+	    cp $grd1 ${GMT_TMPDIR}/${j}.grd
+	else
+	    grdpaste ${GMT_TMPDIR}/${j}.grd $grd1 -G$grd2
+	    cp $grd2 ${GMT_TMPDIR}/${j}.grd
+	fi
+	grdinfo -C ${GMT_TMPDIR}/${j}.grd
+    done
+done
+
+grdr=${GMT_TMPDIR}/res.grd
+echo "junta as linhas"
+for (( j=$YNMIN; j<=$YNMAX; j++ )) ; do
+    grdinfo -C ${GMT_TMPDIR}/${j}.grd
+    if [[ $j -eq $YNMIN ]] ; then
+	cp ${GMT_TMPDIR}/${j}.grd $grdr
+    else
+	grdpaste $grdr ${GMT_TMPDIR}/${j}.grd -G$grd2
+	cp $grd2 $grdr
+    fi
+done
+grdcut $grdr -R$range -G$output_file
+
+# Clean up all temporary files and the temporary directory
+rm -rf $GMT_TMPDIR

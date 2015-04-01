@@ -1,0 +1,191 @@
+      SUBROUTINE E01AEW(M,XMIN,XMAX,X,Y,IP,N,NP1,ITMIN,ITMAX,A,B,WRK,
+     *                  LWRK,IWRK,LIWRK,IFAIL)
+C     MARK 8 RELEASE. NAG COPYRIGHT 1979.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     *******************************************************
+C
+C     NPL ALGORITHMS LIBRARY ROUTINE PNTRPA
+C
+C     CREATED 20 12 79.  UPDATED 13 05 80.  RELEASE 00/47
+C
+C     AUTHORS ... GERALD T. ANTHONY, MAURICE G. COX,
+C                 J. GEOFFREY HAYES AND MICHAEL A. SINGER.
+C     NATIONAL PHYSICAL LABORATORY, TEDDINGTON,
+C     MIDDLESEX TW11 OLW, ENGLAND
+C
+C     *******************************************************
+C
+C     E01AEW. A ROUTINE, WITHOUT CHECKS, WHICH DETERMINES AND
+C     REFINES A POLYNOMIAL INTERPOLANT  Q(X)  TO DATA WHICH
+C     MAY CONTAIN DERIVATIVES, AND AN ASSOCIATED ZEROIZING
+C     POLYNOMIAL  Q0(X).
+C
+C        M        NUMBER OF DISTINCT X-VALUES
+C        XMIN,
+C        XMAX     LOWER AND UPPER ENDPOINTS OF INTERVAL
+C        X        INDEPENDENT VARIABLE VALUES (DISTINCT)
+C        Y        VALUES AND DERIVATIVES OF
+C                    DEPENDENT VARIABLE.
+C        IP       HIGHEST ORDER OF DERIVATIVE AT EACH X-VALUE.
+C        N        NUMBER OF INTERPOLATING CONDITIONS.
+C                    N = M + IP(1) + IP(2) + ... + IP(M).
+C        NP1      VALUE OF  N + 1
+C        ITMIN,
+C        ITMAX    MINIMUM AND MAXIMUM NUMBER OF ITERATIONS TO BE
+C                    PERFORMED.
+C        IWRK(1)  SEE WORKSPACE (AND ASSOCIATED
+C                    DIMENSION) PARAMETERS
+C
+C     OUTPUT PARAMETERS
+C        A        CHEBYSHEV COEFFICIENTS OF  Q(X)
+C        B        CHEBYSHEV COEFFICIENTS OF  Q0(X)
+C
+C     WORKSPACE (AND ASSOCIATED DIMENSION) PARAMETERS
+C        WRK      REAL WORKSPACE ARRAY.  THE FIRST IMAX ELEMENTS
+C                    CONTAIN, ON EXIT, PERFORMANCE INDICES FOR
+C                    THE INTERPOLATING POLYNOMIAL, AND THE NEXT
+C                    N  ELEMENTS THE COMPUTED RESIDUALS
+C        LWRK     DIMENSION OF WRK. LWRK MUST BE AT LEAST
+C                    8*N + 5*IMAX + M + 5, WHERE
+C                    IMAX IS ONE MORE THAN THE LARGEST ELEMENT
+C                    OF THE ARRAY IP.
+C        IWRK     INTEGER WORKSPACE ARRAY.
+C                    THE FIRST ELEMENT OF THIS ARRAY IS USED
+C                    AS AN INPUT PARAMETER (WHICH IS DESTROYED
+C                    ON EXIT).  THE ZEROIZING POLYNOMIAL  Q0(X)
+C                    IS CONSTRUCTED OR NOT ACCORDING TO WHETHER
+C                    IWRK(1)  IS NON-ZERO OR ZERO.
+C        LIWRK    DIMENSION OF IWRK.  AT LEAST 2*M + 2.
+C
+C     FAILURE INDICATOR PARAMETER
+C        IFAIL    FAILURE INDICATOR
+C                    0 - SUCCESSFUL TERMINATION
+C                    1 - ITERATION LIMIT IN DERIVING  Q(X)
+C                    2 - DIVERGENT ITERATION IN DERIVING  Q(X)
+C                    3 - ITERATION LIMIT IN DERIVING  Q0(X)
+C                    4 - DIVERGENT ITERATION IN DERIVING  Q0(X)
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  XMAX, XMIN
+      INTEGER           IFAIL, ITMAX, ITMIN, LIWRK, LWRK, M, N, NP1
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(N), B(NP1), WRK(LWRK), X(M), Y(N)
+      INTEGER           IP(M), IWRK(LIWRK)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  ONE, PMAX, TWO, ZERO
+      INTEGER           I, IADIF, IATRL, IBDIF, IBTRL, IC, ID, IDA, IDB,
+     *                  IERROR, IFTAU, ILOCX, ILOCY, IMAX, INITQ,
+     *                  INITQ0, IPIQ, IPIQ0, IPTRL, IRES, IRNM, IRTRNM,
+     *                  IW, IX
+      LOGICAL           WITHQ0
+C     .. External Subroutines ..
+      EXTERNAL          E01AEY, E02AKY
+C     .. Data statements ..
+      DATA              ZERO, ONE, TWO/0.0D+0, 1.0D+0, 2.0D+0/
+C     .. Executable Statements ..
+      IERROR = 0
+      IMAX = 0
+      DO 20 I = 1, M
+         IF (IP(I).GT.IMAX) IMAX = IP(I)
+   20 CONTINUE
+      IMAX = IMAX + 1
+C
+C     INDICATE WHETHER  Q0(X)  IS REQUIRED
+C
+      WITHQ0 = (IWRK(1).NE.0)
+C
+C     TREAT THE CASE N = 1 SEPARATELY.
+C
+      IF (N.NE.1) GO TO 60
+      A(1) = TWO*Y(1)
+      IF ( .NOT. WITHQ0) GO TO 40
+      CALL E02AKY(XMIN,XMAX,X(1),B(1))
+      B(1) = -TWO*B(1)
+      B(2) = ONE
+C
+C     SET TO ZERO THE NUMBERS OF ITERATIONS TAKEN, THE (SOLE)
+C     RESIDUAL AND THE VALUES OF THE PERFORMANCE INDICES
+C     IN THIS SPECIAL CASE, AND FINISH
+C
+   40 IWRK(1) = 0
+      IF (WITHQ0) IWRK(2) = 0
+      WRK(1) = ZERO
+      WRK(2) = ZERO
+      IF (WITHQ0) WRK(3) = ZERO
+C
+C     TRANSFORM THE  X*S  TO  (-1, 1)
+C
+   60 IX = 2*IMAX + N
+      DO 80 I = 1, M
+         IX = IX + 1
+         CALL E02AKY(XMIN,XMAX,X(I),WRK(IX))
+   80 CONTINUE
+      IF (N.EQ.1) GO TO 120
+      IF ( .NOT. WITHQ0) GO TO 100
+C
+C     WORKSPACE ALLOCATION FOR CALL TO  E01AEY  ...
+C
+      IRES = IMAX + 1
+      IPIQ0 = IRES + N
+      IX = IPIQ0 + IMAX
+      IBTRL = IX + M
+      IPTRL = IBTRL + NP1
+      IFTAU = IPTRL + IMAX
+      IC = IFTAU + N
+      ID = IC + N
+      IW = ID + NP1
+      IBDIF = IW + NP1
+      IDB = IBDIF + NP1
+      IRNM = IDB + NP1
+      IRTRNM = IRNM + IMAX
+      INITQ0 = 2
+      ILOCX = INITQ0 + 1
+      ILOCY = ILOCX + M
+C
+C     ... TO DETERMINE  Q0(X)
+C
+      CALL E01AEY(.TRUE.,M,WRK(IX),XMIN,XMAX,Y,IP,IMAX,N,NP1,ITMIN,
+     *            ITMAX,B,NP1,WRK(IRES),PMAX,WRK(IPIQ0),IWRK(INITQ0)
+     *            ,WRK(IBTRL),WRK(IPTRL),WRK(IFTAU),WRK(IC),WRK(ID)
+     *            ,WRK(IW),WRK(IBDIF),WRK(IDB),WRK(IRNM),WRK(IRTRNM)
+     *            ,IWRK(ILOCX),IWRK(ILOCY),IERROR)
+C
+C     RE-CODE FAILURE INDICATOR
+C
+      IF (IERROR.NE.0) IERROR = IERROR + 2
+      IF (IERROR.NE.0) GO TO 120
+C
+C     WORKSPACE ALLOCATION FOR CALL TO  E01AEY  ...
+C
+  100 IPIQ = 1
+      IRES = IPIQ + IMAX
+      IX = IRES + N + IMAX
+      IATRL = IX + M
+      IPTRL = IATRL + N
+      IFTAU = IPTRL + IMAX
+      IC = IFTAU + N
+      ID = IC + N
+      IW = ID + N
+      IADIF = IW
+      IDA = IADIF + NP1
+      IRNM = IDA + NP1
+      IRTRNM = IRNM + IMAX
+      INITQ = 1
+      ILOCX = INITQ + 2
+      ILOCY = ILOCX + M
+C
+C     ... TO DETERMINE  Q(X)
+C
+      CALL E01AEY(.FALSE.,M,WRK(IX),XMIN,XMAX,Y,IP,IMAX,N,NP1,ITMIN,
+     *            ITMAX,A,N,WRK(IRES),PMAX,WRK(IPIQ),IWRK(INITQ)
+     *            ,WRK(IATRL),WRK(IPTRL),WRK(IFTAU),WRK(IC),WRK(ID)
+     *            ,WRK(IW),WRK(IADIF),WRK(IDA),WRK(IRNM),WRK(IRTRNM)
+     *            ,IWRK(ILOCX),IWRK(ILOCY),IERROR)
+C
+  120 IFAIL = IERROR
+      RETURN
+C
+C     END E01AEW
+C
+      END

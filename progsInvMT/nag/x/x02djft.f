@@ -1,0 +1,9 @@
+      LOGICAL FUNCTION X02DJF()
+C     MARK 12 RELEASE. NAG COPYRIGHT 1986.
+C
+C     RETURNS THE MODEL PARAMETER, ROUNDS.
+C
+C     .. Executable Statements ..
+      X02DJF =  .TRUE.
+      RETURN
+      END

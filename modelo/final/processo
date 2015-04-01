@@ -1,0 +1,14 @@
+#!/bin/bash
+STN=$1
+ERR=$2
+# se não definiu ERR, use valor padrão
+if [[ -z $ERR ]]
+then
+    ERR=3
+fi
+END=$(parametros-mt ${STN}.dat rho-xy | wc -l)
+awk -f torhoplus+E.awk -v form=jones -v c=0.95 -v s=conducting -v d=xy -v begin=1 -v end=$END -v err=$ERR -v file=${STN}.dat > tmp.tmp
+awk -f preselecao.awk tmp.tmp > ${STN}/xy_${STN}_NM
+awk -f torhoplus+E.awk -v form=jones -v c=0.95 -v s=conducting -v d=yx -v begin=1 -v end=$END -v err=$ERR -v file=${STN}.dat > tmp.tmp
+awk -f preselecao.awk tmp.tmp > ${STN}/yx_${STN}_NM
+rm tmp.tmp

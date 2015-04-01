@@ -1,0 +1,357 @@
+      SUBROUTINE F02SZF(N,D,E,SV,WANTB,B,WANTY,Y,NRY,LY,WANTZ,Z,NRZ,NCZ,
+     *                  WORK1,WORK2,WORK3,IFAIL)
+C     MARK 8 RELEASE. NAG COPYRIGHT 1979.
+C     MARK 9 REVISED. IER-328 (SEP 1981).
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 12 REVISED. IER-518 (AUG 1986).
+C     MARK 13 REVISED. USE OF MARK 12 X02 FUNCTIONS (APR 1988).
+C     WRITTEN BY S. HAMMARLING, MIDDLESEX POLYTECHNIC (SVDBID)
+C
+C     F02SZF RETURNS PART OR ALL OF THE SINGULAR VALUE
+C     DECOMPOSITION OF THE N*N UPPER BIDIAGONAL MATRIX A. THAT
+C     IS, A IS FACTORIZED AS
+C
+C     A = Q*DIAG(SV)*(P**T) ,
+C
+C     WHERE Q AND P ARE N*N ORTHOGONAL MATRICES AND DIAG(SV)
+C     IS AN N*N DIAGONAL MATRIX WITH NON-NEGATIVE DIAGONAL
+C     ELEMENTS SV(1),SV(2),..., SV(N), THESE BEING THE
+C     SINGULAR VALUES OF A.
+C
+C     IF WANTB IS .TRUE. THEN B RETURNS (Q**T)*B.
+C     IF WANTY IS .TRUE. THEN Y RETURNS Y*Q.
+C     IF WANTZ IS .TRUE. THEN Z RETURNS (P**T)*Z.
+C
+C     INPUT PARAMETERS.
+C
+C     N     - THE ORDER OF THE MATRIX. MUST BE AT LEAST 1.
+C
+C     D     - N ELEMENT VECTOR SUCH THAT D(I)=A(I,I), I=1,2,...,N.
+C             D IS UNALTERED UNLESS ROUTINE IS CALLED WITH SV=D.
+C
+C     E     - N ELEMENT VECTOR SUCH THAT E(I)=A(I-1,I), I=2,3,...,N.
+C             E(1) IS NOT REFERENCED.
+C             E IS UNALTERED UNLESS ROUTINE IS CALLED WITH WORK1=E.
+C
+C     WANTB - MUST BE .TRUE. IF (Q**T)*B IS REQUIRED.
+C             IF WANTB IS .FALSE. THEN B IS NOT REFERENCED.
+C
+C     B     - AN N ELEMENT REAL VECTOR.
+C
+C     WANTY - MUST BE .TRUE. IF Y*Q IS REQUIRED.
+C             IF WANTY IS .FALSE. THEN Y IS NOT REFERENCED.
+C
+C     Y     - AN LY*N REAL MATRIX.
+C
+C     NRY   - IF WANTY IS .TRUE. THEN NRY MUST BE THE ROW
+C             DIMENSION OF Y AS DECLARED IN THE CALLING
+C             PROGRAM AND MUST BE AT LEAST LY.
+C
+C     LY    - IF WANTY IS .TRUE. THEN LY MUST BE THE NUMBER
+C             OF ROWS OF Y AND MUST BE AT LEAST 1.
+C
+C     WANTZ - MUST BE .TRUE. IF (P**T)*Z IS REQUIRED.
+C             IF WANTZ IS .FALSE. THEN Z IS NOT REFERENCED.
+C
+C     Z     - AN N*NCZ REAL MATRIX.
+C
+C     NRZ   - IF WANTZ IS .TRUE. THEN NRZ MUST BE THE ROW
+C             DIMENSION OF Z AS DECLARED IN THE CALLING
+C             PROGRAM AND MUST BE AT LEAST N.
+C
+C     NCZ   - IF WANTZ IS .TRUE. THEN NCZ MUST BE THE
+C             NUMBER OF COLUMNS OF Z AND MUST BE AT LEAST
+C             1.
+C
+C     IFAIL - THE USUAL FAILURE PARAMETER. IF IN DOUBT SET
+C             IFAIL TO ZERO BEFORE CALLING F02SZF.
+C
+C     OUTPUT PARAMETERS.
+C
+C     SV    - N ELEMENT VECTOR CONTAINING THE SINGULAR
+C             VALUES OF A. THEY ARE ORDERED SO THAT
+C             SV(1).GE.SV(2).GE. ... .GE.SV(N). THE ROUTINE
+C             MAY BE CALLED WITH SV=D.
+C
+C     B     - IF WANTB IS .TRUE. THEN B WILL RETURN THE N
+C             ELEMENT VECTOR (Q**T)*B.
+C
+C     Y     - IF WANTY IS .TRUE. THEN Y WILL RETURN THE
+C             LY*N MATRIX Y*Q.
+C
+C     Z     - IF WANTZ IS .TRUE. THEN Z WILL RETURN THE N*NCZ MATRIX
+C             (P**T)*Z.
+C
+C     IFAIL - ON NORMAL RETURN IFAIL WILL BE ZERO.
+C             IN THE UNLIKELY EVENT THAT THE QR-ALGORITHM
+C             FAILS TO FIND THE SINGULAR VALUES IN 50*N
+C             ITERATIONS THEN IFAIL WILL BE 2 OR MORE AND
+C             SUCH THAT SV(1),SV(2),..,SV(IFAIL-1) MAY NOT
+C             HAVE BEEN FOUND. SEE WORK1 BELOW. THIS
+C             FAILURE IS NOT LIKELY TO OCCUR.
+C             IF AN INPUT PARAMETER IS INCORRECTLY SUPPLIED
+C             THEN IFAIL IS SET TO UNITY.
+C
+C     WORKSPACE PARAMETERS.
+C
+C     WORK1 - AN N ELEMENT VECTOR. IF E IS NOT REQUIRED ON
+C             RETURN THEN THE ROUTINE MAY BE CALLED WITH
+C             WORK1=E. WORK1(1) RETURNS THE TOTAL NUMBER OF
+C             ITERATIONS TAKEN BY THE  QR-ALGORITHM. IF
+C             IFAIL IS POSITIVE ON RETURN THEN THE MATRIX A
+C             IS GIVEN  BY A=Q*C*(P**T) , WHERE C IS THE
+C             UPPER BIDIAGONAL MATRIX WITH SV AS ITS
+C             DIAGONAL AND WORK1 AS ITS SUPER-DIAGONAL.
+C
+C     WORK2
+C     WORK3 - N ELEMENT VECTORS. IF WANTZ IS .FALSE. THEN WORK2 AND
+C             WORK3 ARE NOT REFERENCED.
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='F02SZF')
+C     .. Scalar Arguments ..
+      INTEGER           IFAIL, LY, N, NCZ, NRY, NRZ
+      LOGICAL           WANTB, WANTY, WANTZ
+C     .. Array Arguments ..
+      DOUBLE PRECISION  B(N), D(N), E(N), SV(N), WORK1(N), WORK2(N),
+     *                  WORK3(N), Y(NRY,N), Z(NRZ,NCZ)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  ANORM, BIG, C, DK, DKM1, DL, EK, EKM1, EPS, F,
+     *                  G, RSQTPS, S, SHUFT, SMALL, SQTEPS, SVI, T, X
+      INTEGER           I, IERR, ITER, J, JJ, K, KK, L, LL, LM1, LP1,
+     *                  MAXIT
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      DOUBLE PRECISION  F01LZZ, X02AJF, X02AMF
+      INTEGER           P01ABF
+      EXTERNAL          F01LZZ, X02AJF, X02AMF, P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          F01LZW, F01LZY, F02SZZ
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS, MAX, SQRT
+C     .. Executable Statements ..
+      IERR = IFAIL
+      IF (IERR.EQ.0) IFAIL = 1
+C
+      IF (N.LT.1) GO TO 500
+      IF (WANTY .AND. (NRY.LT.LY .OR. LY.LT.1)) GO TO 500
+      IF (WANTZ .AND. (NRZ.LT.N .OR. NCZ.LT.1)) GO TO 500
+C
+      SMALL = X02AMF()
+      BIG = 1.0D0/SMALL
+      EPS = X02AJF()
+      SQTEPS = SQRT(EPS)
+      RSQTPS = 1.0D0/SQTEPS
+C
+      ITER = 0
+      K = N
+      SV(1) = D(1)
+      ANORM = ABS(D(1))
+      IF (N.EQ.1) GO TO 280
+C
+      DO 20 I = 2, N
+         SV(I) = D(I)
+         WORK1(I) = E(I)
+         ANORM = MAX(ANORM,ABS(D(I)),ABS(E(I)))
+   20 CONTINUE
+C
+      MAXIT = 50*N
+      EPS = EPS*ANORM
+C
+C     MAXIT IS THE MAXIMUM NUMBER OF ITERATIONS ALLOWED.
+C     EPS WILL BE USED TO TEST FOR NEGLIGIBLE ELEMENTS.
+C     START MAIN LOOP. ONE SINGULAR VALUE IS FOUND FOR EACH
+C     VALUE OF K. K GOES IN OPPOSITE DIRECTION TO KK.
+C
+      DO 260 KK = 2, N
+C
+C        NOW TEST FOR SPLITTING. L GOES IN OPPOSITE DIRECTION TO LL.
+C
+   40    L = K
+         DO 60 LL = 2, K
+            IF (ABS(WORK1(L)).LE.EPS) GO TO 240
+            L = L - 1
+            IF (ABS(SV(L)).LT.EPS) GO TO 180
+   60    CONTINUE
+C
+   80    IF (ITER.EQ.MAXIT) GO TO 280
+C
+C        MAXIT QR-STEPS WITHOUT CONVERGENCE. FAILURE.
+C
+         ITER = ITER + 1
+C
+C        NOW DETERMINE SHIFT.
+C
+         LP1 = L + 1
+         DL = SV(L)
+         DKM1 = SV(K-1)
+         DK = SV(K)
+         EKM1 = 0.0D0
+         IF (K.NE.2) EKM1 = WORK1(K-1)
+         EK = WORK1(K)
+         F = (DKM1-DK)*(DKM1+DK) + (EKM1-EK)*(EKM1+EK)
+         F = F/(2.0D0*EK*DKM1)
+         G = ABS(F)
+         IF (G.LE.RSQTPS) G = SQRT(1.0D0+F**2)
+         IF (F.LT.0.0D0) G = -G
+C
+         SHUFT = EK*(EK-DKM1/(F+G))
+         F = (DL-DK)*(DL+DK) - SHUFT
+         X = DL*WORK1(LP1)
+C
+C        NOW PERFORM THE QR-STEP AND CHASE ZEROS.
+C
+         DO 140 I = LP1, K
+C
+            T = F01LZZ(F,X,SMALL,BIG)
+C
+            CALL F01LZW(T,C,S,SQTEPS,RSQTPS,BIG)
+C
+            IF (I.GT.LP1) WORK1(I-1) = C*F + S*X
+            F = C*SV(I-1) + S*WORK1(I)
+            WORK1(I) = C*WORK1(I) - S*SV(I-1)
+            X = S*SV(I)
+            SVI = C*SV(I)
+C
+            IF ( .NOT. WANTZ) GO TO 100
+            WORK2(I) = C
+            WORK3(I) = S
+C
+  100       T = F01LZZ(F,X,SMALL,BIG)
+C
+            CALL F01LZW(T,C,S,SQTEPS,RSQTPS,BIG)
+C
+            IF (WANTY) CALL F01LZY(LY,C,S,Y(1,I-1),Y(1,I))
+C
+            IF ( .NOT. WANTB) GO TO 120
+            T = B(I)
+            B(I) = C*T - S*B(I-1)
+            B(I-1) = C*B(I-1) + S*T
+C
+  120       SV(I-1) = C*F + S*X
+            F = C*WORK1(I) + S*SVI
+            SV(I) = C*SVI - S*WORK1(I)
+C
+            IF (I.EQ.K) GO TO 140
+            X = S*WORK1(I+1)
+            WORK1(I+1) = C*WORK1(I+1)
+C
+  140    CONTINUE
+C
+         WORK1(K) = F
+         IF ( .NOT. WANTZ) GO TO 40
+         DO 160 J = 1, NCZ
+C
+            CALL F02SZZ(K-L+1,WORK2(L),WORK3(L),Z(L,J))
+C
+  160    CONTINUE
+         GO TO 40
+C
+C        COME TO NEXT PIECE IF SV(L-1) IS NEGLIGIBLE. FORCE A SPLIT.
+C
+  180    LM1 = L
+         L = L + 1
+         X = WORK1(L)
+         WORK1(L) = 0.0D0
+         DO 220 I = L, K
+C
+            T = F01LZZ(SV(I),X,SMALL,BIG)
+C
+            CALL F01LZW(T,C,S,SQTEPS,RSQTPS,BIG)
+C
+            IF (WANTY) CALL F01LZY(LY,C,-S,Y(1,LM1),Y(1,I))
+C
+            IF ( .NOT. WANTB) GO TO 200
+            T = B(I)
+            B(I) = C*T + S*B(LM1)
+            B(LM1) = C*B(LM1) - S*T
+C
+  200       SV(I) = C*SV(I) + S*X
+            IF (I.EQ.K) GO TO 220
+            X = -S*WORK1(I+1)
+            WORK1(I+1) = C*WORK1(I+1)
+C
+  220    CONTINUE
+C
+C        IF WE COME HERE WITH L=K THEN A SINGULAR VALUE HAS BEEN
+C        FOUND.
+C
+  240    IF (L.LT.K) GO TO 80
+C
+         K = K - 1
+  260 CONTINUE
+C
+  280 IFAIL = K - 1
+      WORK1(1) = ITER
+C
+C     NOW MAKE SINGULAR VALUES NON-NEGATIVE.
+C     K WILL BE 1 UNLESS FAILURE HAS OCCURED.
+C
+      DO 320 J = K, N
+         IF (SV(J).GE.0.0D0) GO TO 320
+C
+         SV(J) = -SV(J)
+C
+         IF (WANTB) B(J) = -B(J)
+         IF ( .NOT. WANTY) GO TO 320
+         DO 300 I = 1, LY
+            Y(I,J) = -Y(I,J)
+  300    CONTINUE
+C
+  320 CONTINUE
+C
+C     NOW SORT THE SINGULAR VALUES INTO DESCENDING ORDER.
+C
+      IF (WANTZ) JJ = 0
+      DO 400 J = K, N
+         S = 0.0D0
+         L = J
+C
+         DO 340 I = J, N
+            IF (SV(I).LE.S) GO TO 340
+            S = SV(I)
+            L = I
+  340    CONTINUE
+C
+         IF (S.EQ.0.0D0) GO TO 420
+         IF (WANTZ) WORK2(J) = L
+         IF (L.EQ.J) GO TO 400
+         IF (WANTZ) JJ = J
+C
+         SV(L) = SV(J)
+         SV(J) = S
+         IF ( .NOT. WANTY) GO TO 380
+C
+         DO 360 I = 1, LY
+            T = Y(I,J)
+            Y(I,J) = Y(I,L)
+            Y(I,L) = T
+  360    CONTINUE
+C
+  380    IF ( .NOT. WANTB) GO TO 400
+         T = B(J)
+         B(J) = B(L)
+         B(L) = T
+C
+  400 CONTINUE
+C
+  420 IF ( .NOT. WANTZ) GO TO 480
+      IF (JJ.EQ.0) GO TO 480
+      DO 460 I = 1, NCZ
+         DO 440 J = K, JJ
+            L = WORK2(J)
+            IF (J.EQ.L) GO TO 440
+            T = Z(J,I)
+            Z(J,I) = Z(L,I)
+            Z(L,I) = T
+  440    CONTINUE
+  460 CONTINUE
+C
+  480 IF (IFAIL.EQ.0) RETURN
+C
+      IFAIL = IFAIL + 1
+  500 IFAIL = P01ABF(IERR,IFAIL,SRNAME,0,P01REC)
+      RETURN
+      END

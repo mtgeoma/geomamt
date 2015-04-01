@@ -1,0 +1,95 @@
+      SUBROUTINE G02CFF(NVARS,KORDER,XBAR,STD,SSP,ISSP,R,IR,KWORK,IFAIL)
+C     MARK 4 RELEASE NAG COPYRIGHT 1974.
+C     MARK 4.5 REVISED
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     NAG SUBROUTINE G02CFF
+C     WRITTEN  6.10.73 BY PAUL GRIFFITHS (OXFORD UNIVERSITY)
+C
+C     RE-ORDERS THE ELEMENTS IN TWO VECTORS (TYPICALLY VECTORS OF
+C     MEANS AND STANDARD DEVIATIONS), AND THE ROWS AND COLUMNS IN
+C     TWO MATRICES (TYPICALLY EITHER MATRICES OF SUMS OF SQUARES
+C     AND
+C     CROSS-PRODUCTS OF DEVIATIONS FROM MEANS AND PEARSON PRODUCT-
+C     MOMENT CORRELATION COEFFICIENTS, OR MATRICES OF SUMS OF
+C     SQUARES
+C     AND CROSS-PRODUCTS ABOUT ZERO AND CORRELATION-LIKE
+C     COEFFICIENTS).
+C
+C     USES NAG ERROR ROUTINE P01AAF
+C
+C
+C     ABOVE DATA STATEMENT MAY BE MACHINE-DEPENDENT -- DEPENDS ON
+C     NUMBER OF CHARACTERS WHICH CAN BE STORED IN A REAL VARIABLE
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='G02CFF')
+C     .. Scalar Arguments ..
+      INTEGER           IFAIL, IR, ISSP, NVARS
+C     .. Array Arguments ..
+      DOUBLE PRECISION  R(IR,NVARS), SSP(ISSP,NVARS), STD(NVARS),
+     *                  XBAR(NVARS)
+      INTEGER           KORDER(NVARS), KWORK(NVARS)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  X
+      INTEGER           I, IERROR, J, K
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      INTEGER           P01ABF
+      EXTERNAL          P01ABF
+C     .. Executable Statements ..
+      IERROR = 0
+      IF (IR.LT.NVARS .OR. ISSP.LT.NVARS) IERROR = 2
+      IF (NVARS.LT.2) IERROR = 1
+      IF (IERROR) 20, 20, 280
+   20 DO 40 I = 1, NVARS
+         IF (KORDER(I).LT.1 .OR. KORDER(I).GT.NVARS) GO TO 240
+         KWORK(I) = -1
+   40 CONTINUE
+      DO 60 I = 1, NVARS
+         J = KORDER(I)
+         KWORK(J) = 1
+   60 CONTINUE
+      DO 100 I = 1, NVARS
+         IF (KWORK(I)) 260, 260, 80
+   80    KWORK(I) = KORDER(I)
+  100 CONTINUE
+      DO 220 I = 1, NVARS
+         J = KWORK(I)
+  120    IF (I-J) 160, 220, 140
+  140    J = KWORK(J)
+         GO TO 120
+  160    DO 180 K = 1, NVARS
+            X = SSP(I,K)
+            SSP(I,K) = SSP(J,K)
+            SSP(J,K) = X
+            X = R(I,K)
+            R(I,K) = R(J,K)
+            R(J,K) = X
+  180    CONTINUE
+         DO 200 K = 1, NVARS
+            X = SSP(K,I)
+            SSP(K,I) = SSP(K,J)
+            SSP(K,J) = X
+            X = R(K,I)
+            R(K,I) = R(K,J)
+            R(K,J) = X
+  200    CONTINUE
+         X = XBAR(I)
+         XBAR(I) = XBAR(J)
+         XBAR(J) = X
+         X = STD(I)
+         STD(I) = STD(J)
+         STD(J) = X
+         KWORK(I) = J
+  220 CONTINUE
+      IFAIL = 0
+      RETURN
+  240 IERROR = 3
+      GO TO 280
+  260 IERROR = 4
+  280 IFAIL = P01ABF(IFAIL,IERROR,SRNAME,0,P01REC)
+      RETURN
+      END

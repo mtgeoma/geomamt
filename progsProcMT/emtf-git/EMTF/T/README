@@ -1,0 +1,94 @@
+This directory contains the robust single station and remote
+reference TF program.
+
+To run the standard robust TF program three files control files are needed.
+The first (something like bs_test.cfg) controls the bands for which
+estimates are produced.  The other two control the data,
+which we refer to here as tranmt.cfg and options.cfg, control the data
+processing task.  You are prompted for the name of the first of these (tranmt.cfg 
+in our example), which basically lists processing runs to do.
+The second file, tells the program about various options
+(robust or not, remote reference or single station, etc.)
+The name of this file (called options.cfg in our example here)
+is specified in the tranmt.cfg file.  A separate options.cfg file 
+could be used for each run specified in the tranmt.cfg file,
+but the general idea is that lots of data sets
+will typicaly be processed with the same options.
+In practice I would typically set up a file called options.cfg
+(for single station processing) and another called cf_opteion.RR
+or some such thing for remote reference processing.
+
+This is an anotated version the tranmt.cfg file:
+
+test          <-----    station name; output files will be called mttest, p_test
+options.cfg    <-----    the options file for this run
+1         <-----    number of stations (1 for single station, 2 for remote ref.)
+1 5      <---- for station 1 : number of FC files, number of channels
+test.f5   <---- name of first FC file  [ this line could be repeated if the
+                  number of FC files is greater than 1 ]
+n        <---- NO, do not continue with another set; if the entry is 'y',
+               all of the above lines should be repeated with appropriate
+                file names etc.
+
+
+
+Here is the options.cfg file:
+
+Robust Single station   <--- this is a header which is added to output files
+FC                  <--- Input (FC) directory
+                        <--- Output directory; put impedance etc. files here
+CF/bs_test.cfg           <---- full path name of band set up file
+y                <--- 'y' for robust, 'n' for LS
+n                <--- 'y' for remote reference, 'n' for single station
+n                <--- 'y' for e field ref, 'n' for mag ***** see below*****
+n        <----   output coherence vs set no. (if yes provide file name on next line) **** see below****
+0. 0. 0. 0. 0    coherence sorting parameters  **** see below*****
+1        <---    # of rotations to ouput results for
+0.       <---   rotation angle, degrees E of geomag N (one line for each rotation)
+
+
+########   COHERENCE SORTING PARAMETERS  #########################
+4 real numbers and one integer are required in general;  These
+are (in order):
+       coh_target, cohp(1), cohp(2), coh_min, nu_min
+
+These parameters are used to specify coherence cut off levels for
+coherence pre-sorting.  In this scheme coherence is calculated
+for wide frequency bands for each time segment, and only time
+segments which acheive a specified minimum coherence are used
+for further processing.  This feature is most useful for single 
+station dead-band data where noise in
+the magnetic components can be large enough to cause serious
+bias problems with single station estimates.
+See Egbert and Liveleybrooks, Geophysics, 1996 for further
+discussion and justification.
+The five parameters specify a scheme for determining coherence
+cut off levels, which adapts to the number of data points and
+typical coherence levels.  The scheme tries to trade off
+(in an ad hoc manner) between reducing bias and variance -
+i.e., we want to use only segments of "high enough" coherence,
+but at the same time keep a reasonable number of degrees of 
+freedom in the estimates.
+
+Here is the meaning of the 5 numbers:
+
+coh_target - is the target coherence; ideally we would like
+  all time segments to achieve this coherence.  (e.g., coht = .95)
+
+cohp - two real parameters used to determine a target number of degrees
+   of freedom in the transfre function estimate via : 
+         nu_target = cohp(1)*nu**cohp(2) where nu is the number
+          of points available (e.g.: cohp(1) = 3., cohp(2) = .5)
+
+coh_min - minimum acceptable coherence level. (e.g., .8)
+
+nu_min  - minimum number of data points (e.g., 20)
+
+If possible we would like to use at least nu_target data points,
+all from time segments with coherence at least coh_target.
+If there are not nu_target points in sets with
+coherence above the target coherence, we accept lower coherence
+sets, until nu_target points are available, or until
+coh_min (the minimum acceptable coherence) is reached.  In general
+we don't accept sets with lower coherence unless this is necessary
+to get the minimum number of data points, nu_min.

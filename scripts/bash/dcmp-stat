@@ -1,0 +1,27 @@
+#!/bin/bash
+
+if [[ $# != 4 ]] ; then
+    echo "usage: $(basename $0) file.dcmp parameter stat range"
+    echo "where:"
+    echo "file.dcmp is a strike dcmp file"
+    echo "parameter could be: azim sh ch tw"
+    echo "stat could be: MEAN MED STD"
+    echo "range something like [min-max]"
+    echo
+    echo "exemple: check shear mean to points 1 to 10 in file test.dcmp:"
+    echo "dcmp_stat test.dcmp sh MEAN [1-10]"
+    echo
+    exit 1
+fi
+
+DCMP=$1
+PAR=$2
+STAT=$3
+RANGE=$4
+
+R=($(selection.py $RANGE))
+
+RESP=$(dcmp2gmt -I$DCMP -D$PAR -Q |\
+awk -v i=${R[0]} -v f=${R[1]} '{if(NR>=i&&NR<=f)print $2}' |\
+gmtmath -S -Ca STDIN $STAT =)
+echo "$DCMP $PAR$RANGE $STAT = $RESP"

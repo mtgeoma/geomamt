@@ -1,0 +1,209 @@
+      SUBROUTINE F04MAF(N,NZ,A,LA,INI,LINI,INJ,B,EPS,KMAX,W,W1,IK,
+     *                  INFORM,IFLAG)
+C     MARK 11 RELEASE. NAG COPYRIGHT 1983.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 16A REVISED. IER-1007 (JUN 1993).
+C
+C     F04MAF SOLVES THE EQUATIONS A*X = B, WHERE A IS A SPARSE
+C     SYMMETRIC POSITIVE DEFINITE MATRIX, USING A PRECONDITIONED
+C     CONJUGATE GRADIENT METHOD. A MUST HAVE BEEN FACTORIZED BY
+C     THE NAG LIBRARY ROUTINE F01MAF.
+C
+C     THE ROUTINE IS BASED UPON THE HARWELL ROUTINE MA31B BY
+C     N MUNKSGAARD.
+C
+C     THE DEVELOPMENT OF MA31B WAS SUPPORTED BY THE DANISH
+C     NATURAL RESEARCH COUNCIL, GRANT NUMBER 511-10069
+C
+C     FOR A DESCRIPTION OF THE PARAMETERS AND USE OF THIS ROUTINE
+C     SEE THE NAG LIBRARY MANUAL. PARAMETER ASSOCIATION IS AS
+C     BELOW.
+C
+C     ROUTINE     DOCUMENT
+C     N            N
+C     NZ          NZ
+C     A            A
+C     LA          LA
+C     INI         INDI
+C     LINI        LINDI
+C     INJ         INDJ
+C     B            B
+C     EPS          ACC
+C     KMAX        NOITS
+C     W          WORK
+C     W1         WORK1
+C     IK         IWORK
+C     INFORM       INFORM
+C     IFLAG        IFAIL
+C
+C     **************************************************
+C
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='F04MAF')
+C     .. Scalar Arguments ..
+      INTEGER           IFLAG, LA, LINI, N, NZ
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(LA), B(N), EPS(2), W(N,3), W1(N,3)
+      INTEGER           IK(N,2), INFORM(4), INI(LINI), INJ(LA), KMAX(2)
+C     .. Arrays in Common ..
+      DOUBLE PRECISION  WMACH(15)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  BNORM, COND, EPSMCH
+      INTEGER           IERR, IFJ, IMAX, LP, LROW, ND, NZ0, NZP1
+      LOGICAL           L1
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+      CHARACTER*80      REC(2)
+C     .. External Functions ..
+      INTEGER           IDAMAX, P01ABF
+      EXTERNAL          IDAMAX, P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          F06FCF, F04MAZ, X02ZAZ, X04AAF, X04BAF
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS, MOD, DBLE
+C     .. Common blocks ..
+      COMMON            /AX02ZA/WMACH
+C     .. Save statements ..
+      SAVE              /AX02ZA/
+C     .. Executable Statements ..
+      CALL X04AAF(0,LP)
+      CALL X02ZAZ
+C
+      L1 = MOD(IFLAG,100)/10 .EQ. 1
+C
+C     CHECK RESTRICTIONS ON INPUT PARAMETERS.
+C
+      IF (N.LT.1) GO TO 60
+      IF (NZ.LT.N) GO TO 80
+      IF (LA.LT.(NZ-N+INFORM(1))) GO TO 100
+      IF (LINI.LT.INFORM(2)) GO TO 120
+C
+C     THIS SUBROUTINE DRIVES THE ITERATION  OF THE
+C     SOLUTION PROCESS.
+C
+C     DEFINE THE NECESSARY CONSTANTS.
+C
+      IERR = 0
+      EPSMCH = WMACH(3)
+      LROW = INFORM(1)
+      ND = INFORM(3)
+      NZ0 = NZ - ND
+      NZP1 = NZ0 + 1
+      IFJ = LA - NZ0
+      KMAX(2) = KMAX(1)
+      IF (KMAX(2).LT.1) KMAX(2) = 100
+      EPS(2) = EPS(1)
+      IF (EPS(2).LT.EPSMCH .OR. EPS(2).GT.1.0D0) EPS(2) = EPSMCH
+C
+C     SCALE RIGHT HAND SIDE
+C
+      CALL F06FCF(N,W,1,B,1)
+      IMAX = IDAMAX(N,B,1)
+      BNORM = ABS(B(IMAX))
+      IF (BNORM.NE.0.0D0) GO TO 20
+      COND = 0.0D0
+      EPS(2) = 0.0D0
+      GO TO 40
+C
+C     ACTIVATE THE ITERATIVE PROCEDURE.
+C
+   20 IF (NZ0.GT.0) CALL F04MAZ(N,NZ0,A,INI,INJ,IFJ,A(NZP1),W(1,2)
+     *                          ,INJ(NZP1),IK,B,W(1,3),W1,W1(1,2)
+     *                          ,W1(1,3),KMAX(2),EPS(2),LROW,IERR)
+      IF (IERR.EQ.3) GO TO 140
+C
+C     DESCALE THE SOLUTION VECTOR.
+C
+      IMAX = IDAMAX(N,B,1)
+      COND = ABS(B(IMAX))/BNORM
+      W1(1,1) = COND
+      CALL F06FCF(N,W,1,B,1)
+      IF (0.1D0.LT.DBLE(N)*COND*WMACH(3)) GO TO 160
+C
+C     THE FOLLOWING STATEMENTS IMPLEMENT THE ERROR EXITS.
+C
+   40 IF (EPS(2).GT.EPS(1)) GO TO 180
+      GO TO 220
+C
+C     *****  ERROR MESSAGES
+C
+   60 IF (L1) THEN
+         WRITE (REC,FMT=99994)
+         CALL X04BAF(LP,REC(1))
+         WRITE (REC,FMT=99998)
+         CALL X04BAF(LP,REC(1))
+      END IF
+      IERR = 1
+      GO TO 200
+   80 IF (L1) THEN
+         WRITE (REC,FMT=99994)
+         CALL X04BAF(LP,REC(1))
+         WRITE (REC,FMT=99997)
+         CALL X04BAF(LP,REC(1))
+      END IF
+      IERR = 1
+      GO TO 200
+  100 IF (L1) THEN
+         WRITE (REC,FMT=99994)
+         CALL X04BAF(LP,REC(1))
+         WRITE (REC,FMT=99996)
+         CALL X04BAF(LP,REC(1))
+      END IF
+      IERR = 1
+      GO TO 200
+  120 IF (L1) THEN
+         WRITE (REC,FMT=99994)
+         CALL X04BAF(LP,REC(1))
+         WRITE (REC,FMT=99995)
+         CALL X04BAF(LP,REC(1))
+      END IF
+      IERR = 1
+      GO TO 200
+  140 IF (L1) THEN
+         WRITE (REC,FMT=99994)
+         CALL X04BAF(LP,REC(1))
+         WRITE (REC,FMT=99993)
+         CALL X04BAF(LP,REC(1))
+         WRITE (REC,FMT=99992)
+         CALL X04BAF(LP,REC(1))
+      END IF
+      IERR = 3
+      GO TO 200
+  160 IF (L1) THEN
+         WRITE (REC,FMT=99994)
+         CALL X04BAF(LP,REC(1))
+         WRITE (REC,FMT=99993)
+         CALL X04BAF(LP,REC(1))
+         WRITE (REC,FMT=99991) COND
+         CALL X04BAF(LP,REC(1))
+         CALL X04BAF(LP,REC(2))
+      END IF
+      IERR = 4
+      GO TO 200
+  180 IF (L1) THEN
+         WRITE (REC,FMT=99999) KMAX(1)
+         CALL X04BAF(LP,REC(1))
+      END IF
+      IERR = 2
+  200 IERR = P01ABF(IFLAG,IERR,SRNAME,0,P01REC)
+C
+  220 IFLAG = IERR
+      RETURN
+C
+C
+C     END OF F04MAF.
+C
+99999 FORMAT (' WARNING  MORE THAN ',I7,2X,'ITERATIONS  REQUIRED TO OB',
+     *  'TAIN DESIRED ACCURACY.')
+99998 FORMAT (34X,' N  IS OUT OF RANGE.')
+99997 FORMAT (34X,' NZ IS OUT OF RANGE.')
+99996 FORMAT (34X,'LICN IS OUT OF RANGE.')
+99995 FORMAT (34X,'LIRN IS OUT OF RANGE.')
+99994 FORMAT (' ERROR RETURN FROM F04MAF BECAUSE')
+99993 FORMAT (34X,'THE MATRIX A IS SINGULAR, OR NEARLY SINGULAR.')
+99992 FORMAT (34X,'DETECTED DURING CONJUGATE GRADIENT ITERATIONS.')
+99991 FORMAT (34X,'DETECTED ON COMPLETION OF CONJUGATE GRADIENTS',/34X,
+     *  'CONDITION NUMBER OF A IS AT LEAST ',1P,D10.2)
+      END

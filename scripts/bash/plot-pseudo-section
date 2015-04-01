@@ -1,0 +1,314 @@
+#!/bin/bash
+source gmt_defaults
+
+# set local gmt_defaults
+gmt_defaults[ANNOT_FONT_SIZE_PRIMARY]=9p
+gmt_defaults[HEADER_OFFSET]=0.6c
+gmt_defaults[LABEL_OFFSET]=0.0c
+gmt_defaults[HEADER_FONT_SIZE]=14p
+gmt_defaults[LABEL_FONT_SIZE]=12p
+
+# default optional arguments
+declare -A options
+options=(['par']="phi" ['cmp']="yx,xy" ['ps']="default" ['T']="default" ['D']="default" ['affix']="./,.dat" ['shortening']=0 ['BT']=a1pf3 ['BD']="default" ['Dsignal']="+" ['lang']="en" ['cpt_range']="default" ['background']=white)
+
+usage ()
+{
+    printf "\nusage: %s stations.dat [parameter=value]\n" $1
+    printf "where:\n"
+    printf "\tstations.dat\tfile where:\n"
+    printf "\t\t\t1st column is station position\n"
+    printf "\t\t\t2nd column is station label (see option shortening)\n"
+    printf "\t\t\t3th column is impedance file [optional, see affix]\n"
+    printf "parameters could be:\n"
+    printf "\tpar\tMT parameter \"phi\" or \"rho\" [${options['par']}]\n"
+    printf "\tcmp\tMT component \"xy\" and/or \"yx\" [${options['cmp']}]\n"
+    printf "\tps\tpostscript file name [stations-par.ps]\n"
+    printf "\tT\tperiod range: Tmin/Tmax [data range]\n"
+    printf "\tD\tdistance range: Dmin/Dmax [data range]\n"
+    printf "\taffix\tprefix and postfix (separeted by \",\") added to label\n"
+    printf "\t\t\tto show which impedance file to use [${options['affix']}]\n"
+    printf "\tshortening\tcould be used to shortening label\n"
+    printf "\t\t\tstart_character:n_character [0:length(label)]\n"
+    printf "\tBT\tperiod boundary anotation [${options['BT']}]\n"
+    printf "\tBD\tdistance boundary anotation [a[range/10]f[range/40]]\n"
+    printf "\tDsignal\tsignal of D axis. \"+\" is left to right,\n"
+    printf "\t\t\t\"+\" is right to left [${options['Dsignal']}]\n"
+    printf "\tlang\tlanguage used in labels. Could be \"en\" to English\n"
+    printf "\t\t\tor \"pt\" to Portuguese [${options['lang']}]\n"
+    printf "\tcpt_range\trange to be used in makecpt. Default is 0/90/5 to phi\n"
+    printf "\t\t\tand -0.5/3/0.25 to rho (in log10)\n"
+    printf "\tbackground\tgraphic background color[${options['background']}]\n"
+    printf "\nparameters could be any one listed by gmtdefaults, example:\n"
+    printf "\tLABEL_FONT_SIZE=10p\n\n"
+    exit 1
+}
+
+if [[ ${#} == 0 ]] ; then
+    usage $0
+fi
+
+# mandatory option
+stations=$1
+shift
+
+while [[ -n $1 ]] ; do
+    option=($(echo $1 | awk '{gsub("="," ");print $0}'))
+    if [[ ${#option[*]} -eq 2 ]] ; then
+        # check if is a valid option
+	if [[ -z ${options[${option[0]}]} ]] ; then
+            if [[ -z ${gmt_defaults[${option[0]}]} ]] ; then
+		echo "'${option[0]}' isn't a valid option"
+		usage $0
+            else
+		gmt_defaults[${option[0]}]=${option[1]}
+            fi
+	else
+            options[${option[0]}]=${option[1]}
+	fi
+    else
+        echo "error in option:$1"
+	usage $0
+    fi
+    shift
+done
+
+# set gmt options: fast
+gmtset_options=""
+for index in $(echo ${!gmt_defaults[*]}) ; do
+    if [[ $index != "UNIX_TIME_FORMAT" ]] ; then
+        gmtset_options="$gmtset_options $index=${gmt_defaults[$index]}"
+    fi
+done
+gmtset UNIX_TIME_FORMAT="${gmt_defaults[UNIX_TIME_FORMAT]}"
+gmtset $gmtset_options
+
+# check stations in distance range:
+if [[ ${options['D']} == "default" ]] ; then
+    D=($(sort -g $stations | awk '{printf " %s",$1}')) 
+    Dmin=$(echo ${D[0]} ${D[1]} | awk '{print (3*$1-$2)/2}')
+    N=${#D[*]}
+    Dmax=$(echo ${D[$[$N-2]]} ${D[$[$N-1]]} | awk '{print (3*$2-$1)/2}')
+else
+    Dmin=$(echo ${options['D']} | cut -d/ -f1)
+    Dmax=$(echo ${options['D']} | cut -d/ -f2)
+    D=($(sort -g $stations |\
+         awk -v i=$Dmin -v s=$Dmax '{if($1>=i&&$1<=s)printf " %s",$1}'))
+fi
+
+cmp1=$(echo ${options['cmp']} | cut -d',' -f1)
+cmp2=$(echo ${options['cmp']} | cut -s -d',' -f2)
+
+pre=$(echo ${options['affix']} | cut -d',' -f1)
+pos=$(echo ${options['affix']} | cut -d',' -f2)
+Zfile=($(sort -g $stations | awk -v i=$Dmin -v s=$Dmax -v a=$pre -v p=$pos '{\
+    if($1>=i&&$1<=s){if(NF==2){printf " %s%s%s",a,$2,p}else{printf " %s",$3}}}'))
+
+# check if could find all impedance file and find all periods:
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+for file in $(echo ${Zfile[*]}) ; do
+    if [[ !(-f $file) ]] ; then
+	echo "couldn't find file \"$file\""
+	echo
+	rm -rf $GMT_TMPDIR
+	exit 1
+    else
+	parametros-mt $file phi-${cmp1} | awk '{print $1}' >> $GMT_TMPDIR/allT
+	if [[ -n $cmp2 ]] ; then
+	    parametros-mt $file phi-${cmp2} | \
+		awk '{print $1}' >> $GMT_TMPDIR/allT
+	fi
+    fi
+done
+
+# check all possible periods in period range:
+if [[ ${options['T']} == "default" ]] ; then
+    T=($(sort -gu $GMT_TMPDIR/allT  | awk '{printf " %s",$1}'))
+    Tmin=$(echo ${T[0]} ${T[1]} | awk '{print sqrt($1*$1*$1/$2)}')
+    N=${#T[*]}
+    Tmax=$(echo ${T[$[$N-2]]} ${T[$[$N-1]]} | awk '{print sqrt($2*$2*$2/$1)}')
+else
+    Tmin=$(echo ${options['T']} | cut -d/ -f1)
+    Tmax=$(echo ${options['T']} | cut -d/ -f2)
+    T=($(sort -gu $GMT_TMPDIR/allT | \
+	awk -v i=$Tmin -v s=$Tmax '{if($1>=i&&$1<=s)printf " %s",$1}'))
+fi
+
+# make period boundaries:
+L=$Tmin
+declare -A TL
+declare -A TR
+T1=""
+for T2 in $(echo ${T[*]}) ; do
+    if [[ -n $T1 ]] ; then
+	R=$(echo "$T1 $T2" | awk '{print sqrt($1*$2)}')
+	TR[$T1]=$R
+	L=$R
+    fi
+    TL[$T2]=$L
+    T1=$T2
+done
+TR[$T2]=$Tmax
+
+label=($(sort -g $stations | awk -v i=$Dmin -v s=$Dmax \
+         '{if($1>=i&&$1<=s){printf " %s",$2}}'))
+
+for ((i=0;i<${#label[*]};i++)) ; do
+    charb=$(echo ${options['shortening']} | cut -d':' -f1)
+    charn=$(echo ${options['shortening']} | cut -s -d':' -f2)
+    if [[ -z $charn ]] ; then
+	label[$i]=${label[$i]:$charb}
+    else
+	label[$i]=${label[$i]:$charb:$charn}
+    fi
+done
+
+# make distance boundaries:
+declare -a DL
+declare -a DR
+L=$Dmin
+i=0
+for D2 in $(echo ${D[*]}) ; do
+    if [[ $i != 0 ]] ; then
+	R=$(echo "$D1 $D2" | awk '{print ($1+$2)/2}')
+	DR[$[$i-1]]=$R
+	L=$R
+    fi
+    DL[$i]=$L
+    D1=$D2
+    ((i++))
+done
+DR[$[$i-1]]=$Dmax
+
+if [[ ${options['BD']} == "default" ]] ; then
+    BD=$(echo $Dmax $Dmin | \
+	awk '{p10=int(log($1-$2)/log(10));p10=exp(p10*log(10))/10;printf "a%ff%f",p10,p10/4}')
+else
+    BD=${options['BD']}
+fi
+BT=${options['BT']}
+
+if [[ ${options['lang']} == "en" ]] ; then
+    scale_label_phi="phi (degrees)"
+    dist_label="distance (km)"
+elif [[ ${options['lang']} == "pt" ]] ; then
+    scale_label_phi="phi (graus)"
+    dist_label="dist\342ncia (km)"
+else
+    echo "${options['lang']}: unknow lang option"
+    echo "must be \"en\" to English or \"pt\" to Portuguese"
+    echo
+    rm -rf $GMT_TMPDIR
+    exit 1
+fi
+
+par=${options['par']}
+
+if [[ ${options['ps']} == "default" ]] ; then
+    ps=${stations%%\.*}
+    ps=${ps}-${par}.ps
+else
+    ps=${options['ps']}
+    if [[ ${ps##*.} != "ps" ]] ; then
+	echo "$ps: expected a file with extention .ps"
+	echo
+	rm -rf $GMT_TMPDIR
+	exit 1
+    fi
+fi
+
+if [[ ${options['cpt_range']} == "default" ]] ; then
+    if [[ $par == "phi" ]] ; then
+	cpt_range=0/90/5
+    else
+	cpt_range=-0.5/3/0.25
+    fi
+else
+    cpt_range=${options['cpt_range']}
+fi
+
+# scale
+if [[ $par == "phi" ]] ; then
+    makecpt -Cno_green -T$cpt_range > $GMT_TMPDIR/color.cpt
+    psscale -X2c -Y1.5c -D8.5c/1.5c/12c/0.5ch -Ba10f5:"$scale_label_phi":wSne \
+        -C$GMT_TMPDIR/color.cpt -K -P > $ps
+elif [[ $par == "rho" ]] ; then
+    makecpt -Cno_green -Qi -T$cpt_range -I > $GMT_TMPDIR/color.cpt
+    psscale -X2c -Y1.5c -D8.5c/1.5c/12c/0.5ch -Ba1pf3:"rho (@~W@~m)":wSne \
+	-C$GMT_TMPDIR/color.cpt -Q -K -P > $ps
+else
+    echo "$par: unknow parameter"
+    rm -rf $GMT_TMPDIR
+    exit 1
+fi
+
+# pseudo-section
+sig=${options['Dsignal']}
+fill=${options['background']}
+
+if [[ $par == "phi" && $cmp1 == "yx" ]] ; then
+    s=180
+else
+    s=0
+fi
+
+psbasemap -X1c -Y3.5c -JX${sig}16c/-9cl -R$Dmin/$Dmax/$Tmin/$Tmax \
+    -G$fill -B${BD}:."$par $cmp1"::"$dist_label":/${BT}:"T (s)":WSne -K -O >> $ps
+
+for ((i=0;i<${#label[*]};i++)) ; do
+    echo "${D[$i]} $Tmin" | psxy -J -R -N -D0p/5p -Si10p -G0 -K -O >> $ps
+    echo "${D[$i]} $Tmin 10 90 0 ml ${label[$i]}" | \
+    	pstext -J -R -N -D0c/12p -K -O >> $ps
+
+    parametros-mt ${Zfile[$i]} ${par}-${cmp1} |\
+    awk -v s=$s '{print $1,$2+s}' |\
+    while read -a col ; do
+        echo "> -Z${col[1]}"
+        echo "${DL[$i]} ${TL[${col[0]}]}"
+        echo "${DL[$i]} ${TR[${col[0]}]}"
+        echo "${DR[$i]} ${TR[${col[0]}]}"
+        echo "${DR[$i]} ${TL[${col[0]}]}"
+    done |\
+    psxy -J -R $M -L -C$GMT_TMPDIR/color.cpt -K -O >> $ps
+done
+
+if [[ -n $cmp2 ]] ; then
+    if [[ $par == "phi" && $cmp2 == "yx" ]] ; then
+	s=180
+    else
+	s=0
+    fi
+
+    psbasemap -Y11.5c -J -R \
+	-G$fill -B${BD}:."$par $cmp2":/${BT}:"T (s)":Wsne -K -O >> $ps
+
+    for ((i=0;i<${#label[*]};i++)) ; do
+	echo "${D[$i]} $Tmin" | psxy -J -R -N -D0p/5p -Si10p -G0 -K -O >> $ps
+	echo "${D[$i]} $Tmin 10 90 0 ml ${label[$i]}" | \
+    	    pstext -J -R -N -D0c/12p -K -O >> $ps
+
+	parametros-mt ${Zfile[$i]} ${par}-${cmp2} |\
+        awk -v s=$s '{print $1,$2+s}' |\
+        while read -a col ; do
+            echo "> -Z${col[1]}"
+            echo "${DL[$i]} ${TL[${col[0]}]}"
+            echo "${DL[$i]} ${TR[${col[0]}]}"
+            echo "${DR[$i]} ${TR[${col[0]}]}"
+            echo "${DR[$i]} ${TL[${col[0]}]}"
+	done |\
+        psxy -J -R $M -L -C$GMT_TMPDIR/color.cpt -K -O >> $ps
+    done
+fi
+
+psxy -J -R -T -O >> $ps
+
+# Clean up all temporary files and the temporary directory
+rm -rf $GMT_TMPDIR
+
+# show figure
+ps2raster $ps -P -A -Tg
+if [[ -n $VIEWER_PNG ]] ; then
+    $VIEWER_PNG ${ps/.ps/.png}&
+else
+    echo "figure ${ps/.ps/.png} done"
+fi

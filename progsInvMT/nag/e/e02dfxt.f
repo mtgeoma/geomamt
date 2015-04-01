@@ -1,0 +1,98 @@
+      SUBROUTINE E02DFX(NORDER,Q,LAMBDA,LLMBDA,XMAX,M,X,JINTVL,NINDEX,
+     *                  INDEX)
+C     MARK 14 RELEASE. NAG COPYRIGHT 1989.
+C     A DASL routine, unmodified except for name.
+C
+C     **********************************************************
+C
+C     D A S L  -  DATA APPROXIMATION SUBROUTINE LIBRARY
+C
+C     SUBROUTINE BINDEX      INTERVAL INDICES AND B-SPLINE
+C     =================      INDICES FOR SPECIFIED POINT SET
+C
+C     CREATED 23 07 79.  UPDATED 25 11 82.  RELEASE 00/03
+C
+C     AUTHORS ... MAURICE G. COX AND PAULINE E. M. CURTIS.
+C     NATIONAL PHYSICAL LABORATORY, TEDDINGTON,
+C     MIDDLESEX TW11 OLW, ENGLAND.
+C
+C     (C)  CROWN COPYRIGHT 1980-1982
+C
+C     **********************************************************
+C
+C     E02DFX.   GIVEN AN ORDER, A SET OF KNOTS, AND A SET OF
+C     STRICTLY INCREASING  X-VALUES,  E02DFX  DETERMINES
+C        (1) THE SET OF INTERVAL INDICES CORRESPONDING TO
+C            THESE X-VALUES,
+C        (2) THE SET OF DISTINCT B-SPLINE INDICES WHICH
+C            CONTAIN WITHIN THEIR SUPPORT THE INTERVALS
+C            SPECIFIED BY THE INTERVAL INDICES IN (1)
+C
+C     INPUT PARAMETERS
+C        NORDER   ORDER (DEGREE + 1) OF SPLINE
+C        Q        NKNOTS + NORDER, WHERE NKNOTS IS NUMBER OF
+C                    INTERIOR KNOTS
+C        LAMBDA   INTERIOR KNOTS
+C        LLMBDA   DIMENSION OF LAMBDA
+C        M        NUMBER OF VALUES OF INDEPENDENT VARIABLE
+C        X        INDEPENDENT VARIABLE VALUES
+C
+C     OUTPUT PARAMETERS
+C        JINTVL   INTERVAL INDICES CORRESPONDING TO X-VALUES
+C        NINDEX   NUMBER OF DISTINCT B-SPLINE INDICES
+C        INDEX    SET OF DISTINCT B-SPLINE INDICES IN
+C                    INDEX(1)  TO  INDEX(NINDEX).  REMAINING
+C                    ELEMENTS UNUSED.
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  XMAX
+      INTEGER           LLMBDA, M, NINDEX, NORDER, Q
+C     .. Array Arguments ..
+      DOUBLE PRECISION  LAMBDA(LLMBDA), X(M)
+      INTEGER           INDEX(Q), JINTVL(M)
+C     .. Local Scalars ..
+      INTEGER           I, IMAX, IP, J, K, L, LAST, NKNOTS, NOW, P
+C     .. External Subroutines ..
+      EXTERNAL          E02DFV
+C     .. Intrinsic Functions ..
+      INTRINSIC         MIN
+C     .. Executable Statements ..
+C
+      NKNOTS = Q - NORDER
+C
+C     DETERMINE FIRST THE SET OF  M  INTERVAL INDICES
+C
+      J = 0
+      DO 20 I = 1, M
+         CALL E02DFV(NKNOTS,LAMBDA,LLMBDA,XMAX,X(I),J)
+         JINTVL(I) = J
+   20 CONTINUE
+C
+C     NOW PROVIDE THE SET  J  OF DISTINCT B-SPLINE INDICES
+C     AND THEIR NUMBER.  J  IS GIVEN BY THE UNION OF THE
+C     INTEGER SETS  JINTVL(I) + 1, JINTVL(I) + 2, ... ,
+C     JINTVL(I) + NORDER,  FOR  I = 1, 2, ..., M
+C     FOR  I = 1, 2, ... , M .
+C
+      K = 0
+      NOW = -NORDER
+      IMAX = 0
+      DO 60 I = 1, M
+         LAST = NOW
+         NOW = JINTVL(I)
+         IF (NOW.EQ.LAST) GO TO 60
+         P = MIN(NOW-LAST,NORDER)
+         L = NOW + NORDER - P
+         DO 40 IP = 1, P
+            K = K + 1
+            L = L + 1
+            INDEX(K) = L
+   40    CONTINUE
+         IMAX = IMAX + P
+   60 CONTINUE
+      NINDEX = IMAX
+      RETURN
+C
+C     END E02DFX
+C
+      END

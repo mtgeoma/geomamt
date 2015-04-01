@@ -1,0 +1,142 @@
+THIS DIRECTORY CONTAINS SOME ARTIFICIAL TEST DATA  AND EXAMPLES OF CONTROL FILES
+USE THESE FOR testing FFT and Transfer function programs in EMTF
+
+The subdirectories are:
+CF/      configuration file directory
+DATA/    directory with artificial data in ASCII files
+FC/      empty directory where Fourier coefficient files will be written
+SP/      directory for system parameter files
+MT/      directory where standard robust MT processing results are written
+MMT/     directory where robust multiple station MT processing results 
+			are written
+results/ directory containing final results you should get (for comparison)
+bin/     temporary bin directory for testing code
+sensors/ empty sensors directory (not used in testing)
+options.cfg, options_RR.cfg, tranmt.cfg    configuration files for tranmt
+paths.cfg      path name file for dnff
+
+
+TO TEST:
+
+1) MAKE AND INSTALL FORTRAN EXECUTABLES 
+
+Simplest (if Makefiles need no changes for your system ...):
+just type INSTALL   from this directory.  This will do the following
+
+   ==> in RF/RFASC   :  make rfasc ; make install ; make clean
+   --  dnff in D     :  make dnff ; make install ; make clean
+   --  trantmt in T  :  make tranmt ; make install ; make clean
+
+Uncomment lines for multmtrn, bin2asc, and/or rfemi if you want any
+of these programs also.
+
+after installation executables will be in test/bin move these to
+your bin directory.
+  
+
+2) RUN TESTS ON FORTRAN PROGRAMS
+   a) rfasc  :  from directory test/DATA run : ../bin/rfasc
+
+	For the following prompts (>>>) give these responses
+
+	>>> station id
+	TS1
+ 	>>> enter output file name
+	test1.bin
+ 	>>> enter header (80 character max)
+	testing 1, 2, 3, ...
+ 	>>> input file name
+	test1.asc
+ 	>>> enter clock reset file name
+	test1.clk
+ 	>>> another input file? (append to current output file)
+	n
+	>>> continue?
+	n  (or answer 'y' and then go ahead and translate test2.asc)
+
+       
+
+ 	  -->  A binary data file test1.bin will appear in DATA
+
+   b.1) dnff  :  from the main test directory (test/) run : bin/dnff
+
+	For the following prompts (>>>) give these responses
+
+	>>> Enter input file name: 
+	test1.bin
+	>>> FT another data file? 
+	n  (or answer 'y' and go ahead and FFT test2.bin)
+
+	   -->  A binary Foirier coefficient file test1.f5 will appear in FC
+
+   b.2) To test dnff on ASCII files run : bin/dnff -a
+
+	>>> Enter input file name: 
+	test1.asc
+	>>> FT another data file? 
+	n
+
+	   -->  A binary Fourier coefficient file test1.f5 will appear in FC
+
+      Note that the FC files resulting from applying (a) to test1.asc
+	followed by (b.1) to the output, should be identical to applying
+	(b.2) directly to test.asc
+
+    Repeat (b.2) on the second test ASCII file before doing step (c):
+
+	>>> Enter input file name: 
+	test2.asc
+	>>> FT another data file? 
+	n
+
+    c) tranmt : from test run : bin/tranmt
+
+	For the following prompts (>>>) give these responses
+
+	>>> enter control file name
+	tranmt.cfg
+
+	   -->  Three ASCII Transfer Function output files  (Z-files)
+		will appear in MT .  These are called 
+		test1.zss	 --> single station results from test1.asc
+		test2.zss	 --> single station results from test2.asc
+		test2r1.zrr	 --> Remote ref results from test1.asc
+					(test2.asc is remote)
+
+		These three output files should agreee with the
+		files of the same names in test/results
+
+		NOTE: There if you run dnff with the -x option
+ 		test1.sdm test2.sdm and test2r1.sdm will also
+		be generated.  These cross-product files can be
+		easily imported into GEOTOOLS.  Files to compare
+		cross-product files to are also in test/results
+
+    c) multmtrn : from test/MMT run : ../bin/multmtrn
+
+		By default the program uses array.cfg (set up
+		to use the synthetic test data in test1.f5 and test2.f5)
+		The following results files should appear in
+		MMT: TEST_1-2.M  , TEST_1-2.Pw  , TEST_1-2.S0,
+		TEST 1-2.SN , TS1_TEST_1-2.zmm TS2_TEST_1-2.zmm
+		Use sdm_plot.m , Pw_plot.m and apresplt.m to
+		plot result files in matlab.  Look at the *.M file
+		for an ASCII table output of eigenvalues/eigenvectors
+		and various other bits of information.  Compare
+		to files of the same names in ../results .
+
+3) MATLAB PLOTTING
+
+	Matlab M-files are in EMTF/matlab .  Within this directory are
+	subdirectories IN , UTIL , ZPLT which contain routines used for
+	reading and plotting Z-files in matlab.  Put these directories
+	in the matlab search path by changning the environment variable
+	MATLABPATH, or by using the "path" command in matlab.
+	To plot results in the test output files type the command
+	"apresplt".  A dialogue box for browsing for *.z* files will
+	appear.  Choose the test output files, and plots should appear.
+	see additional documentation in doc/PS/matlab_doc.ps,
+	and  doc/PS/Z_files.tex for more details.
+
+	For plotting some of the multiple station test output files
+	in matlab cd to MMT and run apresplt, Pw_plot, and sdm_plot.

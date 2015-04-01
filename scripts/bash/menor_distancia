@@ -1,0 +1,23 @@
+#!/bin/bash
+# uso:./menor_distancia longitude/latitude arquivo.coord
+if [[ $# -ne 2 ]]
+then
+    echo "usage: $0 lon/lat file"
+    echo " where file have 3 colums:"
+    echo " longitude latitude label"
+    echo
+    exit 1
+fi
+coord=$1
+file=$2
+
+# guarda a linha do arquivo com as coordenadas com menor distancia
+# o azimute e distância
+data=($(awk -v c=$coord 'BEGIN{split(c,r,"/")}{
+    printf "%s %s %s %s\n",r[2],r[1],$2,$1
+    }' $file |\
+    gmtconvert -f0y,1x,2y,3x |\
+    geod +ellps=WGS84 +units=km -f %.4f -I |\
+    cat -n | sort -gr -k 4 | tail -n 1 | awk '{print $1,$2,$4}'))
+
+awk -v n=${data[0]} -v a=${data[1]} -v d=${data[2]} '{if(NR==n)print $0,a,d}' $file

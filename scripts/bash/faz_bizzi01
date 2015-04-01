@@ -1,0 +1,129 @@
+#!/bin/bash
+
+# diretório base onde está os dados no formato GMT
+bizzi01=$BIZZI01
+
+# subdiretórios com os dados de geologia e estrutural
+geologia=tec/Tectonico
+estrutural=tec/Estruturas_Continental
+
+# estruturas usadas (a ordem é importante!)
+estruturas=dique,contracional,extensional,cisalhamento,falha,lineamentos
+# ficaram fora:
+# anticlinal_ou_antiforme_invertido
+# anticlinal_ou_antiforme_normal
+# estruturas_brasil
+# sinclinal_ou_sinforme_invertido
+# sinclinal_ou_sinforme_normal
+# testemunho_estrutural
+
+# arquivo com código de cores
+geo_cores=$bizzi01/cores/tectonico.cmyk
+est_pen=$bizzi01/cores/estrutural.pen
+
+# arquivos de saída
+geologia_cmd=geologia.cmd
+geologia_cpt=${geologia_cmd/.cmd/.cpt}
+estrutural_cmd=estrutural.cmd
+estrutural_legend=${estrutural_cmd/.cmd/.leg}
+
+# verifica se os diretórios existem
+if [[ !(-d ${bizzi01}/${geologia}) || !(-d ${bizzi01}/${estrutural}) ]] ; then
+    echo "não encontrou o diretório $bizzi01"
+    echo "e/ou os subdiretórios $bizzi01/${geologia} e $bizzi01/${estrutural}"
+    echo "edite o script '$0'"
+    exit 1
+fi
+
+if [[ !(-f ${geo_cores}) ||  !(-f ${geo_cores}) ]] ; then
+    echo "não encontrou o arquivo $geo_cores e/ou $est_pen"
+    exit 1
+fi
+
+if [[ $# -ne 1 ]] ; then
+    echo uso: $0 -Rwest/east/south/north
+    exit 1
+fi
+range=$1
+
+if [[ -f $geologia_cmd || -f $geologia_cpt ]] ; then
+    echo "arquivo $geologia_cmd e/ou $geologia_cpt já existem!"
+    echo "pulando esse processo"
+else
+    # Create a temporary directory. $GMT_TMPDIR will be set to its pathname.
+    # XXXXXX is replaced by a unique random combination of characters.
+    export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+    max=0
+    for file in $(find ${bizzi01}/${geologia} -iname '*.dat') ; do
+	n=$(gmtselect $file $M $range | wc -l)
+	if [[ $n != 0 ]] ; then
+	    # guarda em um arquivo cujo nome é a "época" geológica
+	    # força minúscula e troca "-" por "_" para poder usar ${geo_cores}
+	    epoca=$(echo $file | gawk '{n=split($1,a,"/");b=tolower(a[n-1]);gsub("-","_",b);print b}')
+	    file=$(echo $file | gawk -v d=$bizzi01 '{gsub(d,"$BIZZI01");print $0}')
+	    echo $file >> ${GMT_TMPDIR}/$epoca
+	    len=$(echo $file | wc -m)
+	    if (( $len > $max )) ; then
+		max=$len
+	    fi
+	fi
+    done
+
+    format=$(printf "psxy %%-%ds \$M -R -J -G$%%-26s -K -O\\\n" $max)
+
+    i=0
+    printf "#COLOR_MODEL = CMYK\n" > $geologia_cpt
+    for epoca in $(echo "terciario cenozoico paleogeno cretaceo_paleogeno cretaceo juro_cretaceo jurassico triassico carbo_triassico carbo_permo_triassico carbo_permiano devono_carbonifero devoniano siluro_devoniano siliriano ordoviciano cambro_ordoviciano cambriano cambriano_neoproterozoico neoproterozoico meso_neoproterozoico mesoproterozoico paleo_mesoproterozoico paleoproterozoico proterozoico arqueano_paleoproterozoico neoarqueano meso_neoarqueano mesoarqueano paleoarqueano arqueano") ; do
+	if [[ -f ${GMT_TMPDIR}/$epoca ]] ; then
+	    gawk -v e=$epoca -v i=$i '{split($1,a,"=");if(a[1]==e){gsub("/"," ",a[2]);printf "%d %s %d %s ;%s\n",i,a[2],i+1,a[2],$NF}}' ${geo_cores} >> $geologia_cpt
+	    ((i++))
+	    printf "# %s\n" $epoca >> $geologia_cmd
+	    for file in $(cat ${GMT_TMPDIR}/$epoca) ; do
+		printf "$format" $file $epoca >> $geologia_cmd
+	    done
+	fi
+    done
+    # Clean up all temporary files and the temporary directory
+    rm -rf $GMT_TMPDIR
+fi
+
+if [[ -f $estrutural_cmd || -f $estrutural_legend ]] ; then
+    echo "arquivo $estrutural_cmd e/ou $estrutural_legend já existem!"
+    echo "pulando esse processo"
+else
+    # Create a temporary directory. $GMT_TMPDIR will be set to its pathname.
+    # XXXXXX is replaced by a unique random combination of characters.
+    export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+    max=0
+    for file in $(find ${bizzi01}/${estrutural} -iname '*.dat') ; do
+	n=$(gmtselect $file $M $range | wc -l)
+	if [[ $n != 0 ]] ; then
+	    # guarda em um arquivo cujo nome é o tipo de estrutura
+	    estrutura=$(echo $file | gawk -v e=$estruturas '{o="";n=split($1,a,"/");f=tolower(a[n]);n=split(e,b,",");for(i=1;i<=n;i++){if(index(f,b[i])!=0){o=b[i];break}};print o}')
+	    if [[ -n $estrutura ]] ; then
+		file=$(echo $file | gawk -v d=$bizzi01 '{gsub(d,"$BIZZI01");print $0}')
+		echo $file >> ${GMT_TMPDIR}/$estrutura
+		len=$(echo $file | wc -m)
+		if (( $len > $max )) ; then
+		    max=$len
+		fi
+	    fi
+	fi
+    done
+
+    format=$(printf "psxy %%-%ds \$M -R -J -W$%%-16s -K -O\\\n" $max)
+
+    for estrutura in $(echo $estruturas | gawk '{gsub(","," ");print $0}') ; do
+	if [[ -f ${GMT_TMPDIR}/$estrutura ]] ; then
+	    gawk -v e=$estrutura '{split($1,a,"=");if(a[1]==e){n=index(a[2],",");printf "S 1c v 1c/1p/0p/0p %s %s 1.7c %s\n",substr(a[2],n+1),a[2],e}}' ${est_pen} >> $estrutural_legend
+	    printf "# %s\n" $estrutura >> $estrutural_cmd
+	    for file in $(cat ${GMT_TMPDIR}/$estrutura) ; do
+		printf "$format" $file $estrutura >> $estrutural_cmd
+	    done
+	fi
+    done
+    # Clean up all temporary files and the temporary directory
+    rm -rf $GMT_TMPDIR
+fi
+
+echo "bizzi01 feito!"

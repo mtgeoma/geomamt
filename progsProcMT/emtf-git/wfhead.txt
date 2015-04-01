@@ -1,0 +1,57 @@
+in subroutine wfhead, ctemp is writing to out_unit at most 20*irlo characters.
+
+minimum (irlo)=4*(nch+1)
+
+ctemp=3*8+4+nd*8+4+nd*12+8+nch*(12+8)+4+2*8+4+8
+ctemp=72+20(nd+nch)
+
+to ctemp fit in out_unit, we need:
+ctemp<=20*minimum(irlo)
+72+20(nd+nch)<=20*4*(nch+1)
+nd<=3*nch+4-72/20
+nd<=3*nch
+
+note that, as nd must be an integer, ctemp could have 80 characters
+independent of nd+nch without changing the condiction: nd<=3*nch. Then
+we have 8 extra characters to work:
+2 extra characters to each coordinates=4
+2 extra characters in nfmx=2
+
+but to let nfmx be until 6 characters, and use it, it's need to change:
+from:
+write(cr,'(2i4)') idl(i),nwin(i)
+to:
+write(cr,'(i2i6)') idl(i),nwin(i)
+
+what imply nd<=99
+In such anomalous caes, maximum number of channels will be 33. Appears to be big enough. For lpack=.false. maximum(nch)<=14. Small, but good enough.
+
+Reformated original subroutine wfhead:
+
+write(cr,format('nch',i5))  nch           call cmove(ctemp,cr,8,i1)
+write(cr,format('nd',i6))   nd            call cmove(ctemp,cr,8,i1)
+write(cr,format('nfmx',i4)) nfreqmx       call cmove(ctemp,cr,8,i1)
+                                          call cmove(ctemp,'nwin',4,i1)
+					  do i = 1,nd
+write(cr,'(2i4)') idl(i),nwin(i)            call cmove(ctemp,cr,8,i1)
+   		     			  enddo
+                                          call cmove(ctemp,'dr  ',4,i1)
+					  do i = 1,nd
+write(cr,'(e12.4)') dr(i)                   call cmove(ctemp,cr,12,i1)
+   		       			  enddo
+                                          call cmove(ctemp,'ch,orien',8,i1)
+					  do i = 1,nch
+write(cr,'(a6,f6.1)') chid(i),orient(1,i)   call cmove(ctemp,cr,12,i1)
+write(cr,'(f8.2)') orient(2,i)              call cmove(ctemp,cr,8,i1)
+		   			  enddo
+                                          call cmove(ctemp,'scor',4,i1)
+write(cr,'(f8.4)') stcor(1)               call cmove(ctemp,cr,8,i1)
+write(cr,'(f8.4)') stcor(2)               call cmove(ctemp,cr,8,i1)
+                                          call cmove(ctemp,'decl',4,i1)
+write(cr,'(f8.4)') decl                   call cmove(ctemp,cr,8,i1)
+
+do i = 1,20
+  i1 = (i-1)*irlo + 1
+  i2 = i1 + irlo-1
+  write(out_unit,rec=i) (ctemp(j),j=i1,i2)
+enddo

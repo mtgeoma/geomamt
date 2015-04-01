@@ -1,0 +1,21 @@
+#!/bin/bash
+dir=""
+if [[ -n $1 ]] ; then
+    dir=$1
+    if [[ !(-d $dir) ]] ; then
+	echo "$dir isn't a valid directory"
+	exit 1
+    fi
+else
+    dir=$PWD
+fi
+
+for file in $(find $dir -type f) ; do
+    if [[ $dir == $(dirname $file) ]] ; then
+	base=$(basename $file)
+	lower=$(echo $base | awk '{print tolower($1)}')
+	if [[ !(-f $dir/$lower) ]] ; then
+	    mv -i $dir/$base $dir/$lower
+	fi
+    fi
+done

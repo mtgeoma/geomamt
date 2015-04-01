@@ -1,0 +1,129 @@
+      SUBROUTINE F01BSY(N,ICN,A,LICN,LENR,LENRL,IDISP,IP,IQ,W,IW,EPS,
+     *                  RMIN,IFAIL)
+C     MARK 7 RELEASE. NAG COPYRIGHT 1978
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     DERIVED FROM HARWELL LIBRARY ROUTINE MA30B
+C
+C     PERFORMS LU-DECOMPOSITION OF THE DIAGONAL BLOCKS OF A MATRIX
+C     OF THE SAME (OR A COMPATIBLE) SPARSITY PATTERN AS THAT OF A
+C     MATRIX PREVIOUSLY DECOMPOSED BY F01BRT.
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  EPS, RMIN
+      INTEGER           IFAIL, LICN, N
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(LICN), W(N)
+      INTEGER           ICN(LICN), IDISP(2), IP(N), IQ(N), IW(N),
+     *                  LENR(N), LENRL(N)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  AU, ONE, ROWMAX, ZERO
+      INTEGER           I, IFIN, ILEND, IPIVJ, ISING, ISTART, J, JAY,
+     *                  JAYJAY, JFIN, JJ, PIVPOS
+      LOGICAL           STAB
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS, MAX
+C     .. Data statements ..
+      DATA              ZERO/0.0D0/, ONE/1.0D0/
+C     .. Executable Statements ..
+      STAB = EPS .LE. ONE
+      RMIN = EPS
+      ISING = 0
+      IFAIL = 0
+      IF (N.EQ.1) GO TO 320
+      DO 20 I = 1, N
+         W(I) = ZERO
+   20 CONTINUE
+C     SET UP POINTERS TO THE BEGINNING OF THE ROWS.
+      IW(1) = IDISP(1)
+      DO 40 I = 2, N
+         IW(I) = IW(I-1) + LENR(I-1)
+   40 CONTINUE
+C
+C     ****   START  OF MAIN LOOP    ****
+C     AT STEP I, ROW I OF A IS TRANSFORMED TO ROW I OF L/U BY
+C     ADDING APPROPRIATE MULTIPLES OF ROWS 1 TO I-1.
+C     .... USING ROW-GAUSS ELIMINATION.
+      DO 280 I = 1, N
+C        ISTART IS BEGINNING OF ROW I OF A AND ROW I OF L.
+         ISTART = IW(I)
+C        IFIN IS END OF ROW I OF A AND ROW I OF U.
+         IFIN = ISTART + LENR(I) - 1
+C        ILEND IS END OF ROW I OF L.
+         ILEND = ISTART + LENRL(I) - 1
+         IF (ISTART.GT.ILEND) GO TO 140
+C        LOAD ROW I OF A INTO VECTOR W.
+         DO 60 JJ = ISTART, IFIN
+            J = ICN(JJ)
+            W(J) = A(JJ)
+   60    CONTINUE
+C
+C        ADD MULTIPLES OF APPROPRIATE ROWS OF  I TO I-1  TO ROW I.
+         DO 100 JJ = ISTART, ILEND
+            J = ICN(JJ)
+C           IPIVJ IS POSITION OF PIVOT IN ROW J.
+            IPIVJ = IW(J) + LENRL(J)
+C           FORM MULTIPLIER AU.
+            AU = -W(J)/A(IPIVJ)
+            W(J) = AU
+C           AU * ROW J (U PART) IS ADDED TO ROW I.
+            IPIVJ = IPIVJ + 1
+            JFIN = IW(J) + LENR(J) - 1
+            IF (IPIVJ.GT.JFIN) GO TO 100
+C           INNERMOST LOOP.
+            DO 80 JAYJAY = IPIVJ, JFIN
+               JAY = ICN(JAYJAY)
+               W(JAY) = W(JAY) + AU*A(JAYJAY)
+   80       CONTINUE
+  100    CONTINUE
+C        RELOAD W BACK INTO A (NOW L/U)
+         DO 120 JJ = ISTART, IFIN
+            J = ICN(JJ)
+            A(JJ) = W(J)
+            W(J) = ZERO
+  120    CONTINUE
+C        WE NOW PERFORM THE STABILITY CHECKS.
+  140    PIVPOS = ILEND + 1
+         IF (IQ(I).GT.0) GO TO 240
+C        MATRIX HAD SINGULARITY AT THIS POINT IN F01BRT.
+C        IS IT THE FIRST SUCH PIVOT IN CURRENT BLOCK ...
+         IF (ISING.EQ.0) ISING = I
+C        DOES CURRENT MATRIX HAVE A SINGULARITY IN THE SAME PLACE ...
+         IF (PIVPOS.GT.IFIN) GO TO 160
+         IF (A(PIVPOS).NE.ZERO) GO TO 300
+C        IT DOES .. SO SET ISING IF IT IS NOT THE END OF THE CURRENT
+C        BLOCK.
+C        CHECK TO SEE THAT APPROPRIATE PART OF L/U IS ZERO OR NULL.
+  160    IF (ISTART.GT.IFIN) GO TO 200
+         DO 180 JJ = ISTART, IFIN
+            IF (ICN(JJ).LT.ISING) GO TO 180
+            IF (A(JJ).NE.ZERO) GO TO 300
+  180    CONTINUE
+  200    IF (PIVPOS.LE.IFIN) A(PIVPOS) = ONE
+         IF (IP(I).GT.0 .AND. I.NE.N) GO TO 280
+C        END OF CURRENT BLOCK ... RESET ZERO PIVOTS AND ISING.
+         DO 220 J = ISING, I
+            IF ((LENR(J)-LENRL(J)).EQ.0) GO TO 220
+            JJ = IW(J) + LENRL(J)
+            A(JJ) = ZERO
+  220    CONTINUE
+         ISING = 0
+         GO TO 280
+C        MATRIX HAD NON-ZERO PIVOT IN F01BRT AT THIS STAGE.
+  240    IF (PIVPOS.GT.IFIN) GO TO 300
+         IF (A(PIVPOS).EQ.ZERO) GO TO 300
+         IF ( .NOT. STAB) GO TO 280
+         ROWMAX = ZERO
+         DO 260 JJ = PIVPOS, IFIN
+            ROWMAX = MAX(ROWMAX,ABS(A(JJ)))
+  260    CONTINUE
+         IF (ABS(A(PIVPOS))/ROWMAX.GE.RMIN) GO TO 280
+         IFAIL = I
+C        ****    END OF MAIN LOOP    ****
+         RMIN = ABS(A(PIVPOS))/ROWMAX
+  280 CONTINUE
+      GO TO 320
+C     ***   ERROR RETURN   ***
+  300 IFAIL = -I
+C
+  320 RETURN
+      END

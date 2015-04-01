@@ -1,0 +1,1 @@
+g++ main.cpp read_edi.cpp read_egbert.cpp read_jones.cpp -o ~/bin/gds2gmt

@@ -1,0 +1,19 @@
+source sysexits
+# check if file exist and have reading permission
+# $1: file to be checked
+check-file ()
+{
+    file=$1
+    if [[ !(-f $file && -r $file) ]] ; then
+	exec 1>&2 # redirect stdout to stderr
+	if [[ !(-f $file) ]] ; then
+	    echo "file \"$file\" don't exist"
+	    exit $EX_NOINPUT
+	else
+	    echo "file \"$file\" without reading permission"
+	    exit $EX_NOPERM
+	fi
+    else
+	return $EX_OK
+    fi
+}

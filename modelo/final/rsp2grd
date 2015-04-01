@@ -1,0 +1,135 @@
+#!/bin/bash
+# script para gerar arquivos grd a partir de arquivos *.rsp do rhoplus
+
+# para gerar arquivo PERFIL
+# grep ufb1 ~/ferias0910/mapas/ufba/ufb.coord | project -C-38.4068225529/-10.3034253825 -T-125.856823039/13.7520339477 -Q | awk '{if(NR==1){xo=$4}printf "%5.1f  %s\n",$4-xo+5,$3}' > perfil-ufb1.dat
+
+# valores padrões para saída do sistema
+source sysexits
+
+# variáveis definidas por linha de comando:
+R=""
+I="5/0.1"
+PERFIL=""
+
+# função que descreve como usar o script
+modo_de_usar ()
+# $1: nome do script
+{
+  echo "uso:" $1 "arquivo_perfil parâmetros [I=x_inc/logT_inc R=range]"
+  echo
+  echo "  arquivo_perfil: arquivo com a posição da estação projetada"
+  echo "                  ao longo do perfil e o nome da estação (stn)."
+  echo "                  assume que os dados estão em stn/[xy|yx]_stn.rsp"
+  echo
+  echo "  parâmetros: pelo menos um dos seguintes:"
+  echo "              rhoa: resistividade aparente do dado original"
+  echo "              rhob: resistividade aparente do dado modelado"
+  echo "              rhoc: resistividade aparente combinando dado original e modelado"
+  echo "              logrhoa: log10(resistividade aparente) do dado original"
+  echo "              logrhob: log10(resistividade aparente) do dado modelado"
+  echo "              logrhoc: log10(resistividade aparente) combinando dado original e modelado"
+  echo "              phia: fase do dado original"
+  echo "              phib: fase do dado modelado"
+  echo "              phic: fase combinando dado original e modelado"
+  echo "              para cada parâmetro (par) será gerado os arquivos"
+  echo "              par_xy.dat, par_yx.dat, par_xy.grd e par_yx.grd"
+  echo
+  echo "  I=x_inc/logT_inc, será repassado para a opção -I do blockmean [$I]"
+  echo "  R=range, como a opção -R do GMT"
+  echo "    se não for definida, será usado o minmax -I"
+  exit $EX_USAGE
+}
+
+# função para mudar os valores das variáveis primárias por linha de comando
+# (não gostei da solução, mas não encontrei outra)
+define_parametros ()
+# $1: nome do parâmetro
+# $2: valor do parâmetro
+{
+    case "$1" in
+        R ) R="$2" ;;
+        I ) I="$2" ;;
+        * ) echo "$1"": parâmetro desconhecido"
+            exit $EX_USAGE ;;
+    esac
+}
+
+# lê parâmetros de entrada
+Npar=0
+until [[ -z "$1" ]]
+do
+    if [[ $(expr index "$1" "=") != 0 ]]
+    # parâmetros com caracter "="
+    then
+        parametro=${1%%=*}
+        valor=${1##*=}
+        define_parametros $parametro $valor
+    else
+    # parâmetros sem caracter "="
+	# o 1o. deve definir o arquivo perfil
+	if [[ -z $PERFIL ]]
+	then
+	    PERFIL=$1
+	    if [[ !(-f $PERFIL) ]]
+	    then
+		echo "erro ao definir o arquivo perfil: $PERFIL"
+		exit $EX_USAGE
+	    fi
+	else
+	    parametros[$Npar]="$1"
+	    ((Npar++))
+	fi
+    fi
+    shift
+done
+
+# verifica parâmetros de entrada:
+if [[ $Npar -eq 0 || -z $PERFIL || -z $I ]]
+then
+    echo "ERRO: dados insuficientes"
+    echo
+    modo_de_usar $0
+fi
+
+for (( i=0; i < ${#parametros[*]}; i++ ))
+do
+    for cmp in xy yx
+    do
+	arq_dat=${parametros[$i]}_${cmp}.dat
+	arq_grd=${parametros[$i]}_${cmp}.grd
+	rm -f $arq_dat $arq_grd
+	exec 6<&0 # liga o arquivo #6 com stdin (cópia de segurança)
+	exec < $PERFIL # stdin substituído pelo arquivo perfil $1
+	while read -a col
+	do
+	    arq_entrada=${col[1]}/${cmp}_${col[1]}.rsp
+	    if [[ !(-f $arq_entrada) ]]
+	    then
+		echo "não encontrou o arquivo" $arq_entrada
+		exit $EX_NOINPUT
+	    fi
+	    case "${parametros[$i]}" in
+		rhoa ) awk -v x=${col[0]} '{print x,-log($1)/log(10),$2}' $arq_entrada >> $arq_dat ;;
+		rhob ) awk -v x=${col[0]} '{print x,-log($1)/log(10),$4}' $arq_entrada >> $arq_dat ;;
+		rhoc ) awk -v x=${col[0]} '{if($3==0){print x,-log($1)/log(10),$4}else{print x,-log($1)/log(10),$2}}' $arq_entrada >> $arq_dat ;;
+		logrhoa ) awk -v x=${col[0]} '{print x,-log($1)/log(10),log($2)/log(10)}' $arq_entrada >> $arq_dat ;;
+		logrhob ) awk -v x=${col[0]} '{print x,-log($1)/log(10),log($4)/log(10)}' $arq_entrada >> $arq_dat ;;
+		logrhoc ) awk -v x=${col[0]} '{if($3==0){print x,-log($1)/log(10),log($4)/log(10)}else{print x,-log($1)/log(10),log($2)/log(10)}}' $arq_entrada >> $arq_dat ;;
+		phia ) awk -v x=${col[0]} '{print x,-log($1)/log(10),$5}' $arq_entrada >> $arq_dat ;;
+		phib ) awk -v x=${col[0]} '{print x,-log($1)/log(10),$7}' $arq_entrada >> $arq_dat ;;
+		phic ) awk -v x=${col[0]} '{if($6==0){print x,-log($1)/log(10),$7}else{print x,-log($1)/log(10),$5}}' $arq_entrada >> $arq_dat ;;
+		* ) echo ${parametros[$i]}": parâmetro desconhecido" ;;
+	    esac
+	done
+	exec 0<&6 6<&- # restaura stdin do arquivo #6 e o fecha
+	INC="-I"$I
+	if [[ -z $R ]]
+	then
+	    RANGE=$(minmax $INC $arq_dat)
+	else
+	    RANGE="-R"$R
+	fi
+	blockmean $arq_dat $INC $RANGE | surface -G$arq_grd $INC $RANGE
+    done
+done

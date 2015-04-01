@@ -1,0 +1,21 @@
+#!/bin/bash
+source sysexits
+# função para verificar se arquivo existe e se tem permissão de leitura
+# $1: arquivo a ser verificado;
+verifica_arquivo ()
+{
+    if [[ !(-f $1 && -r $1) ]]
+    then
+	exec 1>&2 # redireciona stdout para stderr
+	if [[ !(-f $1) ]]
+	then
+	    echo "arquivo \"$1\" não exite"
+	    exit $EX_NOINPUT
+	else
+	    echo "arquivo \"$1\" não tem permissão de leitura"
+	    exit $EX_NOPERM
+	fi
+    else
+	return $EX_OK
+    fi
+}

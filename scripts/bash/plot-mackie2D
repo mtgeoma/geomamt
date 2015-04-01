@@ -1,0 +1,238 @@
+#!/bin/bash
+source gmt_defaults
+
+# set local gmt_defaults
+gmt_defaults[HEADER_FONT_SIZE]=14p
+gmt_defaults[LABEL_FONT_SIZE]=9p
+gmt_defaults[ANNOT_FONT_SIZE_PRIMARY]=8p
+gmt_defaults[TICK_LENGTH]=0.12c
+gmt_defaults[HEADER_OFFSET]=1.5c
+gmt_defaults[ANNOT_OFFSET_PRIMARY]=0.1c
+gmt_defaults[ANNOT_OFFSET_SECONDARY]=0.01c
+gmt_defaults[MEASURE_UNIT]=cm
+
+# default optional arguments
+declare -A options
+options=(['R']="default" ['C']="default" ['scale']="0.1/0.1" ['unit']="km" ['ps']="default" ['BY']="default" ['BZ']="default" ['Ysignal']="+" ['lang']="en" ['cpt_range']="-0.5/3/0.25" ['colortable']="wysiwyg")
+
+usage ()
+{
+    printf "\nusage: %s input_model [parameter=value]\n" $1
+    printf "where:\n"
+    printf "\tinput_model\tis a Mackie 2D model file.\n\n"
+    printf "parameters could be:\n"
+    printf "\tR\trange in format YMIN/YMAX/ZMIN/ZMAX.\n"
+    printf "\t\t\tDefault is all model range.\n"
+    printf "\tC\tcenter of model in format Ycenter/Zcenter.\n"
+    printf "\t\t\tDefault is y_mean/0.\n"
+    printf "\tscale\tscale in format Yscale/Zscale to be used in -Jx.\n"
+    printf "\t\t\tDefault is ${options['scale']}.\n"
+    printf "\tunit\tdistance unit to be used in model.\n"
+    printf "\t\t\tMust be km (default) or m.\n"
+    printf "\tps\tpostscript file name\n"
+    printf "\t\t\tDefault is input_model.ps\n"
+    printf "\tBY\tY boundary anotation in format a<stride>f<stride>\n"
+    printf "\t\t\tDefault is a<range/5>f<range/20>.\n"
+    printf "\tBZ\tZ boundary anotation in format a<stride>f<stride>\n"
+    printf "\t\t\tDefault is a<range/5>f<range/20>.\n"
+    printf "\tYsignal\tsignal of Y axis. \"+\" is left to right (default)\n"
+    printf "\t\t\tand \"-\" is right to left.\n"
+    printf "\tlang\tlanguage used in labels. Could be \"en\" to English (default)\n"
+    printf "\t\t\tor \"pt\" to Portuguese.\n"
+    printf "\tcpt_range\trange to be used in makecpt.\n"
+    printf "\t\t\tDefault is ${options['cpt_range']} in log10(rho)\n"
+    printf "\tcolortable\tcolortable to be used in makecpt.\n"
+    printf "\t\t\tDefault is ${options['colortable']}.\n"
+    printf "\nparameters could be any one listed by gmtdefaults, example:\n"
+    printf "\tLABEL_FONT_SIZE=10p\n\n"
+    exit 1
+}
+
+if [[ ${#} == 0 ]]
+then
+    usage $0
+fi
+
+# mandatory option
+model=$1
+shift
+
+if [[ !(-f $model) ]] ; then
+    echo "couldn't find $model file"
+    exit 1
+fi
+
+while [[ -n $1 ]] ; do
+    option=($(echo $1 | awk '{gsub("="," ");print $0}'))
+    if [[ ${#option[*]} -eq 2 ]] ; then
+        # check if is a valid option
+        if [[ -z ${options[${option[0]}]} ]] ; then
+            if [[ -z ${gmt_defaults[${option[0]}]} ]] ; then
+                echo "'${option[0]}' isn't a valid option"
+                usage $0
+            else
+                gmt_defaults[${option[0]}]=${option[1]}
+            fi
+        else
+            options[${option[0]}]=${option[1]}
+        fi
+    else
+        echo "error in option:$1"
+        usage $0
+    fi
+    shift
+done
+
+# set gmt options: fast
+gmtset_options=""
+for index in $(echo ${!gmt_defaults[*]}) ; do
+    if [[ $index != "UNIX_TIME_FORMAT" ]] ; then
+        gmtset_options="$gmtset_options $index=${gmt_defaults[$index]}"
+    fi
+done
+
+# running GMT in isolation mode
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+
+gmtset UNIX_TIME_FORMAT="${gmt_defaults[UNIX_TIME_FORMAT]}"
+gmtset $gmtset_options
+
+
+# convert to something GMT could read
+unit=${options['unit']}
+if [[ $unit == "km" ]] ; then
+    2Dmackie2gmt.py model=$model scale=1e-3 > $GMT_TMPDIR/model
+elif [[ $unit == "m" ]] ; then
+    2Dmackie2gmt.py model=$model > $GMT_TMPDIR/model
+else
+    echo "option unit must be km or m"
+    rm -rf $GMT_TMPDIR
+    exit 1
+fi
+
+declare -a R
+if [[ ${options['R']} == "default" ]] ; then
+    R=$(minmax $M -I1 $GMT_TMPDIR/model)
+    R=($(echo ${R:2} | gawk '{gsub("/"," ");print $0}'))
+else
+    R=($(echo ${options['R']} | gawk '{gsub("/"," ");print $0}'))
+    test=$(echo ${R[*]} | \
+	awk '{if(NF != 4 || $1 >= $2 || $3 >= $4){print "fail"}else{print "pass"}}')
+    if [[ test == "fail" ]] ; then
+	echo "option R must be in format R=YMIN/YMAX/ZMIN/ZMAX"
+        rm -rf $GMT_TMPDIR
+	exit 1
+    fi
+fi
+
+if [[ ${options['BY']} == "default" ]] ; then
+    BY=$(echo ${R[1]} ${R[0]} | \
+        gawk '{d=($1-$2);printf "a%ff%f",d/5,d/20}')
+else
+    BY=${options['BY']}
+fi
+
+if [[ ${options['BZ']} == "default" ]] ; then
+    BZ=$(echo ${R[3]} ${R[2]} | \
+        gawk '{d=($1-$2);printf "a%ff%f",d/5,d/20}')
+else
+    BZ=${options['BY']}
+fi
+
+declare -a C
+if [[ ${options['C']} == "default" ]] ; then
+    C=($(minmax $M -C $GMT_TMPDIR/model | gawk '{printf "%f 0",($1+$2)/2}'))
+else
+    C=($(echo ${options['C']} | gawk '{gsub("/"," ");print $0}'))
+    if (( ${#C[*]} != 2 )) ; then
+	echo "option C must be in format R=Ycenter/Zcenter"
+        rm -rf $GMT_TMPDIR
+	exit 1
+    fi
+fi
+
+scale=($(echo ${options['scale']} | gawk '{gsub("/"," ");print $0}'))
+    if (( ${#scale[*]} != 2 )) ; then
+	echo "option scale must be in format scale=Yscale/Zscale"
+        rm -rf $GMT_TMPDIR
+	exit 1
+    fi
+
+if [[ ${options['ps']} == "default" ]] ; then
+    ps=${model}.ps
+else
+    ps=${options['ps']}
+    if [[ ${ps##*.} != "ps" ]] ; then
+        echo "$ps: expected a file with extention .ps"
+        echo
+        rm -rf $GMT_TMPDIR
+        exit 1
+    fi
+fi
+
+if [[ ${options['lang']} == "en" ]] ; then
+    labelx="distance ($unit)"
+    labely="depth ($unit)"
+elif [[ ${options['lang']} == "pt" ]] ; then
+    labelx="dist\342ncia ($unit)"
+    labely="profundidade ($unit)"
+else
+    echo "${options['lang']}: unknow lang option"
+    echo "must be \"en\" to English or \"pt\" to Portuguese"
+    echo
+    rm -rf $GMT_TMPDIR
+    exit 1
+fi
+
+# cm
+Xo=2.5
+Yo=3.5
+Ypos=-1.5
+len=8
+width=0.25
+if [[ ${gmt_defaults['MEASURE_UNIT']} == "inch" ]] ; then
+    Xo=$(echo "${Xo}/2.54" | bc -l)
+    Yo=$(echo "${Yo}/2.54" | bc -l)
+    Ypos=$(echo "${Ypos}/2.54" | bc -l)
+    len=$(echo "${len}/2.54" | bc -l)
+    width=$(echo "${width}/2.54" | bc -l)
+elif [[ ${gmt_defaults['MEASURE_UNIT']} == "m" ]] ; then
+    Xo=$(echo "${Xo}/100" | bc -l)
+    Yo=$(echo "${Yo}/100" | bc -l)
+    Ypos=$(echo "${Ypos}/100" | bc -l)
+    len=$(echo "${len}/100" | bc -l)
+    width=$(echo "${width}/100" | bc -l)
+elif [[ ${gmt_defaults['MEASURE_UNIT']} == "point" ]] ; then
+    Xo=$(echo "(${Xo}/2.54)*72" | bc -l)
+    Yo=$(echo "(${Yo}/2.54)*72" | bc -l)
+    Ypos=$(echo "(${Ypos}/2.54)*72" | bc -l)
+    len=$(echo "(${len}/2.54)*72" | bc -l)
+    width=$(echo "$({width}/2.54)*72" | bc -l)
+elif [[ ${gmt_defaults['MEASURE_UNIT']} != "cm" ]] ; then
+    echo "GMT MEASURE_UNIT must be cm, m, inch or point"
+    rm -rf $GMT_TMPDIR
+    exit 1
+fi
+
+PROJ=-Jx${options['Ysignal']}${scale[0]}/-${scale[1]}
+psbasemap -X$Xo -Y$Yo $PROJ -R${R[0]}/${R[1]}/${R[2]}/${R[3]} \
+    -B${BY}:."$model"::"$labelx":/${BZ}:"$labely":SeW -K > $ps
+
+makecpt -C${options['colortable']} -Qi -T${options['cpt_range']} -I > $GMT_TMPDIR/tab.cpt
+gawk -v cy=${C[0]} -v cz=${C[1]} \
+    '{if($1==">"){print $0}else{print $1-cy,$2-cz}}' $GMT_TMPDIR/model |\
+psxy -R -J $M -H -L -C$GMT_TMPDIR/tab.cpt -K -O >> $ps
+Xpos=$(gawk -v ymin=${R[0]} -v ymax=${R[1]} -v s=${scale[0]} \
+    'BEGIN{print (ymax-ymin)*s/2}')
+psscale -C$GMT_TMPDIR/tab.cpt -D${Xpos}/${Ypos}/${len}/${width}h \
+    -Ba1pf3:"rho (@~W@~m)":wSne -Q -O >> $ps
+
+rm -rf $GMT_TMPDIR
+
+ps2raster $ps -A -P -Tg
+
+if [[ -n $VIEWER_PNG ]] ; then
+    $VIEWER_PNG ${ps/.ps/.png}&
+else
+    echo "figure ${ps/.ps/.png} done"
+fi

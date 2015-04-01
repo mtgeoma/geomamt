@@ -1,0 +1,50 @@
+# Long startup file, 
+# UPPER CASE is required command, 
+# and lower case is optional command which can be ignore. 
+#   
+# TM Inversion using 10th-stripe with 100 Ohm-m half space as initial model.  
+
+NUMBER_OF_MODE 1
+
+# data section : first mode
+DATA_FILE      ../../data/data.tm
+SENS_INCLUSION stripe:p=10
+LEFT_OFFSET    295000.
+distort_file   default
+
+# output section
+OUTPUT_FILE    tms10
+initial_iterno default
+logfile_screen default
+
+# starting model section
+STARTING_MODEL ../../data/initmodel.h100
+prior_model    default
+background_rho default
+model_control  default
+fwd_only       default
+
+# inversion parameters section
+DESIRED_RMS    1
+MAX_ITERATION  10
+MAX_SMOOTHING  5
+sd_rms         default
+cont_high_rms  default
+cont_notfound  default
+cont_highnorm  default
+
+# lagrange multiplier (lgm) control
+starting_lgm   default
+search_lgm     default
+stepsize_lgm   default
+smooth_szlgm   default
+max_search_lgm default
+
+# PCG forward modeling options
+etol           default
+max_pcg_iter   default
+
+# Model Improvement
+model_change   default
+mnorm_change   default
+parabolic_cor  default

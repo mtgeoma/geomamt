@@ -1,0 +1,171 @@
+\section{import\_\-egbert Namespace Reference}
+\label{namespaceimport__egbert}\index{import\_\-egbert@{import\_\-egbert}}
+funções para ler um arquivo do tipo egbert  
+
+
+\subsection*{Functions}
+\begin{CompactItemize}
+\item 
+int {\bf number\_\-of\_\-transfer\_\-functions} (std::ifstream \&egbert\_\-file)
+\begin{CompactList}\small\item\em Retorna o número de funções de transferência em {\tt egbert\_\-file}. \item\end{CompactList}\item 
+void {\bf import\_\-impedances} ({\bf transfer\_\-function::impedance\_\-collection\_\-type} \&tf, std::ifstream \&egbert\_\-file)
+\begin{CompactList}\small\item\em função para adquirir as funções de transferência de um arquivo \item\end{CompactList}\item 
+void {\bf import\_\-tipper\_\-vector\_\-value} (std::vector$<$ transfer\_\-function::complex\_\-type $>$ \&tv, std::ifstream \&egbert\_\-file)
+\begin{CompactList}\small\item\em Le o valor do próximo tipper a partir da posição atual de {\em egbert\_\-file\/}. \item\end{CompactList}\item 
+void {\bf import\_\-impedance\_\-tensor\_\-value} (gmm::dense\_\-matrix$<$ transfer\_\-function::complex\_\-type $>$ \&imp\_\-tensor, std::ifstream \&egbert\_\-file)
+\begin{CompactList}\small\item\em Le o valor do próximo tensor de impedância a partir da posição atual de {\em egbert\_\-file\/}. \item\end{CompactList}\item 
+void {\bf import\_\-inverse\_\-coherent\_\-signal\_\-power\_\-matrix} (transfer\_\-function::complex\_\-matrix\_\-type \&matrix, std::ifstream \&egbert\_\-file)
+\begin{CompactList}\small\item\em Le o valor da próxima \char`\"{}inverse coherent signal power matrix\char`\"{} a partir da posição de {\em egbert\_\-file\/}. \item\end{CompactList}\item 
+void {\bf import\_\-residual\_\-covariance\_\-matrix} (transfer\_\-function::complex\_\-matrix\_\-type \&matrix, std::ifstream \&egbert\_\-file)
+\begin{CompactList}\small\item\em Le o valor da próxima matriz de covariância residual a partir da posição de {\em egbert\_\-file\/}. \item\end{CompactList}\item 
+void {\bf build\_\-tipper} (transfer\_\-function::tipper\_\-vector\_\-type \&tipper, std::vector$<$ transfer\_\-function::complex\_\-type $>$ const \&tipper\_\-value, gmm::dense\_\-matrix$<$ transfer\_\-function::complex\_\-type $>$ const \&s\_\-matrix, gmm::dense\_\-matrix$<$ transfer\_\-function::complex\_\-type $>$ const \&n\_\-matrix)
+\begin{CompactList}\small\item\em Constrói o tipper (valor e incerteza) através do seu valor e das matrizes de. \item\end{CompactList}\item 
+void {\bf build\_\-impedance} (transfer\_\-function::impedance\_\-tensor\_\-type \&imp, gmm::dense\_\-matrix$<$ transfer\_\-function::complex\_\-type $>$ const \&impedance\_\-value, gmm::dense\_\-matrix$<$ transfer\_\-function::complex\_\-type $>$ const \&s\_\-matrix, gmm::dense\_\-matrix$<$ transfer\_\-function::complex\_\-type $>$ const \&n\_\-matrix)
+\begin{CompactList}\small\item\em Constrói o tensor de impedância (valor e incerteza). \item\end{CompactList}\item 
+void {\bf import\_\-transfer\_\-function} ({\bf transfer\_\-function::real\_\-type} \&period, transfer\_\-function::tipper\_\-vector\_\-type \&tipper, transfer\_\-function::impedance\_\-tensor\_\-type \&{\bf impedance}, std::ifstream \&egbert\_\-file)
+\begin{CompactList}\small\item\em Le, a partir da posição de {\em egbert\_\-file\/} o valor do período tipper e da impedância. \item\end{CompactList}\end{CompactItemize}
+
+
+\subsection{Detailed Description}
+funções para ler um arquivo do tipo egbert 
+
+\subsection{Function Documentation}
+\index{import\_\-egbert@{import\_\-egbert}!build\_\-impedance@{build\_\-impedance}}
+\index{build\_\-impedance@{build\_\-impedance}!import_egbert@{import\_\-egbert}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}void import\_\-egbert::build\_\-impedance (transfer\_\-function::impedance\_\-tensor\_\-type \& {\em imp}, \/  gmm::dense\_\-matrix$<$ transfer\_\-function::complex\_\-type $>$ const \& {\em impedance\_\-value}, \/  gmm::dense\_\-matrix$<$ transfer\_\-function::complex\_\-type $>$ const \& {\em s\_\-matrix}, \/  gmm::dense\_\-matrix$<$ transfer\_\-function::complex\_\-type $>$ const \& {\em n\_\-matrix})}\label{namespaceimport__egbert_0ebf4a1dfc8e75a74b6a89ae8d2876db}
+
+
+Constrói o tensor de impedância (valor e incerteza). 
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[\mbox{$\rightarrow$} {\em imp}]\item[\mbox{$\leftarrow$} {\em impedance\_\-value}]\item[\mbox{$\leftarrow$} {\em s\_\-matrix}]\item[\mbox{$\leftarrow$} {\em n\_\-matrix}]\end{description}
+\end{Desc}
+
+
+Referenced by import\_\-transfer\_\-function().\index{import\_\-egbert@{import\_\-egbert}!build\_\-tipper@{build\_\-tipper}}
+\index{build\_\-tipper@{build\_\-tipper}!import_egbert@{import\_\-egbert}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}void import\_\-egbert::build\_\-tipper (transfer\_\-function::tipper\_\-vector\_\-type \& {\em tipper}, \/  std::vector$<$ transfer\_\-function::complex\_\-type $>$ const \& {\em tipper\_\-value}, \/  gmm::dense\_\-matrix$<$ transfer\_\-function::complex\_\-type $>$ const \& {\em s\_\-matrix}, \/  gmm::dense\_\-matrix$<$ transfer\_\-function::complex\_\-type $>$ const \& {\em n\_\-matrix})}\label{namespaceimport__egbert_66693da5f17a7e231bca27a8faff7270}
+
+
+Constrói o tipper (valor e incerteza) através do seu valor e das matrizes de. 
+
+covariância
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[\mbox{$\rightarrow$} {\em tipper}]\item[\mbox{$\leftarrow$} {\em tipper\_\-value}]\item[\mbox{$\leftarrow$} {\em s\_\-matrix}]\item[\mbox{$\leftarrow$} {\em n\_\-matrix}]\end{description}
+\end{Desc}
+
+
+Referenced by import\_\-transfer\_\-function().\index{import\_\-egbert@{import\_\-egbert}!import\_\-impedance\_\-tensor\_\-value@{import\_\-impedance\_\-tensor\_\-value}}
+\index{import\_\-impedance\_\-tensor\_\-value@{import\_\-impedance\_\-tensor\_\-value}!import_egbert@{import\_\-egbert}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}void import\_\-egbert::import\_\-impedance\_\-tensor\_\-value (gmm::dense\_\-matrix$<$ transfer\_\-function::complex\_\-type $>$ \& {\em imp\_\-tensor}, \/  std::ifstream \& {\em egbert\_\-file})}\label{namespaceimport__egbert_cb58badd0f37a513aa39531fda3a10c3}
+
+
+Le o valor do próximo tensor de impedância a partir da posição atual de {\em egbert\_\-file\/}. 
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[{\em imp\_\-tensor}]tensor de impedância \item[{\em egbert\_\-file}]arquivo do tipo egbert \end{description}
+\end{Desc}
+
+
+Referenced by import\_\-transfer\_\-function().\index{import\_\-egbert@{import\_\-egbert}!import\_\-impedances@{import\_\-impedances}}
+\index{import\_\-impedances@{import\_\-impedances}!import_egbert@{import\_\-egbert}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}void import\_\-egbert::import\_\-impedances ({\bf transfer\_\-function::impedance\_\-collection\_\-type} \& {\em tf}, \/  std::ifstream \& {\em egbert\_\-file})}\label{namespaceimport__egbert_8f237396b6cd6422ed975c67385b7b82}
+
+
+função para adquirir as funções de transferência de um arquivo 
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[\mbox{$\rightarrow$} {\em tf}]container com as funções de transferência \item[\mbox{$\leftarrow$} {\em egbert\_\-file}]arquivo egbert \end{description}
+\end{Desc}
+
+
+References import\_\-transfer\_\-function(), and number\_\-of\_\-transfer\_\-functions().
+
+Referenced by import::import\_\-impedances().\index{import\_\-egbert@{import\_\-egbert}!import\_\-inverse\_\-coherent\_\-signal\_\-power\_\-matrix@{import\_\-inverse\_\-coherent\_\-signal\_\-power\_\-matrix}}
+\index{import\_\-inverse\_\-coherent\_\-signal\_\-power\_\-matrix@{import\_\-inverse\_\-coherent\_\-signal\_\-power\_\-matrix}!import_egbert@{import\_\-egbert}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}void import\_\-egbert::import\_\-inverse\_\-coherent\_\-signal\_\-power\_\-matrix (transfer\_\-function::complex\_\-matrix\_\-type \& {\em matrix}, \/  std::ifstream \& {\em egbert\_\-file})}\label{namespaceimport__egbert_27ca661a9f34ba331e928c034bcae7e3}
+
+
+Le o valor da próxima \char`\"{}inverse coherent signal power matrix\char`\"{} a partir da posição de {\em egbert\_\-file\/}. 
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[{\em matrix}]inverse coherent signal power matrix \item[{\em egbert\_\-file}]arquivo do tipo egbert \end{description}
+\end{Desc}
+
+
+Referenced by import\_\-transfer\_\-function().\index{import\_\-egbert@{import\_\-egbert}!import\_\-residual\_\-covariance\_\-matrix@{import\_\-residual\_\-covariance\_\-matrix}}
+\index{import\_\-residual\_\-covariance\_\-matrix@{import\_\-residual\_\-covariance\_\-matrix}!import_egbert@{import\_\-egbert}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}void import\_\-egbert::import\_\-residual\_\-covariance\_\-matrix (transfer\_\-function::complex\_\-matrix\_\-type \& {\em matrix}, \/  std::ifstream \& {\em egbert\_\-file})}\label{namespaceimport__egbert_bcb91ba4086f3d5f6b4fc6eee3b42a37}
+
+
+Le o valor da próxima matriz de covariância residual a partir da posição de {\em egbert\_\-file\/}. 
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[\mbox{$\rightarrow$} {\em matrix}]a matriz de covariância residual \item[{\em egbert\_\-file}]arquivo do tipo egbert \end{description}
+\end{Desc}
+
+
+Referenced by import\_\-transfer\_\-function().\index{import\_\-egbert@{import\_\-egbert}!import\_\-tipper\_\-vector\_\-value@{import\_\-tipper\_\-vector\_\-value}}
+\index{import\_\-tipper\_\-vector\_\-value@{import\_\-tipper\_\-vector\_\-value}!import_egbert@{import\_\-egbert}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}void import\_\-egbert::import\_\-tipper\_\-vector\_\-value (std::vector$<$ transfer\_\-function::complex\_\-type $>$ \& {\em tv}, \/  std::ifstream \& {\em egbert\_\-file})}\label{namespaceimport__egbert_e99e8243f942eeb0165b4293a7bb7c2a}
+
+
+Le o valor do próximo tipper a partir da posição atual de {\em egbert\_\-file\/}. 
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[{\em tv}]\item[{\em egbert\_\-file}]\end{description}
+\end{Desc}
+
+
+Referenced by import\_\-transfer\_\-function().\index{import\_\-egbert@{import\_\-egbert}!import\_\-transfer\_\-function@{import\_\-transfer\_\-function}}
+\index{import\_\-transfer\_\-function@{import\_\-transfer\_\-function}!import_egbert@{import\_\-egbert}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}void import\_\-egbert::import\_\-transfer\_\-function ({\bf transfer\_\-function::real\_\-type} \& {\em period}, \/  transfer\_\-function::tipper\_\-vector\_\-type \& {\em tipper}, \/  transfer\_\-function::impedance\_\-tensor\_\-type \& {\em impedance}, \/  std::ifstream \& {\em egbert\_\-file})}\label{namespaceimport__egbert_858364616f0e9b1625aca340615a84d4}
+
+
+Le, a partir da posição de {\em egbert\_\-file\/} o valor do período tipper e da impedância. 
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[{\em period}]\item[{\em tipper}]\item[{\em impedance}]\item[{\em egbert\_\-file}]\end{description}
+\end{Desc}
+
+
+References build\_\-impedance(), build\_\-tipper(), import\_\-impedance\_\-tensor\_\-value(), import\_\-inverse\_\-coherent\_\-signal\_\-power\_\-matrix(), import\_\-residual\_\-covariance\_\-matrix(), and import\_\-tipper\_\-vector\_\-value().
+
+Referenced by import\_\-impedances().\index{import\_\-egbert@{import\_\-egbert}!number\_\-of\_\-transfer\_\-functions@{number\_\-of\_\-transfer\_\-functions}}
+\index{number\_\-of\_\-transfer\_\-functions@{number\_\-of\_\-transfer\_\-functions}!import_egbert@{import\_\-egbert}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}int import\_\-egbert::number\_\-of\_\-transfer\_\-functions (std::ifstream \& {\em egbert\_\-file})}\label{namespaceimport__egbert_2862bf965204af7755d63bdc23833c8b}
+
+
+Retorna o número de funções de transferência em {\tt egbert\_\-file}. 
+
+\begin{Desc}
+\item[Precondition:]{\tt egbert\_\-file} deve ser um arquivo válido no formato egbert \end{Desc}
+\begin{Desc}
+\item[Invariant:]a posição de leitura de {\tt egbert\_\-file} \end{Desc}
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[{\em egbert\_\-file}]stream de um arquivo válido no formato egbert\end{description}
+\end{Desc}
+\begin{Desc}
+\item[Returns:]o número de funções de transferência em {\tt egbert\_\-file} \end{Desc}
+
+
+Referenced by import\_\-impedances(), and import::number\_\-of\_\-transfer\_\-functions().

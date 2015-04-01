@@ -1,0 +1,5 @@
+ 
+Dimensionality results average for band   5:  10.0     s -   100.     s
+ 
+Site                           Longitude        Latitude   nper  DIM  strike   errstr      twi   errtwi    shear    errsh  cont determ  strikecomp
+cop314                     -103.175         49.1556         7    4   78.4102   0.2746   0.6531   0.1045   3.4199   0.0871   1   4.6414 -78.4102

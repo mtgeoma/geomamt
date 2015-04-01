@@ -1,0 +1,86 @@
+      SUBROUTINE F04AFF(N,IR,A,IA,P,B,IB,EPS,X,IX,BB,IBB,L,IFAIL)
+C     MARK 2 RELEASE. NAG COPYRIGHT 1972
+C     MARK 3 REVISED.
+C     MARK 4.5 REVISED
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 13 REVISED. IER-637 (APR 1988).
+C     ACCSOLVE
+C     SOLVES AX=B WHERE A IS AN N*N POSITIVE DEFINITE SYMMETRIC
+C     MATRIX AND B IS AN N*IR MATRIX OF RIGHT HAND SIDES, USING THE
+C     SUBROUTINE F04AGF . THE SUBROUTINE MUST BY PRECEDED BY
+C     F03AEF IN WHICH L IS PRODUCED IN A(I,J) AND P(I). THE
+C     RESIDUALS BB=B-AX ARE CALCULATED AND AD=BB IS SOLVED,
+C     OVERWRITING D ON BB. THE REFINEMENT IS REPEATED, AS LONG AS
+C     THE MAXIMUM CORRECTION AT ANY STAGE IS LESS THAN HALF THAT AT
+C     THE PREVIOUS STAGE, UNTIL THE MAXIMUM CORRECTION IS LESS
+C     THAN 2 EPS TIMES THE MAXIMUM X. EXITS WITH IFAIL = 1 IF
+C     THE SOLUTION FAILS TO IMPROVE. L IS THE NUMBER OF
+C     ITERATIONS.
+C     ADDITIONAL PRECISION INNERPRODUCTS ARE ABSOLUTELY NECESSARY.
+C     1ST DECEMBER 1971
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='F04AFF')
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  EPS
+      INTEGER           IA, IB, IBB, IFAIL, IR, IX, L, N
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(IA,N), B(IB,IR), BB(IBB,IR), P(N), X(IX,IR)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  A1, A2, BBMAX, D0, D1, D11, D2, XMAX
+      INTEGER           I, ID2, IFAIL1, ISAVE, J
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      INTEGER           P01ABF
+      EXTERNAL          P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          F04AGF, X03AAF
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS
+C     .. Executable Statements ..
+      ISAVE = IFAIL
+      IFAIL1 = 0
+      DO 40 J = 1, IR
+         DO 20 I = 1, N
+            X(I,J) = 0.0D0
+            BB(I,J) = B(I,J)
+   20    CONTINUE
+   40 CONTINUE
+      L = 0
+      D0 = 0.0D0
+   60 CALL F04AGF(N,IR,A,IA,P,BB,IBB,BB,IBB)
+      L = L + 1
+      ID2 = 0
+      D1 = 0.0D0
+      DO 100 J = 1, IR
+         DO 80 I = 1, N
+            X(I,J) = X(I,J) + BB(I,J)
+   80    CONTINUE
+  100 CONTINUE
+      DO 140 J = 1, IR
+         BBMAX = 0.0D0
+         XMAX = 0.0D0
+         DO 120 I = 1, N
+            IF (ABS(X(I,J)).GT.XMAX) XMAX = ABS(X(I,J))
+            IF (ABS(BB(I,J)).GT.BBMAX) BBMAX = ABS(BB(I,J))
+            CALL X03AAF(A(1,I),(N-I+1)*IA,X(1,J),(IR-J+1)
+     *                  *IX,I-1,1,1,-B(I,J),0.0D0,D11,D2,.TRUE.,IFAIL1)
+            A1 = D11
+            A2 = D2
+            CALL X03AAF(A(I,I),(N-I+1)*IA-I+1,X(I,J),(IR-J+1)
+     *                  *IX-I+1,N-I+1,IA,1,A1,A2,D11,D2,.TRUE.,IFAIL1)
+            BB(I,J) = -D11
+  120    CONTINUE
+         IF (BBMAX.GT.D1*XMAX) D1 = BBMAX/XMAX
+         IF (BBMAX.GT.2.0D0*EPS*XMAX) ID2 = 1
+  140 CONTINUE
+      IF (D1.GT.D0*0.5D0 .AND. L.NE.1) GO TO 160
+      D0 = D1
+      IF (ID2.EQ.1) GO TO 60
+      IFAIL = 0
+      RETURN
+  160 IFAIL = P01ABF(ISAVE,1,SRNAME,0,P01REC)
+      RETURN
+      END

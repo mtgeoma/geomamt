@@ -1,0 +1,39 @@
+\section{program Namespace Reference}
+\label{namespaceprogram}\index{program@{program}}
+Funções usadas por main().  
+
+
+\subsection*{Functions}
+\begin{CompactItemize}
+\item 
+void {\bf command\_\-line} (boost::program\_\-options::variables\_\-map \&vm, boost::program\_\-options::options\_\-description \&visible, int argc, char $\ast$argv[$\,$])
+\begin{CompactList}\small\item\em Verifica se a linha de comando está ok. \item\end{CompactList}\item 
+void \textbf{print\_\-help} (std::string program\_\-name, boost::program\_\-options::options\_\-description \&visible)\label{namespaceprogram_b30b3cb55a8d460a42b9406bddb92e31}
+
+\item 
+void \textbf{lista\_\-invariante} (std::string const \&inv, {\bf transfer\_\-function::impedance\_\-collection\_\-type} const \&imp)\label{namespaceprogram_1c62d8e941f08730fed291d7d1bb9406}
+
+\item 
+void \textbf{lista\_\-parametro} (std::string const \&par, long double azimute, {\bf transfer\_\-function::impedance\_\-collection\_\-type} \&imp)\label{namespaceprogram_12f094beeb6628da4cf0fc8e4e5acf40}
+
+\end{CompactItemize}
+
+
+\subsection{Detailed Description}
+Funções usadas por main(). 
+
+\subsection{Function Documentation}
+\index{program@{program}!command\_\-line@{command\_\-line}}
+\index{command\_\-line@{command\_\-line}!program@{program}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}void program::command\_\-line (boost::program\_\-options::variables\_\-map \& {\em vm}, \/  boost::program\_\-options::options\_\-description \& {\em visible}, \/  int {\em argc}, \/  char $\ast$ {\em argv}[$\,$])}\label{namespaceprogram_1a36e303e30dd85a03d46402651a684d}
+
+
+Verifica se a linha de comando está ok. 
+
+Se houver algum problema com a linha de comando, ou o programa tenha sido executado com a opção {\tt --help} exibe a mensagem de ajuda e retorna {\em false\/}. Caso contrário retorna {\em true\/} e vm contem as infomações do arquivo em {\em vm\/}[\char`\"{}file\char`\"{}] e do invariante em {\em vm\/}[\char`\"{}invariant\char`\"{}]
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[\mbox{$\rightarrow$} {\em vm}]mapa com as opções de linha de comando \item[\mbox{$\rightarrow$} {\em visible}]descrições das opções da linha de comando \item[\mbox{$\leftarrow$} {\em argc}]número de argumentos da linha de comando \item[\mbox{$\leftarrow$} {\em argv}]os argumentos da linha de comando \end{description}
+\end{Desc}

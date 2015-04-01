@@ -1,0 +1,5 @@
+ 
+Dimensionality results average for band   3: 0.100     s -   1.00     s
+ 
+Site                           Longitude        Latitude   nper  DIM  strike   errstr      twi   errtwi    shear    errsh  cont determ  strikecomp
+site001                     1.68333         41.5167         6    2   21.9845   1.6484   0.0000   0.0000   0.0000   0.0000   1   1.6067 -21.9845

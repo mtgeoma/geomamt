@@ -1,0 +1,7 @@
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make
+cp ats2asc ~/bin
+cd ..
+rm -rf build

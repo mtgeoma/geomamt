@@ -1,0 +1,106 @@
+      SUBROUTINE F04MCZ(N,L,LL,D,NROW,P,B,IB1,IB2,LB,ISELCT,X,IX1,IX2,
+     *                  LX)
+C     MARK 8 RELEASE. NAG COPYRIGHT 1979.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     ******************************************************
+C
+C     NPL ALGORITHMS LIBRARY ROUTINE VBSOL
+C
+C     CREATED 25 06 79.  UPDATED 23 07 79.  RELEASE 00/04
+C
+C     AUTHOR ... MAURICE G. COX.
+C     NATIONAL PHYSICAL LABORATORY, TEDDINGTON,
+C     MIDDLESEX TW11 OLW, ENGLAND.
+C
+C     ******************************************************
+C
+C     F04MCZ.  AN ALGORITHM TO DETERMINE THE SOLUTION OF THE
+C     SYSTEM  AX = B  (AND RELATED SYSTEMS),  WHERE  A  IS A
+C     SYMMETRIC POSITIVE DEFINITE VARIABLE BANDWIDTH MATRIX,
+C     FOLLOWING AN  LDU  FACTORIZATION OF  A  (WHERE
+C     U = L TRANSPOSED).
+C     NO CHECKS ARE PERFORMED.
+C     B  AND  X  ARE REPRESENTED BY RECTANGULAR DATA STRUCTURES.
+C
+C     INPUT PARAMETERS
+C        N        ORDER OF  L
+C        L        ELEMENTS WITHIN ENVELOPE OF UNIT LOWER
+C                    TRIANGULAR MATRIX  L  (INCLUDING UNIT
+C                    DIAGONAL ELEMENTS), IN ROW BY ROW ORDER
+C        LL       DIMENSION OF  L.  AT LEAST
+C                    NROW(1) + NROW(2) + ... + NROW(N).
+C        D        DIAGONAL ELEMENTS OF DIAGONAL MATRIX  D.
+C                    USED ONLY IF  ISELCT .LE. 3.
+C        NROW     WIDTHS OF ROWS OF  L
+C        P        NUMBER OF COLUMNS OF  B.
+C                    GREATER THAN OR EQUAL TO  1.
+C        B        RIGHT HAND SIDE VECTORS
+C        IB1      FIRST INDEX INCREMENT FOR  B
+C        IB2      SECOND INDEX INCREMENT FOR  B
+C        LB       DIMENSION OF  B
+C        ISELCT   SELECTION INDICATOR
+C                    1 - SOLVE  LDUX = B  (NORMAL APPLICATION)
+C                    2 - SOLVE  LDX  = B  (LOWER TRIANGULAR
+C                                            SOLVER)
+C                    3 - SOLVE  DUX  = B  (UPPER TRIANGULAR
+C                                            SOLVER)
+C                    4 - SOLVE  LUX  = B
+C                    5 - SOLVE  LX   = B  (UNIT LOWER
+C                                            TRIANGULAR SOLVER)
+C                    6 - SOLVE  UX   = B  (UNIT UPPER
+C                                            TRIANGULAR SOLVER),
+C                              WHERE  U = L TRANSPOSED.
+C
+C     OUTPUT (AND ASSOCIATED) PARAMETERS
+C        X        SOLUTION VECTORS
+C        IX1      FIRST INDEX INCREMENT FOR  X
+C        IX2      SECOND INDEX INCREMENT FOR  X
+C        LX       DIMENSION OF  X
+C
+C     .. Scalar Arguments ..
+      INTEGER           IB1, IB2, ISELCT, IX1, IX2, LB, LL, LX, N, P
+C     .. Array Arguments ..
+      DOUBLE PRECISION  B(LB), D(N), L(LL), X(LX)
+      INTEGER           NROW(N)
+C     .. External Subroutines ..
+      EXTERNAL          F04MCW, F04MCX, F04MCY
+C     .. Executable Statements ..
+      GO TO (20,40,60,80,100,120) ISELCT
+C
+C     ISELCT = 1.  SOLVE  LDUX = B  (U = L TRANSPOSED)
+C
+   20 CALL F04MCX(N,L,LL,NROW,P,B,IB1,IB2,LB,X,IX1,IX2,LX)
+      CALL F04MCY(N,D,P,X,IX1,IX2,LX,X,IX1,IX2,LX)
+      CALL F04MCW(N,L,LL,NROW,P,X,IX1,IX2,LX,X,IX1,IX2,LX)
+      GO TO 140
+C
+C     ISELCT = 2.  SOLVE  LDX = B
+C
+   40 CALL F04MCX(N,L,LL,NROW,P,B,IB1,IB2,LB,X,IX1,IX2,LX)
+      CALL F04MCY(N,D,P,X,IX1,IX2,LX,X,IX1,IX2,LX)
+      GO TO 140
+C
+C     ISELCT = 3.  SOLVE  DUX = B  (U = L TRANSPOSED)
+C
+   60 CALL F04MCY(N,D,P,B,IB1,IB2,LB,X,IX1,IX2,LX)
+      CALL F04MCW(N,L,LL,NROW,P,X,IX1,IX2,LX,X,IX1,IX2,LX)
+      GO TO 140
+C
+C     ISELCT = 4.  SOLVE  LUX = B  (U = L TRANSPOSED)
+C
+   80 CALL F04MCX(N,L,LL,NROW,P,B,IB1,IB2,LB,X,IX1,IX2,LX)
+      CALL F04MCW(N,L,LL,NROW,P,X,IX1,IX2,LX,X,IX1,IX2,LX)
+      GO TO 140
+C
+C     ISELCT = 5.  SOLVE  LX = B
+C
+  100 CALL F04MCX(N,L,LL,NROW,P,B,IB1,IB2,LB,X,IX1,IX2,LX)
+      GO TO 140
+C
+C     ISELCT = 6.  SOLVE  UX = B  (U = L TRANSPOSED)
+C
+  120 CALL F04MCW(N,L,LL,NROW,P,B,IB1,IB2,LB,X,IX1,IX2,LX)
+C
+  140 RETURN
+      END

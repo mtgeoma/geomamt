@@ -1,0 +1,95 @@
+      SUBROUTINE E02CAZ(M,N,KP1,L,X,Y,F,W,NX,A,NA,XMIN,XMAX,NUX,INUXP1,
+     *                  NUY,INUYP1,WI,CI,YW,CII,WT,S,FI,RESID,MTOT,MJ1,
+     *                  WORK,NWORK,IFAIL)
+C     MARK 7 RELEASE. NAG COPYRIGHT 1978.
+C     MARK 8C REVISED. IER-270 (OCT. 1980).
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     THIS SUBROUTINE OBTAINS A BIVARIATE CHEBYSHEV SERIES
+C     APPROXIMATION OF DEGREE K IN X AND L IN Y TO A SET OF DATA
+C     POINTS ARBITRARILY DISTRIBUTED ON LINES PARALLEL TO THE X
+C     AXIS.
+C     SUBROUTINE E02ADZ IS FIRST USED TO OBTAIN CHEBYSHEV SERIES
+C     COEFFICIENTS OF THE WEIGHTED LEAST-SQUARES CURVE FIT OF
+C     DEGREE K TO THE DATA ON EACH LINE IN TURN. THE SAME ROUTINE
+C     IS THEN USED TO FIT THESE COEFFICIENTS AS POLYNOMIALS OF
+C     DEGREE L IN Y, GIVING THE COEFFICIENTS OF THE BIVARIATE FIT.
+C     THE FIT CAN BE CONSTRAINED TO CONTAIN GIVEN POLYNOMIAL
+C     FACTORS IN X AND IN Y.
+C     THE SUBROUTINE IS BASED ON THE METHOD GIVEN IN SECTIONS 5,6
+C     AND 8 OF CLENSHAW, C.W. AND HAYES, J.G., CURVE AND SURFACE
+C     FITTING, J. INST. MATHS APPLICS, 1, PP.164-188, 1965.
+C
+C     STARTED - 1978.
+C     COMPLETED - 1978.
+C     AUTHOR - GTA.
+C
+C     .. Scalar Arguments ..
+      INTEGER           IFAIL, INUXP1, INUYP1, KP1, L, MJ1, MTOT, N, NA,
+     *                  NWORK, NX
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(NA), CI(N,KP1), CII(MJ1), F(NX), FI(N),
+     *                  NUX(INUXP1), NUY(INUYP1), RESID(MTOT), S(MJ1),
+     *                  W(NX), WI(N), WORK(NWORK), WT(MJ1), X(NX),
+     *                  XMAX(N), XMIN(N), Y(N), YW(N,KP1)
+      INTEGER           M(N)
+C     .. Local Scalars ..
+      INTEGER           I, IERROR, J, LP1, MFIRST, MLAST, T
+C     .. External Subroutines ..
+      EXTERNAL          E02ADZ
+C     .. Executable Statements ..
+      LP1 = L + 1
+      MLAST = 0
+      IFAIL = 0
+C
+C     FIT THE DATA ON EACH OF THE N LINES Y = Y(I), I = 1,2,...N.
+C
+      DO 60 I = 1, N
+         IERROR = 1
+         MFIRST = MLAST + 1
+         MLAST = MLAST + M(I)
+         CALL E02ADZ(MFIRST,MLAST,MTOT,KP1,1,0,1,X,F,W,XMIN(I),XMAX(I)
+     *               ,INUXP1,NUX,WORK(2*KP1+1),WORK(1)
+     *               ,CII,S,WT,RESID,IERROR)
+         IF (IERROR.EQ.0) GO TO 20
+         IFAIL = IERROR + 1
+         IF (IFAIL.EQ.6) IFAIL = 1
+         GO TO 200
+C
+C        STORE THE COEFFICIENTS OF THE DEGREE K FIT TO DATA ON THE ITH
+C        LINE
+C
+   20    DO 40 J = 1, KP1
+            CI(I,J) = CII(J)
+            YW(I,J) = WT(J)
+   40    CONTINUE
+   60 CONTINUE
+C
+C     FIT THE COEFFICIENTS A(J) ON EACH LINE AS A POLYNOMIAL IN Y.
+C
+      IF (N.GT.1) GO TO 100
+      DO 80 J = 1, KP1
+         A(J) = 2.0D+0*CI(1,J)
+   80 CONTINUE
+      RETURN
+  100 DO 180 J = 1, KP1
+         DO 120 I = 1, N
+            FI(I) = CI(I,J)
+            WI(I) = YW(I,J)
+  120    CONTINUE
+         IERROR = 1
+         CALL E02ADZ(1,N,N,LP1,1,0,1,Y,FI,WI,Y(1),Y(N)
+     *               ,INUYP1,NUY,WORK(2*LP1+1),WORK(1)
+     *               ,CII,S,WT,RESID,IERROR)
+         IF (IERROR.EQ.0) GO TO 140
+         IFAIL = IERROR + 1
+         IF (IFAIL.EQ.6) IFAIL = 1
+         GO TO 200
+  140    T = (J-1)*LP1
+         DO 160 I = 1, LP1
+            T = T + 1
+            A(T) = CII(I)
+  160    CONTINUE
+  180 CONTINUE
+  200 RETURN
+      END

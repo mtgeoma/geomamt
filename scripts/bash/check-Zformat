@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# define formatos dos arquivos de impedância
+Zformats=(null egbert jones edi)
+# associa o índice dos formatos a uma variável com o nome do formato:
+NULL=0
+EGBERT=1
+JONES=2
+EDI=3
+
+# função para verificar o formato do arquivo de impedância
+# $1: arquivo de impedância cujo formato deve ser verificado;
+# $2: componente procurada conforme opção -D do transferfunction.
+check-Zformat ()
+{
+    # O truque seguinte baseia-se em que todos os períodos são maiores do que 0,
+    #+ de modo que, se o formato estiver correto, a conversão da primeira
+    #+ coluna será um valor maior que zero.
+    # O valor do return está relacionado com a definição da variável Zformats
+    #+ que aparece antes da definição dessa função,
+    #+ sendo que o formato "NULL" indica que não existe a componente no arquivo
+    #  Qualquer mensagem de texto é convertida em zero pelo strtonum.
+    # O "2>&1" é para direcionar toda mensagem de erro para a saída padrão.
+    if [[ $(transferfunction $1 -Fegbert -D$2 2>&1 |\
+          awk '{if(NR==1)print strtonum($1)}') > 0 ]]
+    then
+        # o transferfunction pode não encontrar a componente
+        #+ e retornar todos os valores como nulos
+        #+ ou os valores podem realmente ser todos nulos
+        #+ por isso não é considerado erro, mas fica marcado no cabeçalho como
+        #+ sendo um formato nulo.
+	if [[ $(transferfunction $1 -Fegbert -D$2 |\
+              awk '{s+=$2+$3+$4}END{print s}') == 0 ]]
+	then
+	    return $NULL
+	else
+	    return $EGBERT
+	fi
+    elif  [[ $(transferfunction $1 -Fjones -D$2 2>&1 |\
+              awk '{if(NR==1)print strtonum($1)}') > 0 ]]
+    then
+	# mesmo caso anterior
+	if [[ $(transferfunction $1 -Fjones -D$2 |\
+              awk '{s+=$2+$3+$4}END{print s}') == 0 ]]
+	then
+	    return $NULL
+	else
+	    return $JONES
+	fi
+    elif  [[ $(transferfunction $1 -Fedi -D$2 2>&1 |\
+              awk '{if(NR==1)print strtonum($1)}') > 0 ]]
+    then
+	# mesmo caso anterior
+	if [[ $(transferfunction $1 -Fedi -D$2 |\
+              awk '{s+=$2+$3+$4}END{print s}') == 0 ]]
+	then
+	    return $NULL
+	else
+	    return $EDI
+	fi
+    else
+        # arquivo com formatação desconhecida ou componente não presente
+	return $NULL
+    fi
+}

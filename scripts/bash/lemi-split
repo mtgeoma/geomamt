@@ -1,0 +1,42 @@
+#!/bin/bash
+usage ()
+{
+    printf "lemi-split will split a lemi file at each time gap\n\n"
+    printf "usage: %s lemi_file.t*\n" $1
+    echo
+    exit 1
+}
+
+if [[ ${#} == 0 ]] ; then
+    usage $0
+fi
+
+file=$1
+if [[ !(-f $file) ]] ; then
+    echo "couldn't find file $file"
+    echo
+    exit 1
+fi
+
+gap=(
+  $(awk '{printf "%d-%02d-%02dT%02d:%02d:%05.2f\n",$1,$2,$3,$4,$5,$6}' $file | \
+      gmtconvert -fi0T -fo0t --TIME_SYSTEM=UNIX | \
+      awk 'BEGIN{printf "1 "}{
+        if(NR==2) {
+          inc=$1-t0
+        }
+        if (NR>2 && (inc!=($1-t0)) ) {
+          printf "%d ",NR
+        }
+        t0=$1
+      }END{printf "%d\n",NR+1}'))
+
+for (( i=0; i < $[${#gap[*]}-1]; i++ )); do
+    out=${file%%.*}${i}.${file##*.}
+    if [[ -f $out ]] ; then
+	echo "file $out already exist! Will not overwrite."
+    else
+	awk -v b=${gap[i]} -v e=${gap[i+1]} '{if(NR>=b&&NR<e)print $0}' $file \
+	    > $out
+    fi
+done

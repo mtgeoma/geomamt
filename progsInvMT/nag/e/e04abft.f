@@ -1,0 +1,152 @@
+      SUBROUTINE E04ABF(FUN,EPS,T,A,B,MAXCAL,X,F,IFAIL)
+C
+C     MARK 6 RELEASE NAG COPYRIGHT 1977
+C     MARK 8 REVISED. IER-231 (MAR 1980).
+C     MARK 8D REVISED. IER-272 (DEC 1980).
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 13 REVISED. USE OF MARK 12 X02 FUNCTIONS (APR 1988).
+C
+C     **************************************************************
+C
+C     E04ABF ATTEMPTS TO FIND A MINIMUM IN AN INTERVAL A .LE. X .LE.
+C     B OF A FUNCTION F(X) OF THE SCALAR X, USING FUNCTION VALUES
+C     ONLY.
+C
+C     IT IS BASED ON THE SUBROUTINE UNIFUN IN THE NPL ALGORITHMS
+C     LIBRARY (REF. NO. E4/13/F). THE FUNCTION F(X) IS DEFINED BY
+C     THE USER-SUPPLIED SUBROUTINE FUN. T AND EPS DEFINE A TOLERANCE
+C     TOL = EPS * ABS(X) + T, AND FUN IS NEVER EVALUATED AT TWO
+C     POINTS CLOSER THAN TOL. IF FUN IS DELTA-UNIMODAL, FOR SOME
+C     DELTA LESS THAN TOL, THEN X APPROXIMATES THE GLOBAL MINIMUM OF
+C     FUN WITH AN ERROR LESS THAN 3*TOL. IF FUN IS NOT DELTA-
+C     UNIMODAL ON (A, B), THEN X MAY APPROXIMATE A LOCAL, BUT NON
+C     GLOBAL, MINIMUM. EPS SHOULD BE NO SMALLER THAN 2*EPSMCH, AND
+C     PREFERABLY NOT MUCH LESS THAN SQRT(EPSMCH), WHERE EPSMCH IS
+C     THE RELATIVE MACHINE PRECISION. T SHOULD BE POSITIVE. NOTE
+C     THAT, FOR CONSISTENCY WITH OTHER E04 DOCUMENTATION, THE NAME
+C     FUNCT IS USED INSTEAD OF FUN IN THE WRITE-UP.
+C
+C     PHILIP E. GILL, WALTER MURRAY, SUSAN M. PICKEN, HAZEL M.
+C     BARBER AND MARGARET H. WRIGHT, D.N.A.C., NATIONAL PHYSICAL
+C     LABORATORY, ENGLAND
+C
+C     **************************************************************
+C
+C     FUN
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='E04ABF')
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  A, B, EPS, F, T, X
+      INTEGER           IFAIL, MAXCAL
+C     .. Subroutine Arguments ..
+      EXTERNAL          FUN
+C     .. Local Scalars ..
+      DOUBLE PRECISION  B1, D, E, EPSMCH, F1, F2, FA, FU, FV, FW,
+     *                  GTEST1, GTEST2, GU, OLDF, PT2, PT4, PT6, RR,
+     *                  RTEPS, SCXBD, SFTBND, SS, TOL, U, X1, X2,
+     *                  XLAMDA, XV, XW
+      INTEGER           IFLAG, ILOC, ISAVE, NUMF
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      DOUBLE PRECISION  X02AJF
+      INTEGER           P01ABF
+      EXTERNAL          X02AJF, P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          E04ABZ
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS, SQRT
+C     .. Executable Statements ..
+      ISAVE = IFAIL
+C
+C     A MACHINE-DEPENDENT CONSTANT IS SET HERE. EPSMCH IS THE
+C     SMALLEST POSITIVE REAL NUMBER SUCH THAT 1.0 + EPSMCH .GT. 1.0
+C
+      EPSMCH = X02AJF()
+      RTEPS = SQRT(EPSMCH)
+      IF (EPS.LT.EPSMCH) EPS = RTEPS
+      IF (T.LT.EPSMCH) T = RTEPS
+C
+C     ERROR IN INPUT PARAMETERS
+C
+      IFAIL = 1
+      IF (A+T.GE.B .OR. MAXCAL.LT.3) GO TO 140
+      SFTBND = A
+      PT2 = (B-A)*2.0D-1
+      PT4 = PT2 + PT2
+      PT6 = PT2 + PT4
+      X1 = A + PT4
+      CALL FUN(X1,F1)
+      X2 = B - PT4
+      CALL FUN(X2,F2)
+      XLAMDA = B
+      IF (F1.GT.F2) GO TO 20
+      X = X1
+      A = -PT4
+      B = PT2
+      XW = PT2
+      B1 = PT2
+      RR = 1.0D+0
+      D = -PT2
+      FW = F2
+      FV = F1
+      F = F1
+C
+C     SET STEP TO NEW POINT
+C
+      U = -PT2
+      GO TO 40
+   20 X = X2
+      A = -PT2
+      B = PT4 + EPS*ABS(XLAMDA) + T
+      XW = -PT2
+      B1 = B
+      RR = -1.0D+0
+      D = PT2
+      FW = F1
+      FV = F2
+      F = F2
+C
+C     SET STEP TO NEW POINT
+C
+      U = PT2
+   40 XV = 0.0D+0
+      SCXBD = PT4
+      E = PT6
+      SS = 0.0D+0
+      FA = FW + T
+      OLDF = FA
+      GTEST1 = 0.0D+0
+      GTEST2 = 0.0D+0
+      TOL = EPS*ABS(X) + T
+      CALL FUN(X+U,FU)
+      GU = 0.0D+0
+      NUMF = 3
+C
+C     SET ILOC TO 3 SO THAT THE MAIN SECTION OF E04ABZ IS EXECUTED
+C     AS THE INITIAL 3 POINTS HAVE ALREADY BEEN SET UP
+C
+      ILOC = 3
+   60 CALL E04ABZ(EPS,T,0.0D+0,SFTBND,XLAMDA,U,FU,GU,X,F,XW,FW,XV,FV,A,
+     *            FA,B,OLDF,B1,SCXBD,E,D,RR,SS,GTEST1,GTEST2,TOL,ILOC,
+     *            IFLAG)
+      IF (IFLAG.NE.1) GO TO 100
+      IF (NUMF.GE.MAXCAL) GO TO 80
+      CALL FUN(X+U,FU)
+      NUMF = NUMF + 1
+      GO TO 60
+   80 IFAIL = 2
+      GO TO 120
+  100 IFAIL = 0
+  120 MAXCAL = NUMF
+      A = A + X
+      B = B + X
+  140 CONTINUE
+      IF (IFAIL.EQ.0) RETURN
+      IFAIL = P01ABF(ISAVE,IFAIL,SRNAME,0,P01REC)
+      RETURN
+C
+C     END OF E04ABF (UNIFUN)
+C
+      END

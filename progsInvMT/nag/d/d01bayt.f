@@ -1,0 +1,47 @@
+      SUBROUTINE D01BAY(A,B,ITYPE,NPTS,WEIGHT,ABSCIS,IFAIL)
+C     MARK 7 RELEASE. NAG COPYRIGHT 1978.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     RETURNS WEIGHTS AND PIVOTS FOR ONE GAUSS-RATIONAL FORMULA IF
+C     STORED
+C     IFAIL = 1 - THE NPTS RULE IS NOT AMONG THOSE STORED
+C     ( WEIGHT,ABSCIS EVALUATED FOR LARGEST VALID NPTS LESS THAN
+C     REQUESTED VALUE)
+C     IFAIL = 2 - A + B = 0
+C     ( ALL WEIGHTS AND ABSCISSAE RETURNED AS ZERO)
+C
+C     THE WEIGHTS AND ABSCISSAE RETURNED DEPEND ON A AND B.
+C     THOSE FOR A=0,B=1 ARE RELATED TO THE GAUSS-LEGENDRE WEIGHTS
+C     BY
+C     W(0,1) = +2 * WGL(-1,+1) / (XGL(-1,+1) + 1)**2
+C     X(0,1) = +2 / (XGL(-1,+1) + 1) - 1
+C     THOSE FOR GENERAL (A,B) ARE RELATED TO THOSE FOR (0,1) BY
+C     W(A,B) = +W(0,1) * (A+B)        FOR A+B > 0
+C     W(A,B) = -W(0,1) * (A+B)        FOR A+B < 0
+C     X(A,B) = (A+B) * (X(0,1)+1) - B
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  A, B
+      INTEGER           IFAIL, ITYPE, NPTS
+C     .. Array Arguments ..
+      DOUBLE PRECISION  ABSCIS(NPTS), WEIGHT(NPTS)
+C     .. Local Scalars ..
+      INTEGER           I, N
+C     .. External Subroutines ..
+      EXTERNAL          D01BAZ
+C     .. Executable Statements ..
+      DO 20 I = 1, NPTS
+         WEIGHT(I) = 0.0D0
+         ABSCIS(I) = 0.0D0
+   20 CONTINUE
+      IF (A+B.NE.0.0D0) GO TO 40
+      IFAIL = 2
+      RETURN
+   40 CALL D01BAZ(-1.0D0,+1.0D0,ITYPE,NPTS,WEIGHT,ABSCIS,IFAIL)
+      DO 60 N = 1, NPTS
+         WEIGHT(N) = WEIGHT(N)*2.0D0*(A+B)/(ABSCIS(N)+1.0D0)**2
+         IF (A+B.LT.0.0D0) WEIGHT(N) = -WEIGHT(N)
+         ABSCIS(N) = 2.0D0*(A+B)/(ABSCIS(N)+1.0D0) - B
+   60 CONTINUE
+      RETURN
+      END

@@ -1,0 +1,396 @@
+      SUBROUTINE F02GJY(N,AR,IAR,AI,IAI,BR,IBR,BI,IBI,EPS1,ALFR,ALFI,
+     *                  BETA,MATZ,ZR,IZR,ZI,IZI,ITER,IERR)
+C     MARK 8 RELEASE. NAG COPYRIGHT 1979.
+C     MARK 9C REVISED. IER-369 (JUN 1982)
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 12 REVISED. IER-517 (AUG 1986).
+C     MARK 13 REVISED. USE OF MARK 12 X02 FUNCTIONS (APR 1988).
+C     MARK 16A REVISED. IER-1002 (JUN 1993).
+C
+C     THIS ROUTINE IS A COMPLEX ANALOGUE OF STEPS 2 AND 3 OF THE
+C     QZ ALGORITHM FOR SOLVING GENERALIZED MATRIX EIGENVALUE
+C     PROBLEMS.
+C     SIAM J. NUMER. ANAL. 10, 241-256(1973) BY MOLER AND STEWART,
+C     AS MODIFIED IN TECHNICAL NOTE NASA TN D-7305(1973) BY WARD.
+C
+C     THIS ROUTINE ACCEPTS A PAIR OF COMPLEX MATRICES, ONE OF THEM
+C     IN UPPER HESSENBERG FORM AND THE OTHER IN UPPER TRIANGULAR
+C     FORM.
+C     THE HESSENBERG MATRIX MUST FURTHER HAVE REAL SUBDIAGONAL
+C     ELEMENTS.
+C     IT REDUCES THE HESSENBERG MATRIX TO TRIANGULAR FORM USING
+C     UNITARY TRANSFORMATIONS WHILE MAINTAINING THE TRIANGULAR FORM
+C     OF THE OTHER MATRIX AND FURTHER MAKING ITS DIAGONAL ELEMENTS
+C     REAL AND NON-NEGATIVE.  IT THEN RETURNS QUANTITIES WHOSE
+C     RATIOS GIVE THE GENERALIZED EIGENVALUES. IT IS USUALLY
+C     PRECEDED BY F02GJX AND POSSIBLY FOLLOWED BY F02GJZ.
+C
+C     ON INPUT
+C
+C     N IS THE ORDER OF THE MATRICES.
+C
+C     A=(AR,AI) CONTAINS A COMPLEX UPPER HESSENBERG MATRIX
+C     WITH REAL SUBDIAGONAL ELEMENTS.
+C
+C     B=(BR,BI) CONTAINS A COMPLEX UPPER TRIANGULAR MATRIX.
+C
+C     EPS1 IS A TOLERANCE USED TO DETERMINE NEGLIGIBLE ELEMENTS.
+C     EPS1 = 0.0 (OR NEGATIVE) MAY BE INPUT, IN WHICH CASE AN
+C     ELEMENT WILL BE NEGLECTED ONLY IF IT IS LESS THAN ROUNDOFF
+C     ERROR TIMES THE NORM OF ITS MATRIX.  IF THE INPUT EPS1 IS
+C     POSITIVE, THEN AN ELEMENT WILL BE CONSIDERED NEGLIGIBLE
+C     IF IT IS LESS THAN EPS1 TIMES THE NORM OF ITS MATRIX.  A
+C     POSITIVE VALUE OF EPS1 MAY RESULT IN FASTER EXECUTION,
+C     BUT LESS ACCURATE RESULTS.
+C
+C     MATZ SHOULD BE SET TO .TRUE. IF THE RIGHT HAND TRANSFORMATIONS
+C     ARE TO BE ACCUMULATED FOR LATER USE IN COMPUTING
+C     EIGENVECTORS, AND TO .FALSE. OTHERWISE.
+C
+C     Z=(ZR,ZI) CONTAINS, IF MATZ HAS BEEN SET TO .TRUE., THE
+C     TRANSFORMATION MATRIX PRODUCED IN THE REDUCTION
+C     BY  F02GJX, IF PERFORMED, OR ELSE THE IDENTITY MATRIX.
+C     IF MATZ HAS BEEN SET TO .FALSE., Z IS NOT REFERENCED.
+C
+C     IAR, IAI, IBR, IBI, IZR AND IZI MUST SPECIFY THE FIRST
+C     DIMENSIONS OF THE ARRAYS AR, AI, BR, BI, ZR AND ZI AS DECLARED
+C     IN THE CALLING (SUB)PROGRAM.
+C     IAR,IAI,IBR,IBI,IZR,IZI.GE.N  .
+C
+C     ON OUTPUT
+C
+C     A HAS BEEN REDUCED TO UPPER TRIANGULAR FORM.  THE ELEMENTS
+C     BELOW THE MAIN DIAGONAL HAVE BEEN SET TO ZERO.
+C
+C     B IS STILL IN UPPER TRIANGULAR FORM, ALTHOUGH ITS ELEMENTS
+C     HAVE BEEN ALTERED.  IN PARTICULAR, ITS DIAGONAL HAS BEEN SET
+C     REAL AND NON-NEGATIVE.  THE LOCATION BR(N,1) IS USED TO
+C     STORE EPS1 TIMES THE NORM OF B FOR LATER USE BY  F02GJZ.
+C
+C     ALFR AND ALFI CONTAIN THE REAL AND IMAGINARY PARTS OF THE
+C     DIAGONAL ELEMENTS OF THE TRIANGULARIZED A MATRIX.
+C
+C     BETA CONTAINS THE REAL NON-NEGATIVE DIAGONAL ELEMENTS OF THE
+C     CORRESPONDING B.  THE GENERALIZED EIGENVALUES ARE THEN
+C     THE RATIOS ((ALFR+I*ALFI)/BETA).
+C
+C     Z CONTAINS THE PRODUCT OF THE RIGHT HAND TRANSFORMATIONS
+C     (FOR BOTH STEPS) IF MATZ HAS BEEN SET TO .TRUE. .
+C
+C     ITER CONTAINS THE NUMBER OF ITERATIONS REQUIRED TO
+C     ISOLATE EACH EIGENVALUE.
+C
+C     IERR IS SET TO
+C     ZERO       FOR NORMAL RETURN,
+C     J          MORE THAN 30*N ITERATIONS HAVE
+C     BEEN PERFORMED ALTOGETHER
+C
+C     IMPLEMENTED FROM EISPACK BY
+C     W. PHILLIPS OXFORD UNIVERSITY COMPUTING SERVICE.
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  EPS1
+      INTEGER           IAI, IAR, IBI, IBR, IERR, IZI, IZR, N
+      LOGICAL           MATZ
+C     .. Array Arguments ..
+      DOUBLE PRECISION  AI(IAI,N), ALFI(N), ALFR(N), AR(IAR,N), BETA(N),
+     *                  BI(IBI,N), BR(IBR,N), ZI(IZI,N), ZR(IZR,N)
+      INTEGER           ITER(N)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  A1, A1I, A2, A33, A33I, A34, A34I, A43, A43I,
+     *                  A44, A44I, ANI, ANORM, B11, B33, B3344, B3344I,
+     *                  B33I, B44, B44I, BNI, BNORM, EP, EPSA, EPSB,
+     *                  ONE, R, S, SH, SHI, TWO, U1, U1I, U2, XI, XR,
+     *                  YI, YR, ZERO
+      INTEGER           EN, ENM2, ENORN, I, ITSTOT, J, K, K1, K2, KM1,
+     *                  L, L1, LL, LM1, LOR1, NA
+C     .. External Functions ..
+      DOUBLE PRECISION  A02ABF, X02AJF
+      EXTERNAL          A02ABF, X02AJF
+C     .. External Subroutines ..
+      EXTERNAL          A02AAF, A02ACF
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS, MAX, SQRT
+C     .. Data statements ..
+      DATA              ZERO/0.0D0/, ONE/1.0D0/, TWO/2.0D0/
+C     .. Executable Statements ..
+      IERR = 0
+C     ---------- COMPUTE EPSA,EPSB ----------
+      ANORM = ZERO
+      BNORM = ZERO
+      ITSTOT = 0
+C
+      DO 40 I = 1, N
+         ITER(I) = 0
+         ANI = ZERO
+         IF (I.NE.1) ANI = ABS(AR(I,I-1))
+         BNI = ZERO
+C
+         DO 20 J = I, N
+            ANI = ANI + ABS(AR(I,J)) + ABS(AI(I,J))
+            BNI = BNI + ABS(BR(I,J)) + ABS(BI(I,J))
+   20    CONTINUE
+C
+         IF (ANI.GT.ANORM) ANORM = ANI
+         IF (BNI.GT.BNORM) BNORM = BNI
+   40 CONTINUE
+C
+      IF (ANORM.EQ.ZERO) ANORM = ONE
+      IF (BNORM.EQ.ZERO) BNORM = ONE
+      EP = EPS1
+      IF (EP.LE.ZERO) EP = X02AJF()
+      EPSA = EP*ANORM
+      EPSB = EP*BNORM
+C     REDUCE A TO TRIANGULAR FORM, WHILE KEEPING B TRIANGULAR
+      LOR1 = 1
+      ENORN = N
+      EN = N
+C     ---------- BEGIN QZ STEP ----------
+   60 IF (EN.EQ.0) GO TO 540
+      IF ( .NOT. MATZ) ENORN = EN
+      NA = EN - 1
+      ENM2 = NA - 1
+C     CHECK FOR CONVERGENCE OR REDUCIBILITY.
+C     FOR L=EN STEP -1 UNTIL 1 DO
+   80 DO 100 LL = 1, EN
+         LM1 = EN - LL
+         L = LM1 + 1
+         IF (L.EQ.1) GO TO 140
+         IF (ABS(AR(L,LM1)).LE.EPSA) GO TO 120
+  100 CONTINUE
+C
+  120 AR(L,LM1) = ZERO
+C     ---------- SET DIAGONAL ELEMENT AT TOP OF B REAL ----------
+  140 B11 = A02ABF(BR(L,L),BI(L,L))
+      IF (B11.EQ.ZERO) GO TO 180
+      U1 = BR(L,L)/B11
+      U1I = BI(L,L)/B11
+C
+      DO 160 J = L, ENORN
+         XI = U1*AI(L,J) - U1I*AR(L,J)
+         AR(L,J) = U1*AR(L,J) + U1I*AI(L,J)
+         AI(L,J) = XI
+         XI = U1*BI(L,J) - U1I*BR(L,J)
+         BR(L,J) = U1*BR(L,J) + U1I*BI(L,J)
+         BI(L,J) = XI
+  160 CONTINUE
+C
+      BI(L,L) = ZERO
+  180 IF (L.NE.EN) GO TO 200
+C     ---------- 1-BY-1 BLOCK ISOLATED ----------
+      ALFR(EN) = AR(EN,EN)
+      ALFI(EN) = AI(EN,EN)
+      BETA(EN) = B11
+      EN = NA
+      GO TO 60
+C     ---------- CHECK FOR SMALL TOP OF B ----------
+  200 L1 = L + 1
+      IF (B11.GT.EPSB) GO TO 240
+      BR(L,L) = ZERO
+      S = ABS(AR(L,L)) + ABS(AI(L,L)) + ABS(AR(L1,L))
+      U1 = AR(L,L)/S
+      U1I = AI(L,L)/S
+      U2 = AR(L1,L)/S
+      R = SQRT(U1*U1+U1I*U1I+U2*U2)
+      U1 = U1/R
+      U1I = U1I/R
+      U2 = U2/R
+      AR(L,L) = R*S
+      AI(L,L) = ZERO
+C
+      DO 220 J = L1, ENORN
+         XR = AR(L,J)
+         XI = AI(L,J)
+         YR = AR(L1,J)
+         YI = AI(L1,J)
+         AR(L,J) = U1*XR + U1I*XI + U2*YR
+         AI(L,J) = U1*XI - U1I*XR + U2*YI
+         AR(L1,J) = U1*YR - U1I*YI - U2*XR
+         AI(L1,J) = U1*YI + U1I*YR - U2*XI
+         XR = BR(L,J)
+         XI = BI(L,J)
+         YR = BR(L1,J)
+         YI = BI(L1,J)
+         BR(L,J) = U1*XR + U1I*XI + U2*YR
+         BI(L,J) = U1*XI - U1I*XR + U2*YI
+         BR(L1,J) = U1*YR - U1I*YI - U2*XR
+         BI(L1,J) = U1*YI + U1I*YR - U2*XI
+  220 CONTINUE
+C
+      LM1 = L
+      L = L1
+      GO TO 120
+C     ---------- ITERATION STRATEGY ----------
+  240 IF (ITSTOT.GE.30*N) GO TO 520
+      IF (ITER(EN).EQ.10) GO TO 320
+C     ---------- DETERMINE SHIFT ----------
+      B33 = BR(NA,NA)
+      B33I = BI(NA,NA)
+      IF (A02ABF(B33,B33I).GE.EPSB) GO TO 260
+      B33 = EPSB
+      B33I = ZERO
+  260 B44 = BR(EN,EN)
+      B44I = BI(EN,EN)
+      IF (A02ABF(B44,B44I).GE.EPSB) GO TO 280
+      B44 = EPSB
+      B44I = ZERO
+  280 B3344 = B33*B44 - B33I*B44I
+      B3344I = B33*B44I + B33I*B44
+      A33 = AR(NA,NA)*B44 - AI(NA,NA)*B44I
+      A33I = AR(NA,NA)*B44I + AI(NA,NA)*B44
+      A34 = AR(NA,EN)*B33 - AI(NA,EN)*B33I - AR(NA,NA)*BR(NA,EN) +
+     *      AI(NA,NA)*BI(NA,EN)
+      A34I = AR(NA,EN)*B33I + AI(NA,EN)*B33 - AR(NA,NA)*BI(NA,EN) -
+     *       AI(NA,NA)*BR(NA,EN)
+      A43 = AR(EN,NA)*B44
+      A43I = AR(EN,NA)*B44I
+      A44 = AR(EN,EN)*B33 - AI(EN,EN)*B33I - AR(EN,NA)*BR(NA,EN)
+      A44I = AR(EN,EN)*B33I + AI(EN,EN)*B33 - AR(EN,NA)*BI(NA,EN)
+      SH = A44
+      SHI = A44I
+      XR = A34*A43 - A34I*A43I
+      XI = A34*A43I + A34I*A43
+      IF (XR.EQ.ZERO .AND. XI.EQ.ZERO) GO TO 310
+      YR = (A33-SH)/TWO
+      YI = (A33I-SHI)/TWO
+      CALL A02AAF(YR**2-YI**2+XR,TWO*YR*YI+XI,U1,U1I)
+      IF (YR*U1+YI*U1I.GE.ZERO) GO TO 300
+      U1 = -U1
+      U1I = -U1I
+  300 CALL A02ACF(XR,XI,YR+U1,YI+U1I,YR,YI)
+      SH = SH - YR
+      SHI = SHI - YI
+  310 CALL A02ACF(SH,SHI,B3344,B3344I,YR,YI)
+      SH = YR
+      SHI = YI
+C     ---------- DETERMINE ZEROTH COLUMN OF A ----------
+      A1 = AR(L,L)/B11 - SH
+      A1I = AI(L,L)/B11 - SHI
+      A2 = AR(L1,L)/B11
+      GO TO 340
+C     ---------- AD HOC SHIFT ----------
+  320 A1 = 1.0D0
+      A1I = ZERO
+      A2 = 1.1605D0
+  340 CONTINUE
+      ITER(EN) = ITER(EN) + 1
+      ITSTOT = ITSTOT + 1
+      IF ( .NOT. MATZ) LOR1 = L
+C     ---------- MAIN LOOP ----------
+      DO 480 K = L, NA
+         K1 = K + 1
+         K2 = K + 2
+         KM1 = MAX(K-1,L)
+C        ---------- ZERO A(K+1,K-1) ----------
+         IF (K.EQ.L) GO TO 360
+         A1 = AR(K,KM1)
+         A1I = AI(K,KM1)
+         A2 = AR(K1,KM1)
+  360    S = ABS(A1) + ABS(A1I) + ABS(A2)
+         U1 = A1/S
+         U1I = A1I/S
+         U2 = A2/S
+         R = SQRT(U1*U1+U1I*U1I+U2*U2)
+         U1 = U1/R
+         U1I = U1I/R
+         U2 = U2/R
+C
+         DO 380 J = KM1, ENORN
+            XR = AR(K,J)
+            XI = AI(K,J)
+            YR = AR(K1,J)
+            YI = AI(K1,J)
+            AR(K,J) = U1*XR + U1I*XI + U2*YR
+            AI(K,J) = U1*XI - U1I*XR + U2*YI
+            AR(K1,J) = U1*YR - U1I*YI - U2*XR
+            AI(K1,J) = U1*YI + U1I*YR - U2*XI
+            XR = BR(K,J)
+            XI = BI(K,J)
+            YR = BR(K1,J)
+            YI = BI(K1,J)
+            BR(K,J) = U1*XR + U1I*XI + U2*YR
+            BI(K,J) = U1*XI - U1I*XR + U2*YI
+            BR(K1,J) = U1*YR - U1I*YI - U2*XR
+            BI(K1,J) = U1*YI + U1I*YR - U2*XI
+  380    CONTINUE
+C
+         IF (K.EQ.L) GO TO 400
+         AI(K,KM1) = ZERO
+         AR(K1,KM1) = ZERO
+         AI(K1,KM1) = ZERO
+C        ---------- ZERO B(K+1,K) ----------
+  400    S = ABS(BR(K1,K1)) + ABS(BI(K1,K1)) + ABS(BR(K1,K))
+         U1 = BR(K1,K1)/S
+         U1I = BI(K1,K1)/S
+         U2 = BR(K1,K)/S
+         R = SQRT(U1*U1+U1I*U1I+U2*U2)
+         U1 = U1/R
+         U1I = U1I/R
+         U2 = U2/R
+         IF (K.EQ.NA) GO TO 420
+         XR = AR(K2,K1)
+         AR(K2,K1) = U1*XR
+         AI(K2,K1) = -U1I*XR
+         AR(K2,K) = -U2*XR
+C
+  420    DO 440 I = LOR1, K1
+            XR = AR(I,K1)
+            XI = AI(I,K1)
+            YR = AR(I,K)
+            YI = AI(I,K)
+            AR(I,K1) = U1*XR + U1I*XI + U2*YR
+            AI(I,K1) = U1*XI - U1I*XR + U2*YI
+            AR(I,K) = U1*YR - U1I*YI - U2*XR
+            AI(I,K) = U1*YI + U1I*YR - U2*XI
+            XR = BR(I,K1)
+            XI = BI(I,K1)
+            YR = BR(I,K)
+            YI = BI(I,K)
+            BR(I,K1) = U1*XR + U1I*XI + U2*YR
+            BI(I,K1) = U1*XI - U1I*XR + U2*YI
+            BR(I,K) = U1*YR - U1I*YI - U2*XR
+            BI(I,K) = U1*YI + U1I*YR - U2*XI
+  440    CONTINUE
+C
+         BI(K1,K1) = ZERO
+         BR(K1,K) = ZERO
+         BI(K1,K) = ZERO
+         IF ( .NOT. MATZ) GO TO 480
+C
+         DO 460 I = 1, N
+            XR = ZR(I,K1)
+            XI = ZI(I,K1)
+            YR = ZR(I,K)
+            YI = ZI(I,K)
+            ZR(I,K1) = U1*XR + U1I*XI + U2*YR
+            ZI(I,K1) = U1*XI - U1I*XR + U2*YI
+            ZR(I,K) = U1*YR - U1I*YI - U2*XR
+            ZI(I,K) = U1*YI + U1I*YR - U2*XI
+  460    CONTINUE
+C
+  480 CONTINUE
+C     SET LAST A SUBDIAGONAL REAL AND END QZ STEP
+      IF (AI(EN,NA).EQ.ZERO) GO TO 80
+      R = A02ABF(AR(EN,NA),AI(EN,NA))
+      U1 = AR(EN,NA)/R
+      U1I = AI(EN,NA)/R
+      AR(EN,NA) = R
+      AI(EN,NA) = ZERO
+C
+      DO 500 J = EN, ENORN
+         XI = U1*AI(EN,J) - U1I*AR(EN,J)
+         AR(EN,J) = U1*AR(EN,J) + U1I*AI(EN,J)
+         AI(EN,J) = XI
+         XI = U1*BI(EN,J) - U1I*BR(EN,J)
+         BR(EN,J) = U1*BR(EN,J) + U1I*BI(EN,J)
+         BI(EN,J) = XI
+  500 CONTINUE
+C
+      GO TO 80
+C     ---------- SET ERROR -- BOTTOM SUBDIAGONAL ELEMENT HAS NOT
+C     BECOME NEGLIGIBLE AFTER 50 ITERATIONS ----------
+  520 IERR = EN
+C     ---------- SAVE EPSB FOR USE BY F02GJZ ----------
+  540 IF (N.GT.1) BR(N,1) = EPSB
+      RETURN
+      END

@@ -1,0 +1,66 @@
+      SUBROUTINE E02ZAF(PX,PY,LAMDA,MU,M,X,Y,POINT,NPOINT,ADRES,NADRES,
+     *                  IFAIL)
+C     MARK 6 RELEASE. NAG COPYRIGHT 1977
+C     MARK 10 REVISED. IER-385 (JUN 1982).
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     THE REAL ARRAYS LAMDA AND MU OF DIMENSION AT LEAST
+C     PX-4 AND PY-4 RESPECTIVELY EACH CONTAIN A SEQUENCE
+C     OF NON-DECREASING VALUES.  THE POINTS WITH COORDINATES
+C     GIVEN IN X(1) TO X(M) AND Y(1) TO Y(M) ARE SORTED INTO
+C     THE RECTANGULAR PANELS DETERMINED BY THE LAMDA AND MU
+C     VALUES.  ARRAYS X AND Y ARE UNCHANGED, THE ORDERING
+C     BEING INDICATED BY NADRES LINKED LISTS STORED IN ARRAY
+C     POINT(1) TO POINT(NPOINT), WHERE
+C     NADRES = (PX-7)*(PY-7) IS THE NUMBER OF PANELS, AND
+C     NPOINT .GE. NADRES + M
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='E02ZAF')
+C     .. Scalar Arguments ..
+      INTEGER           IFAIL, M, NADRES, NPOINT, PX, PY
+C     .. Array Arguments ..
+      DOUBLE PRECISION  LAMDA(PX), MU(PY), X(M), Y(M)
+      INTEGER           ADRES(NADRES), POINT(NPOINT)
+C     .. Local Scalars ..
+      INTEGER           ITEMP, K, PANEL, R
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      INTEGER           E02ZAZ, P01ABF
+      EXTERNAL          E02ZAZ, P01ABF
+C     .. Executable Statements ..
+      K = 0
+      IF (PX.LT.10) GO TO 40
+      ITEMP = PX - 4
+      DO 20 R = 6, ITEMP
+         IF (LAMDA(R-1).GT.LAMDA(R)) K = 1
+   20 CONTINUE
+   40 IF (PY.LT.10) GO TO 80
+      ITEMP = PY - 4
+      DO 60 R = 6, ITEMP
+         IF (MU(R-1).GT.MU(R)) K = 1
+   60 CONTINUE
+      IF (K.GT.0) GO TO 140
+   80 R = (PX-7)*(PY-7)
+      IF (M.LE.0 .OR. PX.LT.8 .OR. PY.LT.8 .OR. NADRES.NE.R .OR.
+     *    NPOINT.LT.R+M) K = 2
+      IF (K.GT.0) GO TO 140
+      DO 100 PANEL = 1, NADRES
+         ITEMP = PANEL + M
+         ADRES(PANEL) = ITEMP
+         POINT(ITEMP) = 0
+  100 CONTINUE
+      DO 120 R = 1, M
+         PANEL = (E02ZAZ(PX,LAMDA,X(R))-1)*(PY-7) + E02ZAZ(PY,MU,Y(R))
+         ITEMP = ADRES(PANEL)
+         ADRES(PANEL) = R
+         POINT(ITEMP) = R
+         POINT(R) = 0
+  120 CONTINUE
+      IFAIL = K
+      RETURN
+  140 IFAIL = P01ABF(IFAIL,K,SRNAME,0,P01REC)
+      RETURN
+      END

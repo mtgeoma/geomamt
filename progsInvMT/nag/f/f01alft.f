@@ -1,0 +1,51 @@
+      SUBROUTINE F01ALF(KL,L,IR,A,IA,INTGER,Z,IZ,N)
+C     MARK 2 RELEASE. NAG COPYRIGHT 1972
+C     MARK 4.5 REVISED
+C     MARK 11 REVISED. VECTORISATION (JAN 1984).
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 12 REVISED. EXTENDED BLAS (JUNE 1986)
+C
+C     DIRBAK
+C     GIVEN IR EIGENVECTORS, STORED AS COLUMNS IN THE ARRAY
+C     Z(N,IR),
+C     OF THE HESSENBERG MATRIX, H, WHICH WAS FORMED BY
+C     F01AKF, AND DETAILS OF THE TRANSFORMATIONS AS LEFT BY F01AKF
+C     BELOW H AND IN ELEMENTS K TO L OF THE ARRAY INTGER(N).
+C     THIS SUBROUTINE FORMS THE EIGENVECTORS OF THE MATRIX A AND
+C     OVERWRITES THEM ON THE GIVEN VECTORS.
+C     1ST AUGUST 1971
+C
+C     .. Scalar Arguments ..
+      INTEGER           IA, IR, IZ, KL, L, N
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(IA,N), Z(IZ,IR)
+      INTEGER           INTGER(N)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  X
+      INTEGER           I, II, J, K, M
+C     .. External Subroutines ..
+      EXTERNAL          DTRMV
+C     .. Executable Statements ..
+      K = KL
+      IF (IR.LE.0) RETURN
+C     FORM NZ
+      IF (K+2.GT.L) GO TO 40
+      DO 20 J = 1, IR
+         CALL DTRMV('L','N','U',L-K,A(K+1,K),IA,Z(K+1,J),1)
+   20 CONTINUE
+   40 K = K + 1
+C     INTERCHANGE WHERE NECESSARY.
+      I = L + 1
+      IF (K.GT.L) RETURN
+      DO 80 II = K, L
+         I = I - 1
+         M = INTGER(I)
+         IF (M.EQ.I) GO TO 80
+         DO 60 J = 1, IR
+            X = Z(M,J)
+            Z(M,J) = Z(I,J)
+            Z(I,J) = X
+   60    CONTINUE
+   80 CONTINUE
+      RETURN
+      END

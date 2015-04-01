@@ -1,0 +1,52 @@
+#!/bin/bash
+
+if [[ ${#} == 0 ]] ; then
+    echo "usage: $0 ../*D.clk"
+    echo
+    exit 1
+fi
+
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+while [[ -n $1 ]] ; do
+    clk=$1
+    if [[ -f $clk && ${clk##*\.} == "clk" ]] ; then
+	sp=$(head -n 1 $clk)
+	start_iso=$(awk '{if(NR==2)printf "20%02d-%02d-%02dT%02d:%02d:%02d\n",$1,$2,$3,$4,$5,$6}' $clk)
+	start_sec=$(echo $start_iso | gmtconvert -fi0T -fo0t --TIME_SYSTEM=UNIX)
+	end_sec=$(cat ${clk/.clk/.asc} | wc -l | awk -v sp=$sp -v s=$start_sec '{printf "%f",($1-1)*sp+s}')
+	end_iso=$(echo $end_sec | gmtconvert -fi0t -fo0T --TIME_SYSTEM=UNIX --OUTPUT_CLOCK_FORMAT=hh:mm:ss.xxxx)
+	clk=$(basename $clk)
+	echo "${clk/.clk/} $start_iso $end_iso $start_sec $end_sec $sp" >> $GMT_TMPDIR/clock.log
+    else
+	echo "$clk isn't a file or without extension clk"
+    fi
+    shift
+done
+
+if [[ -f $GMT_TMPDIR/clock.log ]] ; then
+    sort -n -k 4 $GMT_TMPDIR/clock.log > $GMT_TMPDIR/sort_clock.log
+    exec 6<&0 # liga o arquivo #6 com stdin (cópia de segurança)
+    exec < $GMT_TMPDIR/sort_clock.log # stdin substituído pelo arquivo $GMT_TMPDIR/sort_clock.log
+    N=0
+    while read -a col
+    do
+	if (( $N == 0 )) ; then
+	    ((N++))
+	    start=${col[3]}
+	    end=${col[4]}
+  	    echo "> -Z${N}"
+	elif (( $(echo "${col[3]} >= $start && ${col[3]} < $end" | bc -l) == 1 )) ; then
+	    if (( $(echo "${col[4]} > $end" | bc -l) == 1 )) ; then
+		end=${col[4]}
+	    fi
+	else
+	    ((N++))
+	    start=${col[3]}
+	    end=${col[4]}
+  	    echo "> -Z${N}"
+	fi
+	echo "${col[0]} ${col[1]} ${col[2]} ${col[3]} ${col[4]} ${col[5]}"
+    done
+    exec 0<&6 6<&- # restaura stdin do arquivo #6 e o fecha
+fi
+rm -rf $GMT_TMPDIR

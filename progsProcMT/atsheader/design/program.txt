@@ -1,0 +1,9 @@
+check usage:
+  arg==0: return usage mesage.
+  arg==1: return a list with all parameters in format: parameter: value
+  arg>1 : if (all in format parameter=value) {write values}
+          else {return selected parameters}
+
+check input arguments;
+
+make ats_header(?);

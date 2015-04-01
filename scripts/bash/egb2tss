@@ -1,0 +1,25 @@
+#!/bin/bash
+# script to simplify egb2tss usage.
+# the original egb2tss was renamed to _egb2tss.
+
+usage ()
+{
+    echo "usage: $1 file.asc"
+    echo "where file.asc is a EMTF asc file"
+    echo "the output will be at DATA/file.sec"
+    exit 1
+}
+
+if [[ $# != 1 ]] ; then
+    usage $0
+fi
+
+if [[ !(-f paths.cfg) ]] ; then
+    echo "Error: expected to find file paths.cfg at current directory"
+    exit 1
+fi
+
+asc=$1
+asc=$(basename $asc)
+sec=${asc/.asc/.sec}
+_egb2tss -I$asc -O$sec

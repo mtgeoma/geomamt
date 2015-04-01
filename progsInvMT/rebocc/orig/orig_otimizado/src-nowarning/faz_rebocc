@@ -1,0 +1,3 @@
+make rebocc
+rm -f *.o
+mv rebocc ~/bin

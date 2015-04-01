@@ -1,0 +1,17 @@
+PROJECT(ats2asc)
+
+SET(APP_SRCS ${PROJECT_NAME}.cpp main.cpp system_dependent.cpp meu_geomag70.c
+  declination.cpp)
+
+SET(Boost_USE_STATIC_LIBS ON)
+FIND_PACKAGE(Boost 1.46.0 COMPONENTS program_options filesystem system REQUIRED)
+INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
+ADD_DEFINITIONS(-DBOOST_FILESYSTEM_NO_DEPRECATED)
+
+INCLUDE(gccUtils)
+gccVersion()
+
+MESSAGE(STATUS "gcc_version ${GCC_VERSION}")
+
+ADD_EXECUTABLE(${PROJECT_NAME} ${APP_SRCS})
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${Boost_LIBRARIES})

@@ -1,0 +1,5 @@
+cd src
+make transferfunction
+make clean
+mv transferfunction ~/bin/
+cd ..

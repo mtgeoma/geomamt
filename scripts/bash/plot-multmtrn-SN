@@ -1,0 +1,235 @@
+#!/bin/bash
+
+usage ()
+{
+    printf "usage: $1 file.SN Nstn\n"
+    printf "where:\n"
+    printf "\tfile.SN\tmultmtrn SN file\n"
+    printf "\tNstn\tnumber of stations\n"
+    printf "\t\t\tassume that number of channels is the same for all stations\n"
+    echo
+    exit 1
+}
+
+read_block_data ()
+{
+  awk -v ln=$Ntmp -v nT=$nT -v nS=$nStn -v nC=$nCh -v d=$GMT_TMPDIR/$1 'BEGIN{
+    T=sprintf("%s/T",d)
+    for(stn=0;stn<nS;stn++) {
+      for(c=0;c<nC;c++) {
+        f[stn,c]=sprintf("%s/s%03d_c%03d",d,stn,c)
+      }
+    }
+    nt=0
+  }
+  {
+    if(NR>ln&&nt<nT) {
+      col=1
+      print $col > T
+      nt++
+      for(stn=0;stn<nS;stn++) {
+        for(c=0;c<nC;c++) {
+          col++
+          if(col>NF) {
+            getline
+            col=1
+          }
+          print $col > f[stn,c]
+        }
+      }
+    }
+  }' $SN
+}
+
+plot_spectra ()
+{
+    ChNumber=$1
+    for (( stn=0; stn<$nStn; stn++ )) ; do
+	STN=$(printf "%03d" $stn)
+	paste $GMT_TMPDIR/sgp/T $GMT_TMPDIR/inp/s${STN}_c${ChNumber} | \
+	    psxy -J -R -Wthin,${color[$stn]},- -K -O >> $ps
+    done
+    for (( stn=0; stn<$nStn; stn++ )) ; do
+	STN=$(printf "%03d" $stn)
+	paste $GMT_TMPDIR/sgp/T $GMT_TMPDIR/sgp/s${STN}_c${ChNumber} | \
+	    psxy -J -R -Wthin,${color[$stn]} -K -O >> $ps
+    done
+}
+
+if (( ${#} != 2 )) ; then
+    usage $0
+fi
+# SN file
+SN=$1
+if [[ !(-f $SN) ]] ; then
+    echo "couldn't find file $SN"
+    echo
+    exit 1
+fi
+nStn=$2
+Ntmp=($(head -n 1 $SN))
+nCh=${Ntmp[0]}
+nT=${Ntmp[1]}
+
+if (( $(echo $nCh $nStn | awk '{print $1%$2}') != 0 )) ; then
+    echo -n "number of channels ($nCh)"
+    echo " isn't a multiple of number of stations ($nStn)"
+    exit 1
+fi
+nCh=$(echo $nCh $nStn | awk '{printf "%d",$1/$2}')
+
+ps=${SN%%\.*}.ps
+
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+
+Ntmp=$(grep -n 'Eigenvalues in noise units' $SN | cut -d: -f1)
+mkdir $GMT_TMPDIR/egv
+read_block_data egv
+
+Ntmp=$(grep -n 'SIGNAL POWER' $SN | cut -d: -f1)
+mkdir $GMT_TMPDIR/sgp
+read_block_data sgp
+
+Ntmp=$(grep -n ^' INCOHERENT NOISE POWER' $SN | cut -d: -f1)
+mkdir $GMT_TMPDIR/inp
+read_block_data inp
+
+# ranges
+T=($(cat $GMT_TMPDIR/*/T | minmax -C | \
+    awk '{printf "1e%d 1e%d",int(log($1)/log(10)-0.5),
+                             int(log($2)/log(10)+0.5)}'))
+
+V=($(cat $GMT_TMPDIR/egv/s* | minmax -C | \
+    awk '{printf "1e%d 1e%d",int(log($1)/log(10)-0.5),
+                             int(log($2)/log(10)+0.5)}'))
+
+ChBx=000
+ChBy=001
+if (( $nCh == 3 )) ; then
+    H=($(cat $GMT_TMPDIR/??p/s*_c*[0-2] | minmax -C | \
+	awk '{printf "1e%d 1e%d",int(log($1)/log(10)-0.5),
+                                 int(log($2)/log(10)+0.5)}'))
+    ChBz=002
+elif (( $nCh == 4 )) ; then
+    H=($(cat $GMT_TMPDIR/??p/s*_c*[0-1] | minmax -C | \
+	awk '{printf "1e%d 1e%d",int(log($1)/log(10)-0.5),
+                                 int(log($2)/log(10)+0.5)}'))
+    E=($(cat $GMT_TMPDIR/??p/s*_c*[2-3] | minmax -C | \
+	awk '{printf "1e%d 1e%d",int(log($1)/log(10)-0.5),
+                                 int(log($2)/log(10)+0.5)}'))
+    ChEx=002
+    ChEy=003
+elif (( $nCh == 5 )) ; then
+    H=($(cat $GMT_TMPDIR/??p/s*_c*[0-2] | minmax -C | \
+	awk '{printf "1e%d 1e%d",int(log($1)/log(10)-0.5),
+                                 int(log($2)/log(10)+0.5)}'))
+    E=($(cat $GMT_TMPDIR/??p/s*_c*[3-4] | minmax -C | \
+	awk '{printf "1e%d 1e%d",int(log($1)/log(10)-0.5),
+                                 int(log($2)/log(10)+0.5)}'))
+    ChBz=002
+    ChEx=003
+    ChEy=004
+else
+    echo "only works with 3 to 5 channels by station"
+    echo
+    rm -rf $GMT_TMPDIR
+    exit 1
+fi
+
+# 
+YLEN=7
+XLEN=8
+
+# change gmt defaults
+gmtset HEADER_OFFSET -0.3c HEADER_FONT_SIZE 14p ANNOT_FONT_SIZE_PRIMARY 12p  LABEL_FONT_SIZE 14p
+
+if (( $nStn <= 6 )) ; then
+    color=(blue skyblue green gold orange red)
+else
+    color=($(makecpt -Cwysiwyg -T0/${nStn}/1 | grep -v \# | \
+	head -n $nStn | awk '{printf " %s/%s/%s",$2,$3,$4}'))
+fi
+
+# egv basemap
+psbasemap -X2.5c -Y2c -JX${XLEN}cl/${YLEN}cl -R${T[0]}/${T[1]}/1e-1/${V[1]} \
+    -Ba1pf3/a1pf3:"signal/noise"::."eigenvalues":Wesn -K > $ps
+
+for data in $(ls $GMT_TMPDIR/egv/s000_c00[0-1]) ; do
+    paste $GMT_TMPDIR/egv/T $data | \
+	psxy -R -J -Wthin,red -K -O >> $ps
+done
+rm $GMT_TMPDIR/egv/s000_c00[0-1]
+
+for data in $(ls $GMT_TMPDIR/egv/s*) ; do
+    paste $GMT_TMPDIR/egv/T $data | \
+	psxy -R -J -Wthin,black -K -O >> $ps
+done
+
+if (( $nCh == 3 )) ; then
+    # Bz basemap
+    psbasemap -X${XLEN}c -J -R${T[0]}/${T[1]}/${H[0]}/${H[1]} \
+	-Ba1pf3:"T (s)":/a1pf3:"(nT@+2@+/Hz)"::."Bz":wESn -K -O >> $ps
+    plot_spectra ${ChBz}
+    DX=$(echo "-1*${XLEN}" | bc -l)
+else
+    # Ex basemap
+    psbasemap -X${XLEN}c -J -R${T[0]}/${T[1]}/${E[0]}/${E[1]} \
+	-Ba1pf3:"T (s)":/a1pf3:."Ex":weSn -K -O >> $ps
+    plot_spectra ${ChEx}
+    # Ey basemap
+    psbasemap -X${XLEN}c -J -R \
+	-Ba1pf3/a1pf3:"(mV/km)@+2@+/Hz"::."Ey":wEsn -K -O >> $ps
+    plot_spectra ${ChEy}
+    DX=$(echo "-2*${XLEN}" | bc -l)
+fi
+DY=$(echo "${YLEN}+1.5" | bc -l)
+# Bx basemap
+psbasemap -X${DX}c -Y${DY}c -J -R${T[0]}/${T[1]}/${H[0]}/${H[1]} \
+    -Ba1pf3/a1pf3:"(nT@+2@+/Hz)"::."Bx":WesN -K -O >> $ps
+plot_spectra ${ChBx}
+
+# By basemap
+psbasemap -X${XLEN}c -J -R -Ba1pf3/a1pf3:"(nT@+2@+/Hz)"::."By":wesn -K -O >> $ps
+plot_spectra ${ChBy}
+DX=$(echo "-1*${XLEN}" | bc -l)
+if (( $nCh == 5 )) ; then
+    # Bz basemap
+    psbasemap -X${XLEN}c -J -R \
+	-Ba1pf3/a1pf3:"(nT@+2@+/Hz)"::."Bz":wEsN -K -O >> $ps
+    plot_spectra ${ChBz}
+    DX=$(echo "-2*${XLEN}" | bc -l)
+fi
+DY=$(echo "${YLEN}+1.2" | bc -l)
+
+dir=$(dirname $SN)
+base=$(basename $SN)
+base=_${base/SN/zmm}
+stn=0
+for file in $(ls ${dir}/*${base}) ; do
+    file=$(basename $file)
+    label[$stn]=${file:0:3}
+    ((stn++))
+done
+XLEN=$(echo "2*${XLEN}" | bc -l)
+psxy -T -X${DX}c -Y${DY}c -JX${XLEN}c/1c -R-1/17/-1/1 -K -O >> $ps
+n=0
+y=0.7
+for (( stn=0; stn<$nStn; stn++ )) ; do
+    echo "$n $y 12 0 0 mc ${label[$stn]}" | \
+	pstext -R -J -G${color[$stn]} -K -O >> $ps
+    ((n++))
+    if [[ $n == 16 ]] ;then
+	n=0
+	y=$(echo "$y-0.7" | bc -l)
+    fi
+done
+psxy -T -J -R -O >> $ps
+
+rm -rf $GMT_TMPDIR
+
+ps2raster $ps -A -P -Tg
+if [[ -n $VIEWER_PNG ]] ; then
+    $VIEWER_PNG ${ps/.ps/.png}&
+else
+    echo "figure ${ps/.ps/.png} done"
+fi

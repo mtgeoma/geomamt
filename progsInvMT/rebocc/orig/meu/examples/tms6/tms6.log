@@ -1,0 +1,108 @@
+------------------------------------------------------
+----- REBOCC INVERSION FOR MT DATA : VERSION 1.0 -----
+------------------------------------------------------
+------------------------------------------------------
+ 
+          <<<<< MODEL PARAMETERS >>>>>
+TOTAL NO. OF MODEL BLOCKS                <M> :   3100
+      NO. OF HORIZONTAL BLOCK (NY)           :    100
+      NO. OF VERTICAL BLOCK (NZ) (NO AIR)    :     31
+------------------------------------------------------
+ 
+          <<<<< DATA PARAMETERS  >>>>>
+TOTAL NO. OF MODE                            :      1
+ <TM>     NO. OF RESPONSES                   :      2
+                    RESPONSE # <   1>        :     APP
+                    RESPONSE # <   2>        :     PHS (DEG)
+          NO. OF PERIODS                     :     31
+          NO. OF STATIONS                    :     36
+ 
+TOTAL NO. OF DATA                            :   2232
+TOTAL NO. OF DATA USED TO ESTIMATE RMS   <N> :   2232
+      NO. OF DATA (EST. RMS) FOR MODE #    1 :   1116  1116
+TOTAL NO. OF DATA USED TO COMPUTE REP.   <L> :    432 (0.19N)
+      NO. OF DATA (CAL. REP) FOR MODE #    1 :    216   216
+------------------------------------------------------
+ 
+          <<<<<  GOAL OF INVERSION >>>>>
+      DESIRED RMS IN BETWEEN  0.95 AND  1.05
+             MAX NO. OF ITERATION =   10
+       MAX NO. OF SMOOTHING ITERATION =    5
+------------------------------------------------------
+------------------------------------------------------
+STARTING RMS                           =      19.8986
+APPROX MIN ACHIEVABLE RMS OF NEXT ITER =       3.3863
+------------------------------------------------------
+  # |                 LEFT     MIDDLE    RIGHT
+  1 |   LOG10        1.5000    2.0000    2.5000
+    |    RMS         6.3173    6.0237    5.7035
+    | MODEL NORM    13.5241   11.9605   10.5870
+  2 |   LOG10        2.0000    2.5000    3.0000
+    |    RMS         6.0237    5.7035    5.3333
+    | MODEL NORM    11.9605   10.5870    9.3885
+  3 |   LOG10        2.5000    3.0000    3.5000
+    |    RMS         5.7035    5.3333    4.9101
+    | MODEL NORM    10.5870    9.3885    8.2079
+  4 |   LOG10        3.0000    3.5000    4.0000
+    |    RMS         5.3333    4.9101    4.6811
+    | MODEL NORM     9.3885    8.2079    7.2932
+  5 |   LOG10        3.5000    4.0000    4.5000
+    |    RMS         4.9101    4.6811    5.0385
+    | MODEL NORM     8.2079    7.2932    6.4961
+------------------------------------------------------
+ITERATION #     1 RMS                  =       4.6811
+                  MODEL NORM           =       7.2932
+        RELATIVE CHANGE OF MODEL (%)   =      84.8749
+------------------------------------------------------
+------------------------------------------------------
+APPROX MIN ACHIEVABLE RMS OF NEXT ITER =       1.3369
+------------------------------------------------------
+  # |                 LEFT     MIDDLE    RIGHT
+  1 |   LOG10        3.5000    4.0000    4.5000
+    |    RMS         1.8823    2.6409    4.5942
+    | MODEL NORM     8.3839    7.2304    5.9934
+  2 |   LOG10        3.0000    3.5000    4.0000
+    |    RMS         1.3944    1.8823    2.6409
+    | MODEL NORM     9.7854    8.3839    7.2304
+  3 |   LOG10        2.5000    3.0000    3.5000
+    |    RMS         1.2673    1.3944    1.8823
+    | MODEL NORM    11.3862    9.7854    8.3839
+  4 |   LOG10        2.0000    2.5000    3.0000
+    |    RMS         1.5638    1.2673    1.3944
+    | MODEL NORM    13.2128   11.3862    9.7854
+------------------------------------------------------
+ITERATION #     2 RMS                  =       1.2673
+                  MODEL NORM           =      11.3862
+        RELATIVE CHANGE OF MODEL (%)   =      40.7816
+------------------------------------------------------
+------------------------------------------------------
+APPROX MIN ACHIEVABLE RMS OF NEXT ITER =       0.7414
+------------------------------------------------------
+  # |                 LEFT     MIDDLE    RIGHT
+  1 |   LOG10        2.0000    2.5000    3.0000
+    |    RMS         0.6743    0.8503    1.3614
+    | MODEL NORM    12.2596   10.4462    8.8492
+PARABOLIC INTERP. ESTIMATES  RMS =     0.9943 FROM X =     2.6846
+------------------------------------------------------
+ITERATION #     3 RMS                  =       0.9943
+SMOOTHING #     0 MODEL NORM           =       9.8294
+        RELATIVE CHANGE OF MODEL (%)   =      22.4263
+     RELATIVE CHANGE OR MODEL NORM (%) =      13.6728
+------------------------------------------------------
+------------------------------------------------------
+APPROX MIN ACHIEVABLE RMS OF NEXT ITER =       0.7255
+------------------------------------------------------
+  # |                 LEFT     MIDDLE    RIGHT
+  1 |   LOG10        2.5846    2.6846    2.7846
+    |    RMS         0.8227    0.9007    0.9895
+    | MODEL NORM    10.4245   10.1050    9.7938
+------------------------------------------------------
+ITERATION #     4 RMS                  =       0.9895
+SMOOTHING #     1 MODEL NORM           =       9.7938
+        RELATIVE CHANGE OF MODEL (%)   =       4.3598
+     RELATIVE CHANGE OR MODEL NORM (%) =       0.3625
+------------------------------------------------------
+------------------------------------------------------
+ !!! Relative model norm change is less than  1.00 % !!!                         
+!!!!!!!!!! REBOCC inversion is finished !!!!!!!!!
+------------------------------------------------------

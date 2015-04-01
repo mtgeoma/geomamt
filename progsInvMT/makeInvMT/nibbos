@@ -1,0 +1,2 @@
+g++ -Wall nibbosg.cpp -o ~/bin/nibbosg
+g++ -Wall nibbosgLog.cpp -o ~/bin/nibbosgLog

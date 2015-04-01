@@ -1,0 +1,1 @@
+g++ -o ~/bin/z1dp main.cpp le_modelo.cpp le_periodos.cpp z1dp.cpp z1dpinv.cpp

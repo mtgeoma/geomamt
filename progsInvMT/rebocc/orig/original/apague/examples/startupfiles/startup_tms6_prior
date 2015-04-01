@@ -1,0 +1,21 @@
+
+# Short startup file, 
+# UPPER CASE is required command, 
+# and lower case is optional command which can be ignore. 
+#  
+# TM Inversion using 6th-stripe with 100 Ohm-m half space as initial model. 
+# Also in this case, we include a prior model in the inversion and also
+# freez the top layer of the prior model (see model.control file)
+
+
+NUMBER_OF_MODE 1
+DATA_FILE      ../../data/data.tm
+SENS_INCLUSION stripe:p=6
+LEFT_OFFSET    295000.
+OUTPUT_FILE    tms6_p
+STARTING_MODEL ../../data/initmodel.h100
+DESIRED_RMS    1
+MAX_ITERATION  10
+MAX_SMOOTHING  5
+prior_model    ../../data/prior.model
+model_control  ../../data/model.control

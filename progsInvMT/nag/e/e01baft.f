@@ -1,0 +1,126 @@
+      SUBROUTINE E01BAF(M,X,Y,K,C,LCK,WRK,LWRK,IFAIL)
+C     MARK 8 RELEASE. NAG COPYRIGHT 1979.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     ******************************************************
+C
+C     NPL ALGORITHMS LIBRARY ROUTINE SP3INT
+C
+C     CREATED 16/5/79.                        RELEASE 00/00
+C
+C     AUTHORS ... GERALD T. ANTHONY, MAURICE G.COX
+C                 J.GEOFFREY HAYES AND MICHAEL A. SINGER.
+C     NATIONAL PHYSICAL LABORATORY, TEDDINGTON,
+C     MIDDLESEX TW11 OLW, ENGLAND
+C
+C     ******************************************************
+C
+C     E01BAF.  AN ALGORITHM, WITH CHECKS, TO DETERMINE THE
+C     COEFFICIENTS IN THE B-SPLINE REPRESENTATION OF A CUBIC
+C     SPLINE WHICH INTERPOLATES (PASSES EXACTLY THROUGH) A
+C     GIVEN SET OF POINTS.
+C
+C     INPUT PARAMETERS
+C        M        THE NUMBER OF DISTINCT POINTS WHICH THE
+C                    SPLINE IS TO INTERPOLATE.
+C                    (M MUST BE AT LEAST 4.)
+C        X        ARRAY CONTAINING THE DISTINCT VALUES OF THE
+C                    INDEPENDENT VARIABLE. NB X(I) MUST BE
+C                    STRICTLY GREATER THAN X(J) WHENEVER I IS
+C                    STRICTLY GREATER THAN J.
+C        Y        ARRAY CONTAINING THE VALUES OF THE DEPENDENT
+C                    VARIABLE.
+C        LCK      THE SMALLER OF THE ACTUALLY DECLARED DIMENSIONS
+C                    OF K AND C. MUST BE AT LEAST M + 4.
+C
+C     OUTPUT PARAMETERS
+C        K        ON SUCCESSFUL EXIT, K CONTAINS THE KNOTS
+C                    SET UP BY THE ROUTINE. IF THE SPLINE IS
+C                    TO BE EVALUATED (BY NPL ROUTINE E02BEF,
+C                    FOR EXAMPLE) THE ARRAY K MUST NOT BE
+C                    ALTERED BEFORE CALLING THAT ROUTINE.
+C        C        ON SUCCESSFUL EXIT, C CONTAINS THE B-SPLINE
+C                    COEFFICIENTS OF THE INTERPOLATING SPLINE.
+C                    THESE ARE ALSO REQUIRED BY THE EVALUATING
+C                    ROUTINE E02BEF.
+C        IFAIL    FAILURE INDICATOR
+C                    0 - SUCCESSFUL TERMINATION.
+C                    1 - ONE OF THE FOLLOWING CONDITIONS HAS
+C                        BEEN VIOLATED -
+C                        M AT LEAST 4
+C                        LK AT LEAST M + 4
+C                        LWORK AT LEAST 6 * M + 16
+C                    2 - THE VALUES OF THE INDEPENDENT VARIABLE
+C                        ARE DISORDERED. IN OTHER WORDS, THE
+C                        CONDITION MENTIONED UNDER X IS NOT
+C                        SATISFIED.
+C
+C     WORKSPACE (AND ASSOCIATED DIMENSION) PARAMETERS
+C        WRK     WORKSPACE ARRAY, OF LENGTH LWRK.
+C        LWRK    ACTUAL DECLARED DIMENSION OF WRK.
+C                    MUST BE AT LEAST 6 * M + 16.
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='E01BAF')
+C     .. Scalar Arguments ..
+      INTEGER           IFAIL, LCK, LWRK, M
+C     .. Array Arguments ..
+      DOUBLE PRECISION  C(LCK), K(LCK), WRK(LWRK), X(M), Y(M)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  ONE, SS
+      INTEGER           I, IERROR, M1, M2
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      INTEGER           P01ABF
+      EXTERNAL          P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          E02BAF
+C     .. Data statements ..
+      DATA              ONE/1.0D+0/
+C     .. Executable Statements ..
+      IERROR = 1
+C
+C     TESTS FOR ADEQUACY OF ARRAY LENGTHS AND THAT M IS GREATER
+C     THAN 4.
+C
+      IF (LWRK.LT.6*M+16 .OR. M.LT.4) GO TO 80
+      IF (LCK.LT.M+4) GO TO 80
+C
+C     TESTS FOR THE CORRECT ORDERING OF THE X(I)
+C
+      IERROR = 2
+      DO 20 I = 2, M
+         IF (X(I).LE.X(I-1)) GO TO 80
+   20 CONTINUE
+C
+C     INITIALISE THE ARRAY OF KNOTS AND THE ARRAY OF WEIGHTS
+C
+      WRK(1) = ONE
+      WRK(2) = ONE
+      WRK(3) = ONE
+      WRK(4) = ONE
+      IF (M.EQ.4) GO TO 60
+      DO 40 I = 5, M
+         K(I) = X(I-2)
+         WRK(I) = ONE
+   40 CONTINUE
+   60 M1 = M + 1
+      M2 = M1 + M
+C
+C     CALL THE SPLINE FITTING ROUTINE
+C
+      IERROR = 0
+      CALL E02BAF(M,M+4,X,Y,WRK,K,WRK(M1),WRK(M2),C,SS,IERROR)
+C
+C     ALL THE TESTS PERFORMED BY E02BAF ARE REDUNDANT
+C     BECAUSE OF THE ABOVE TESTS AND ASSIGNMENTS, AND SO
+C     IERROR = 0 AFTER THIS CALL.
+C
+   80 IFAIL = P01ABF(IFAIL,IERROR,SRNAME,0,P01REC)
+      RETURN
+C
+C     END OF E01BAF.
+C
+      END

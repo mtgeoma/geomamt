@@ -1,0 +1,82 @@
+      SUBROUTINE E04KBS(N,Z,BL,BU,ISTATE,P,ZTEMP,SPOS,SNEG)
+C
+C     MARK 6 RELEASE NAG COPYRIGHT 1977
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 13 REVISED. USE OF MARK 12 X02 FUNCTIONS (APR 1988).
+C
+C     **************************************************************
+C
+C     E04KBS (LOCSD3) COMPUTES SPOS AND SNEG AS THE MAXIMUM FEASIBLE
+C     STEP- LENGTHS FROM THE POINT Z ALONG THE VECTOR P = (X - Z) IN
+C     THE POSITIVE AND NEGATIVE DIRECTIONS RESPECTIVELY. IN ORDER
+C     THAT THE SUBROUTINE MAY BE CALLED WITH X INSTEAD OF Z, THE
+C     STARTING POINT FOR THE LINEAR SEARCH IS ASSIGNED TO A SEPARATE
+C     VECTOR ZTEMP SO THAT X ITSELF NEED NOT BE OVERWRITTEN WITHIN
+C     E04KBS.
+C
+C     PHILIP E. GILL, WALTER MURRAY, SUSAN M. PICKEN, MARGARET H.
+C     WRIGHT AND ENID M. R. LONG, D.N.A.C., NATIONAL PHYSICAL
+C     LABORATORY, ENGLAND
+C
+C     **************************************************************
+C
+C
+C     TWO MACHINE-DEPENDENT CONSTANTS ARE SET HERE. EPSMCH IS THE
+C     SMALLEST POSITIVE REAL NUMBER SUCH THAT 1 + EPSMCH .GT. 1.
+C     RMAX IS THE LARGEST POSITIVE REAL NUMBER SUCH THAT BOTH RMAX
+C     AND - RMAX CAN BE HELD IN THE MACHINE.
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  SNEG, SPOS
+      INTEGER           N
+C     .. Array Arguments ..
+      DOUBLE PRECISION  BL(N), BU(N), P(N), Z(N), ZTEMP(N)
+      INTEGER           ISTATE(N)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  ABSPJ, BLJ, BUJ, DL, DNEG, DPOS, DU, DUMMY,
+     *                  EPSMCH, PJ, RMAX, ZJ
+      INTEGER           J
+C     .. External Functions ..
+      DOUBLE PRECISION  X02AJF, X02ALF
+      EXTERNAL          X02AJF, X02ALF
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS
+C     .. Executable Statements ..
+      EPSMCH = X02AJF()
+      RMAX = X02ALF()
+C
+      SPOS = 1.0D+6
+      SNEG = 1.0D+6
+      DO 100 J = 1, N
+         IF (ISTATE(J).LE.0) GO TO 100
+         ZJ = Z(J)
+         ZTEMP(J) = ZJ
+         PJ = P(J)
+         ABSPJ = ABS(PJ)
+         IF (ABSPJ.LT.EPSMCH) GO TO 100
+         BLJ = BL(J)
+         BUJ = BU(J)
+         IF (BLJ.LE.-1.0D+6 .AND. BUJ.GE.1.0D+6) GO TO 100
+         DL = ZJ - BLJ
+         DU = BUJ - ZJ
+         IF (ABSPJ.LT.1.0D+0) GO TO 20
+         DL = DL/ABSPJ
+         DU = DU/ABSPJ
+         GO TO 40
+   20    DUMMY = ABSPJ*RMAX
+         IF (DL.LT.DUMMY) DL = DL/ABSPJ
+         IF (DU.LT.DUMMY) DU = DU/ABSPJ
+   40    IF (PJ.GT.0.0D+0) GO TO 60
+         DPOS = DL
+         DNEG = DU
+         GO TO 80
+   60    DPOS = DU
+         DNEG = DL
+   80    IF (SPOS.GT.DPOS) SPOS = DPOS
+         IF (SNEG.GT.DNEG) SNEG = DNEG
+  100 CONTINUE
+      RETURN
+C
+C     END OF E04KBS (LOCSD3)
+C
+      END

@@ -1,0 +1,60 @@
+#!/bin/bash
+if [[ -z $1 ]] ; then
+    echo "usage: $0 egbert_Z_file"
+    echo "  will remove periods blocks with NaN"
+    echo "  output file: egbert_Z_file-nan.z*"
+    echo
+    exit 1
+fi
+zfile=$1
+DIR=$(dirname $zfile)
+zfile_without_nan=$(basename $zfile)
+zfile_without_nan=$(echo $zfile_without_nan | awk '{l=length($1);printf "%s-nan%s",substr($1,1,l-4),substr($1,l-3,4)}')
+
+# Create a temporary directory. $GMT_TMPDIR will be set to its pathname.
+# XXXXXX is replaced by a unique random combination of characters.
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+
+# set start line
+l0=1
+# set counter
+n_file=0
+# for each number line n with key word period:
+for n in $(grep -n period $zfile | cut -d: -f1) ; do
+    # separe in period blocks (0 is header)
+    blk=$(printf "blk%04d.dat" $n_file)
+    gawk -v i=$l0 -v f=$n '{if(NR>=i&&NR<f)print $0}' $zfile > ${GMT_TMPDIR}/$blk
+    l0=$n
+    ((n_file++))
+done
+
+# max_n_file=(9 times format width used in printf)
+max_n_file=9999
+if (( $n_file > $max_n_file )) ; then
+    echo "ERROR: maximum number of periods was exceeded [$max_n_file]"
+    exit 1
+fi
+
+# last period block
+blk=$(printf "blk%04d.dat" $n_file)
+gawk -v i=$l0 '{if(NR>=i)print $0}' $zfile > ${GMT_TMPDIR}/$blk
+
+# write header
+cat ${GMT_TMPDIR}/blk0000.dat > ${GMT_TMPDIR}/$zfile_without_nan
+
+# write periods blocks without NaNs
+for file in $(ls ${GMT_TMPDIR}/*.dat | grep -v ${GMT_TMPDIR}/blk0000.dat) ; do
+    n=$(grep -i nan $file | wc -l)
+    if [[ $n == 0 ]] ; then
+	cat $file >> ${GMT_TMPDIR}/$zfile_without_nan
+    fi
+done
+
+# only copy $zfile_without_nan if it's not identical to $zfile
+diff -s ${GMT_TMPDIR}/$zfile_without_nan  $zfile > /dev/null
+if [[ $? != 0 ]] ; then
+    cp -i ${GMT_TMPDIR}/$zfile_without_nan $DIR
+fi
+
+# Clean up all temporary files and the temporary directory
+rm -rf $GMT_TMPDIR

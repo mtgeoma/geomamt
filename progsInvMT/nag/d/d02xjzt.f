@@ -1,0 +1,135 @@
+      SUBROUTINE D02XJZ(T,K,YH,NYH,DKY,IFLAG,NEQ,H,TN,HU,NQ)
+C     MARK 12 RELEASE. NAG COPYRIGHT 1986.
+C
+C     OLD NAME INTDY
+C
+C-----------------------------------------------------------------------
+C  TIME INTERPOLATION ROUTINE FOR MULTISTEP METHODS BASED UPON
+C  NORDSIECK VECTOR IMPLEMENTATIONS
+C----------------------------------------------------------------------
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  H, HU, T, TN
+      INTEGER           IFLAG, K, NEQ, NQ, NYH
+C     .. Array Arguments ..
+      DOUBLE PRECISION  DKY(*), YH(NYH,*)
+C     .. Scalars in Common ..
+      DOUBLE PRECISION  DUNFLO, UROUND
+      INTEGER           IOVFLO
+C     .. Local Scalars ..
+      DOUBLE PRECISION  C, R, S, TP
+      INTEGER           I, IC, J, JB, JB2, JJ, JJ1, JP1, L, N
+C     .. External Subroutines ..
+      EXTERNAL          D02NNQ
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS, DBLE
+C     .. Common blocks ..
+      COMMON            /FD02NM/DUNFLO, UROUND, IOVFLO
+C     .. Save statement ..
+      SAVE              /FD02NM/
+C     .. Executable Statements ..
+C-----------------------------------------------------------------------
+C D02XJZ COMPUTES INTERPOLATED VALUES OF THE K-TH DERIVATIVE OF THE
+C DEPENDENT VARIABLE VECTOR Y, AND STORES IT IN DKY.  THIS ROUTINE
+C IS CALLED WITHIN THE PACKAGE WITH K = 0 AND T = TOUT, BUT MAY
+C ALSO BE CALLED BY THE USER FOR ANY K UP TO THE CURRENT ORDER.
+C THE INPUT PARAMETERS ARE..
+C
+C T         = VALUE OF INDEPENDENT VARIABLE WHERE ANSWERS ARE DESIRED
+C             (NORMALLY THE SAME AS THE T LAST RETURNED BY SPRINT).
+C             FOR VALID RESULTS, T MUST LIE BETWEEN TCUR - HU AND TCUR.
+C             (SEE OPTIONAL OUTPUTS FOR TCUR AND HU.)
+C K         = INTEGER ORDER OF THE DERIVATIVE DESIRED.  K MUST SATISFY
+C             0 .LE. K .LE. NQCUR, WHERE NQCUR IS THE CURRENT ORDER
+C             (SEE OPTIONAL OUTPUTS).  THE CAPABILITY CORRESPONDING
+C             TO K = 0, I.E. COMPUTING Y(T), IS ALREADY PROVIDED
+C             BY SPRINT DIRECTLY.  SINCE NQCUR .GE. 1, THE FIRST
+C             DERIVATIVE DY/DT IS ALWAYS AVAILABLE WITH D02XJZ.
+C YH        = THE HISTORY ARRAY YH (NORDSIECK VECTOR).
+C NYH       = COLUMN LENGTH OF YH, EQUAL TO THE INITIAL VALUE OF NEQ.
+C NEQ       = THE NUMBER OF ORDINARY DIFFERENTIAL EQUATIONS
+C H         = CURRENT STEPSIZE.
+C HU        = LAST STEPSIZE USED.    THESE ARE PASSED ACROSS BY
+C TN        = THE LAST TIME LEVEL.   THE COMMON BLOCKS BD02NM AND DD02NM
+C NQ        = THE ORDER USED.
+C
+C THE OUTPUT PARAMETERS ARE..
+C
+C DKY       = A REAL ARRAY OF LENGTH NEQ CONTAINING THE COMPUTED VALUE
+C             OF THE K-TH DERIVATIVE OF Y(T).
+C IFLAG     = INTEGER FLAG, RETURNED AS 0 IF K AND T WERE LEGAL,
+C             -1 IF K WAS ILLEGAL, AND -2 IF T WAS ILLEGAL.
+C             ON AN ERROR RETURN, A MESSAGE IS ALSO WRITTEN.
+C       ****  IF ON ENTRY IFLAG=0 EXTRAPOLATION IS NOT ALLOWED ****
+C       ****  FOR IFLAG OTHERWISE EXTRAPOLATION IS ALLOWED ********
+C-----------------------------------------------------------------------
+C THE COMPUTED VALUES IN DKY ARE GOTTEN BY INTERPOLATION USING THE
+C NORDSIECK HISTORY ARRAY YH.  THIS ARRAY CORRESPONDS UNIQUELY TO A
+C VECTOR-VALUED POLYNOMIAL OF DEGREE NQCUR OR LESS, AND DKY IS SET
+C TO THE K-TH DERIVATIVE OF THIS POLYNOMIAL AT T.
+C THE FORMULA FOR DKY IS..
+C              Q
+C  DKY(I)  =  SUM  C(J,K) * (T - TN)**(J-K) * H**(-J) * YH(I,J+1)
+C             J=K
+C WHERE  C(J,K) = J*(J-1)*...*(J-K+1), Q = NQCUR, TN = TCUR, H = HCUR.
+C THE QUANTITIES  NQ = NQCUR, L = NQ+1, N = NEQ, TN, AND H ARE
+C COMMUNICATED BY COMMON.  THE ABOVE SUM IS DONE IN REVERSE ORDER.
+C IFLAG IS RETURNED NEGATIVE IF EITHER K OR T IS OUT OF BOUNDS.
+C-----------------------------------------------------------------------
+      N = NEQ
+      L = NQ + 1
+      IF (K.LT.0 .OR. K.GT.NQ) GO TO 220
+      TP = TN - HU*(1.0D0+100.0D0*UROUND)
+      IF ((ABS(T-TN)).LE.(ABS(T*UROUND)*100.0D0) .OR. T.EQ.TN) THEN
+         S = 0.0D0
+         GO TO 20
+      END IF
+      IF ((T-TP)*(T-TN).GT.0.0D0 .AND. IFLAG.EQ.0) GO TO 240
+C
+      S = (T-TN)/H
+   20 IFLAG = 0
+      IC = 1
+      IF (K.EQ.0) GO TO 60
+      JJ1 = L - K
+      DO 40 JJ = JJ1, NQ
+         IC = IC*JJ
+   40 CONTINUE
+   60 C = DBLE(IC)
+      DO 80 I = 1, N
+         DKY(I) = C*YH(I,L)
+   80 CONTINUE
+      IF (K.EQ.NQ) GO TO 180
+      JB2 = NQ - K
+      DO 160 JB = 1, JB2
+         J = NQ - JB
+         JP1 = J + 1
+         IC = 1
+         IF (K.EQ.0) GO TO 120
+         JJ1 = JP1 - K
+         DO 100 JJ = JJ1, J
+            IC = IC*JJ
+  100    CONTINUE
+  120    C = DBLE(IC)
+         DO 140 I = 1, N
+            DKY(I) = C*YH(I,JP1) + S*DKY(I)
+  140    CONTINUE
+  160 CONTINUE
+      IF (K.EQ.0) RETURN
+  180 R = H**(-K)
+      DO 200 I = 1, N
+         DKY(I) = R*DKY(I)
+  200 CONTINUE
+      RETURN
+C
+  220 CALL D02NNQ(
+     *'        INTERNAL TIME INTERPOLATION ROUTINE               ERROR T
+     *HE ORDER K (=I1) IS ILLEGAL',1,1,K,0,0,0.0D0,0.0D0)
+      IFLAG = -1
+      RETURN
+  240 CALL D02NNQ(
+     *'        INTERNAL TIME INTERPOLATION ROUTINE               ENTERED
+     * WITH T (=R1) ILLEGAL',1,0,0,0,1,T,0.0D0)
+      CALL D02NNQ(' T NOT IN INTERVAL TCUR - HU (= R1) TO TCUR (=R2)',1,
+     *            0,0,0,2,TP,TN)
+      IFLAG = -2
+      RETURN
+      END

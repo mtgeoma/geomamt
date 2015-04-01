@@ -1,0 +1,1 @@
+g++ -o ~/bin/mod2Drebocc main.cpp escreve_mdl_rebocc.cpp geometria.cpp le_mdl_rebocc.cpp le_poligono.cpp modelo.cpp

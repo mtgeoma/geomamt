@@ -1,0 +1,51 @@
+com gfortran -O2 e acml:
+real    0m21.868s
+user    0m21.685s
+sys     0m0.080s
+
+real    0m21.953s
+user    0m21.809s
+sys     0m0.040s
+
+real    0m22.245s
+user    0m21.653s
+sys     0m0.056s
+________________
+com gfortran e acml:
+real    0m23.167s
+user    0m22.417s
+sys     0m0.172s
+
+real    0m22.605s
+user    0m22.289s
+sys     0m0.160s
+
+real    0m22.419s
+user    0m22.241s
+sys     0m0.052s
+________________
+com gfortran e programas originais
+real    0m23.490s
+user    0m23.197s
+sys     0m0.184s
+
+real    0m23.327s
+user    0m23.157s
+sys     0m0.052s
+
+real    0m23.286s
+user    0m23.125s
+sys     0m0.044s
+________________
+com g77 e programas originais
+real    0m23.060s
+user    0m22.901s
+sys     0m0.056s
+
+real    0m23.412s
+user    0m23.057s
+sys     0m0.148s
+
+real    0m23.105s
+user    0m22.893s
+sys     0m0.060s

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+while [[ -z $include_guard ]] ; do
+    include_guard=$(uuidgen | grep ^'[[:alpha:]]' | \
+	sed 's/\(.*\)/\U\1/' | sed 's/-//g')
+done
+
+echo "#ifndef $include_guard"
+echo "#define $include_guard"
+echo
+echo "#endif"

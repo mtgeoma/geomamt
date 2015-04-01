@@ -1,0 +1,150 @@
+emprogformat.o: emprogformat.cpp imputdata.h transferfunction.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/cmath \
+ /usr/include/_G_config.h /usr/include/bits/types.h \
+ /usr/include/features.h /usr/include/sys/cdefs.h \
+ /usr/include/gnu/stubs.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/include/stddef.h \
+ /usr/include/bits/pthreadtypes.h /usr/include/bits/sched.h \
+ /usr/include/wchar.h /usr/include/bits/wchar.h /usr/include/gconv.h \
+ /usr/include/math.h /usr/include/bits/huge_val.h \
+ /usr/include/bits/mathdef.h /usr/include/bits/mathcalls.h \
+ /usr/include/bits/mathinline.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/complex \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/std/complext.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/std/fcomplex.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/std/dcomplex.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/std/ldcomplex.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/vector \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_algobase.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_config.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_relops.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_pair.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/type_traits.h \
+ /usr/include/string.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/include/limits.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/include/syslimits.h \
+ /usr/include/limits.h /usr/include/bits/posix1_lim.h \
+ /usr/include/bits/local_lim.h /usr/include/linux/limits.h \
+ /usr/include/bits/posix2_lim.h /usr/include/stdlib.h \
+ /usr/include/sys/types.h /usr/include/time.h /usr/include/endian.h \
+ /usr/include/bits/endian.h /usr/include/sys/select.h \
+ /usr/include/bits/select.h /usr/include/bits/sigset.h \
+ /usr/include/bits/time.h /usr/include/sys/sysmacros.h \
+ /usr/include/alloca.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/include/new.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/include/new \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/include/exception \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/iostream.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/streambuf.h \
+ /usr/include/libio.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/include/stdarg.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_iterator.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_alloc.h \
+ /usr/include/assert.h /usr/include/pthread.h /usr/include/sched.h \
+ /usr/include/signal.h /usr/include/bits/initspin.h \
+ /usr/include/bits/sigthread.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_construct.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_uninitialized.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_vector.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_bvector.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/iostream \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/fstream \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/fstream.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/strstream \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/strstream.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/strfile.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/string \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/std/bastring.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/cstddef \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/std/straits.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/cctype \
+ /usr/include/ctype.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/cstring \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/alloc.h \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/iterator \
+ /usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/std/bastring.cc
+emprogformat.cpp :
+imputdata.h :
+transferfunction.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/cmath :
+/usr/include/_G_config.h :
+/usr/include/bits/types.h :
+/usr/include/features.h :
+/usr/include/sys/cdefs.h :
+/usr/include/gnu/stubs.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/include/stddef.h :
+/usr/include/bits/pthreadtypes.h :
+/usr/include/bits/sched.h :
+/usr/include/wchar.h :
+/usr/include/bits/wchar.h :
+/usr/include/gconv.h :
+/usr/include/math.h :
+/usr/include/bits/huge_val.h :
+/usr/include/bits/mathdef.h :
+/usr/include/bits/mathcalls.h :
+/usr/include/bits/mathinline.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/complex :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/std/complext.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/std/fcomplex.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/std/dcomplex.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/std/ldcomplex.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/vector :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_algobase.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_config.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_relops.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_pair.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/type_traits.h :
+/usr/include/string.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/include/limits.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/include/syslimits.h :
+/usr/include/limits.h :
+/usr/include/bits/posix1_lim.h :
+/usr/include/bits/local_lim.h :
+/usr/include/linux/limits.h :
+/usr/include/bits/posix2_lim.h :
+/usr/include/stdlib.h :
+/usr/include/sys/types.h :
+/usr/include/time.h :
+/usr/include/endian.h :
+/usr/include/bits/endian.h :
+/usr/include/sys/select.h :
+/usr/include/bits/select.h :
+/usr/include/bits/sigset.h :
+/usr/include/bits/time.h :
+/usr/include/sys/sysmacros.h :
+/usr/include/alloca.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/include/new.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/include/new :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/include/exception :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/iostream.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/streambuf.h :
+/usr/include/libio.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/include/stdarg.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_iterator.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_alloc.h :
+/usr/include/assert.h :
+/usr/include/pthread.h :
+/usr/include/sched.h :
+/usr/include/signal.h :
+/usr/include/bits/initspin.h :
+/usr/include/bits/sigthread.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_construct.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_uninitialized.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_vector.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/stl_bvector.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/iostream :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/fstream :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/fstream.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/strstream :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/strstream.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/strfile.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/string :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/std/bastring.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/cstddef :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/std/straits.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/cctype :
+/usr/include/ctype.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/cstring :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/alloc.h :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/iterator :
+/usr/lib/gcc-lib/i386-conectiva-linux/2.95.3/../../../../include/g++-3/std/bastring.cc :

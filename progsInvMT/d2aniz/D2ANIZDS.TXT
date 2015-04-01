@@ -1,0 +1,104 @@
+2-D anisotropy modelling program
+File D2ANIZDS.ZIP is a zipped archive of the following 8 files:
+-------------------------------------------------------------------
+D2ANIZ.FOR  ...... source code of the modelling program, with a few
+                   comments at the beginning, which should explain
+                   how to input the data and what are the results,
+                   and contain also info about the compilation
+                   experience
+D2ANIZ1.DAT ...... sample data file (1-D layered anisotropic model
+                   approximated as a 2-D structure)
+D2ANIZ1.RES ...... results of modelling with D2ANIZ1.DAT as input
+D2ANIZ2.DAT ...... sample data file (a 2-D anisotropic dyke model
+                   taken for comparison with the modelling made by
+                   Reddy & Rankin in their paper 'Reddy,I.K. &
+                   Rankin,D., 1975. Magnetotelluric response of
+                   laterally inhomogeneous and anisotropic struc-
+                   ture, Geophysics, 40, 1035-1045.')
+D2ANIZ2.RES ...... results of modelling with D2ANIZ2.DAT as input
+D2ANIZ3.DAT ...... sample data file (model with a conductive half-
+                   layer interacting with an anisotropic base layer,
+                   used to study effects of anisotropy on the
+                   induction arrows)
+D2ANIZ3.RES ...... results of modelling with D2ANIZ3.DAT as input
+D2ANIZS.TXT ...... a few comments to the code
+-------------------------------------------------------------------
+
+A few remarks to the program:
+a) The model is constructed in a very classical way, using the
+   ASCII symbols to indicate the conductivity of each of the
+   finite difference mesh cells of the model. It is possible
+   to use maximum 20 symbols - {123456789:;<=>?@ABCD}, strictly in
+   this order (these symbols are mapped onto integers 1 to 20).
+   It is certainly inconvenient, it would be simpler to give
+   the possibility to use all ASCII characters without observing
+   any fixed sequence, but now it is as it is. It will be changed
+   in the next release.
+b) The coordinate system is: X - structural strike of the 2-D 
+   model (perpendicularly into the model), Y - to the right,
+   Z - down.
+c) Because of anisotropy, each conductivity is characterized by
+   six values - three principal conductivities and three angles
+   (strike, dip, slant). You construct (or more exactly, the
+   program constructs) the particular conductivity tensor
+   from those six values by applying the three Euler's elementary
+   rotations to the diagonal matrix of principal conductivities.
+   According to the convention accepted in mechanics, the diagonal
+   matrix is first rotated around the Z axis by the strike, then
+   around the current X axis by the dip, and finally around the
+   new Z axis again by the slant (called UHEL3 in the program).
+   In such a way you can achieve any orientation of the principal
+   axes of the conductivity tensor in space, and you need not
+   be afraid of violating the program's restrictions to the
+   positive definite, symmetric conductivity tensors. They are
+   granted to be met automatically by the above procedure of
+   constructing the conductivity tensor.
+d) I hope that the details of the data input and output can be
+   understood from the comments at the beginning of the program
+e) Take into account that in anisotropic structures, with general
+   anisotropy involved, there is a inter-mode coupling. So both the
+   E and H field systems of difference equations must be solved
+   simultaneously. It requires rather large computer capacities
+   (both memory and time). Due to the internal arrangement of
+   the variables in the program, the computer demands increase
+   rapidly with the number of mesh cells in the vertical direc-
+   tion! As double precision is used in the crucial subroutine
+   for solving the system of linear difference equations, the
+   size of the executable for the current maximum mesh size is
+   more than 17 MB! But I am not sure whether the double precision 
+   is really necessary, in many cases single precision does
+   equally well. So if in troubles, try to change the declarations
+   of the arrays APOM,BPOM to COMPLEX*8 everywhere in the program.
+   Another way to reduce the insatiable demands of the program
+   for resources is to decrease the mesh size (parameters NMAX and
+   MMAX, the latter being particularly effective in this respect).
+   If changing the parameters NMAX and MMAX in the declarations
+   of the subroutines, do not forget to change the formats for
+   model input and output (format specifiers 1005 and 2013 in
+   the subroutine RE2ANZ, and the 'character*150 rad80' declaration
+   in this subroutine)!
+f) I compiled the program with the Lahey Fortran compiler,
+   F77L-EM/32 FORTRAN 77 -- Version 5.01, on a PC 486/66 MHz
+   with 20 MB RAM, without any problems. With other Fortran
+   compilers there are sometimes small troubles, especially
+   when output to the screen is used (statements like WRITE(*,...).
+   But those are small problems which can be usually resolved
+   quite quickly. Another, slightly modified version of this
+   program, which uses the RAM disk as a temporary storage, was
+   successfully compiled even with the Microsoft Fortran 5.1, so
+   if e.g. the MS Fortran PowerStation is available, it also
+   should not be any problem to compile the program. The small
+   incompatibilities mentioned above occured when compilation
+   was tried on a SUN workstation in Potsdam.
+g) As to the screen outputs, there are some auxiliary indicators
+   of how the computation process proceeds. Each time the Gaussian
+   elimination subroutine is entered, the program outputs the
+   'GAUSS IN ->' on the screen, and counts from 1 to 10 to show
+   the current position of the solution. The elimination is
+   performed twice for each period (2 polarizations of the
+   external field must be used to compute the pseudo-3-D impe-
+   dances). In this way you can estimate the time elapsed and
+   still remaining to finish the solution. If it should
+   disturb you, you can remove the screen outputs. For me they
+   were quite useful, as sitting twenty minutes and looking
+   at an empty screen made me a bit nervous.

@@ -1,0 +1,3 @@
+time rebocc << EOF
+startup_tm
+EOF

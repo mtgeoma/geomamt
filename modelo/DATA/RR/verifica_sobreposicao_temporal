@@ -1,0 +1,13 @@
+#!/bin/bash
+sp1=$(head -n 1 "$1")
+sp2=$(head -n 1 "$2")
+if [[ $sp1 != $sp2 ]] ; then
+    echo "períodos de amostragem diferentes"
+    exit 1
+fi
+start1=$(awk '{if(NR==2)printf "20%s-%s-%sT%s:%s:%s",$1,$2,$3,$4,$5,$6}' "$1")
+spl1=$(cat "${1/.clk/.asc}" | wc -l)
+end1=$(python -c "print $sp1*$spl1" | convcal -i seconds -o iso -r $start1)
+
+start2=$(awk '{if(NR==2)printf "20%s-%s-%sT%s:%s:%s",$1,$2,$3,$4,$5,$6}' "$2")
+echo $end1 | convcal -i iso -o seconds -r $start2

@@ -1,0 +1,12 @@
+eval "declare -A gmt_defaults=($(gmtdefaults -L | awk '{
+  if(substr($1,1,1)!="#") {
+    printf " [%s]=\"",$1
+    for(c=3;c<=NF;c++) {
+      printf "%s",$c
+      if(c!=NF) {
+        printf " "
+      }
+    }
+    printf "\""
+  }
+}'))"

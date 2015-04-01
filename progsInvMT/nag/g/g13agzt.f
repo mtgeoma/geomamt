@@ -1,0 +1,97 @@
+      SUBROUTINE G13AGZ(ST,NST,NP,ND,NQ,NPS,NDS,NQS,NS,PHI,THETA,SPHI,
+     *                  STHETA,NPAR,C,ANX,NUV,AEX,AAL,AEXR,ANEXR)
+C     MARK 9 RELEASE. NAG COPYRIGHT 1981.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     G13AGZ CARRIES OUT THE CALCULATIONS INVOLVED
+C     IN UPDATING THE STATE SET FOR G13AGF
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  C
+      INTEGER           ND, NDS, NP, NPAR, NPS, NQ, NQS, NS, NST, NUV
+C     .. Array Arguments ..
+      DOUBLE PRECISION  AAL(NST), AEX(NST), AEXR(NST), ANEXR(NUV),
+     *                  ANX(NUV), PHI(NPAR), SPHI(NPAR), ST(NST),
+     *                  STHETA(NPAR), THETA(NPAR)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  A, AL, DV, ZERO
+      INTEGER           I, J, K, KDR, LDS, NSTM, NT
+C     .. External Subroutines ..
+      EXTERNAL          G13AET, G13AHX, G13AHY
+C     .. Data statements ..
+      DATA              ZERO/0.0D0/
+C     .. Executable Statements ..
+C
+C     DEFINE THE POINT WHERE THE AEX, AAL AND AEXR ARRAYS ARE
+C     DIVIDED INTO TWO PARTS
+C
+      LDS = NST - ND - NDS*NS
+      NT = LDS + 1
+C
+C     CALL THE SUBROUTINE WHICH DECOMPOSES THE STATE SET INTO THREE
+C     ARRAYS  AEX, AAL AND AEXR
+C
+      CALL G13AHY(ST,NST,NP,ND,NQ,NPS,NDS,NQS,NS,AEX,AAL,AEXR)
+      KDR = 0
+C
+C     PROCESS ONE NEW VALUE AT A TIME
+C
+      DO 220 I = 1, NUV
+C
+C        CALL THE SUBROUTINE WHICH SUPPLIES THE DIFFERENCED VALUE DV
+C        RELATING TO THE NEW UNDIFFERENCED VALUE ANX(I)
+C
+         CALL G13AHX(AEX,NST,ND,NDS,NS,KDR,ANX(I),DV)
+C
+C        GO THROUGH THE CALCULATIONS WHICH OBTAIN THE RESIDUAL ANEXR(I)
+C        RELATED TO THE DIFFERENCED VALUE DV
+C
+         AL = DV - C
+         IF (NPS.LE.0) GO TO 40
+         DO 20 J = 1, NPS
+            K = NT - J*NS
+            AL = AL - SPHI(J)*(AEX(K)-C)
+   20    CONTINUE
+   40    IF (NQS.LE.0) GO TO 80
+         DO 60 J = 1, NQS
+            K = NT - J*NS
+            AL = AL + STHETA(J)*AAL(K)
+   60    CONTINUE
+   80    A = AL
+         IF (NP.LE.0) GO TO 120
+         DO 100 J = 1, NP
+            K = NT - J
+            A = A - PHI(J)*AAL(K)
+  100    CONTINUE
+  120    IF (NQ.LE.0) GO TO 160
+         DO 140 J = 1, NQ
+            K = NT - J
+            A = A + THETA(J)*AEXR(K)
+  140    CONTINUE
+  160    ANEXR(I) = A
+C
+C        SHIFT THE AEX, AAL AND AEXR ARRAYS UP ONE VALUE AND INCLUDE
+C        NEW VALUES AT END OF EACH ARRAY AND AT POINT WHERE THESE
+C        ARRAYS
+C        ARE DIVIDED INTO TWO PARTS
+C
+         NSTM = NST - 1
+         IF (NSTM.LE.0) GO TO 200
+         DO 180 J = 1, NSTM
+            AEX(J) = AEX(J+1)
+            AAL(J) = AAL(J+1)
+            AEXR(J) = AEXR(J+1)
+  180    CONTINUE
+  200    AEX(NST) = ANX(I)
+         AAL(NST) = ZERO
+         AEXR(NST) = ZERO
+         AEX(LDS) = DV
+         AAL(LDS) = AL
+         AEXR(LDS) = A
+  220 CONTINUE
+C
+C     RECONSTITUTE THE STATE SET USING THE AEX, AAL AND AEXR ARRAYS
+C
+      CALL G13AET(AEX,AAL,AEXR,NST,NP,ND,NQ,NPS,NDS,NQS,NS,ST,NST)
+      RETURN
+      END

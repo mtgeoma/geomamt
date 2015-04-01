@@ -1,0 +1,14 @@
+gfortran -c a/*.f
+gfortran -c c/*.f
+gfortran -c d/*.f
+gfortran -c e/*.f
+gfortran -c f/*.f
+gfortran -c g/*.f
+gfortran -c h/*.f
+gfortran -c m/*.f
+gfortran -c p/*.f
+gfortran -c s/*.f
+gfortran -c x/*.f
+gfortran -c y/*.f
+ar vq libnag.a *.o
+rm -f *.o

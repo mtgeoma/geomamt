@@ -1,0 +1,9 @@
+#!/bin/bash
+# caçando duplicados coloque em ~/ignorar-duplicados.grep o md5sum dos 
+#arquivos devem ficar duplicados
+# cd ~ && time find -not -empty -type f -size +100000c -size -200000c -printf "%s\n" 2>/dev/null |\
+# sort -rn | uniq -d | xargs -I{} -n1 find -type f -size {}c -print0 2>/dev/null | xargs -0 md5sum |\
+# grep -vf ignorar-duplicados.grep | sort | uniq -w32 -D --all-repeated=separate && kalarm 'duplicados!'
+cd $PWD && find -not -empty -type f -printf "%s\n" 2>/dev/null |\
+sort -rn | uniq -d | xargs -I{} -n1 find -type f -size {}c -print0 2>/dev/null | xargs -0 sha256sum |\
+sort | uniq -w32 -D --all-repeated=separate

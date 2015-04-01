@@ -1,0 +1,167 @@
+#!/bin/bash
+
+checkFile ()
+{
+    file=$1
+}
+
+progName=$(basename $0)
+if [[ $# != 1 ]] ; then
+    echo
+    echo "usage: $progName ModEM.dat"
+    echo
+    echo "create a Jformat file for each station."
+    echo
+    exit 1
+fi
+
+res=$1
+
+# check file
+if [[ ! -f "$res" ]] ; then
+    echo "couldn't find file $res"
+    exit 1
+fi
+
+NF=$(grep -v \> $res | grep -v \# | awk '{print NF}' | sort -u)
+
+if [[ $NF != 11 ]] ; then
+    echo "expected 11 columns of data in $res."
+    exit 1
+fi
+
+# check azimuth
+azim=($(grep \> $res | awk '{if(NR%6==4){print $2}}' | sort -u))
+
+if [[ ${#azim[*]} != 1 ]] ; then
+    echo "expected only one value to azimuth, but found: ${azim[*]}"
+    exit 1
+fi
+
+tmpDir=$(mktemp -d /tmp/ModEM2j.XXXXXX)
+
+# write Jformat header
+grep -v \> $res | grep -v \# | awk '{print $2,$3,$4,$7}' | sort -u | \
+    awk  -v dir=$tmpDir -v res=$res -v azim=$azim '{
+  label=$1
+  lon=$2
+  lat=$3
+  alt=$4
+  f=sprintf("%s/%s.dat",dir,label)
+  printf "# data from ModEM2j with file %s\n",res >> f
+  printf ">STATION   :%s\n",label >> f
+  printf ">AZIMUTH   =   %9.4f\n",azim >> f
+  printf ">LATITUDE  =   %9.4f\n",lat >> f
+  printf ">LONGITUDE =   %9.4f\n",lon >> f
+  printf ">ELEVATION =   %9.4f\n\n",alt >> f
+}'
+
+jFiles=($(ls $tmpDir/))
+
+thereAreFiles=$(ls -x ${jFiles[*]} 2> /dev/null)
+
+if [[ ${#thereAreFiles} != 0 ]] ; then
+    echo "files ${thereAreFiles[*]} already exist! Will do nothing."
+    rm -rf $tmpDir
+    exit 1
+fi
+
+# process impedance
+
+grep \> $res | grep Impedance > /dev/null 2>&1
+
+if [[ $? == 0 ]] ; then
+    unit=$(grep \> $res | grep -A 2 Impedance | tail -n 1 | awk '{print $NF}')
+    if [[ $unit == "[mV/km]/[nT]" ]] ; then
+	unit=field
+    elif [[ $unit == "[V/m]/[A/m]" ||  $unit == "Ohm" ]] ; then
+	unit=SI
+    else
+	echo "unexpected unit to Full_Vertical_Components: ${unit}"
+	rm -rf $tmpDir
+	exit 1
+    fi
+
+    for cmp in $(echo "ZXX ZXY ZYX ZYY"); do
+	grep $cmp $res | \
+	    awk -v dir=$tmpDir -v cmp=$cmp -v unit=$unit 'BEGIN{
+              if(unit=="field") {
+                conv=4e-4*4*atan2(1,1)
+              }
+              else if (unit=="SI") {
+                conv=1
+              }
+              else {
+                printf "Bug! unexpected unit!\n"
+              }
+            }
+            {
+              T=$1
+              label=$2
+              re=$9*conv
+              im=$10*conv
+              er=$11*conv
+              f=sprintf("%s/%s.%s",dir,label,cmp)
+              printf "%14.4e%14.4e%14.4e%14.4e%4d\n",T,re,im,er,1 >> f
+            }'
+    done
+
+    for j in ${jFiles[*]} ; do
+	for cmp in $(echo "ZXX ZXY ZYX ZYY"); do
+	    if [[ -f "$tmpDir/${j/.dat/}.$cmp" ]] ; then
+		printf "%s SI units (ohms)\n" "$cmp" >> $tmpDir/$j
+		NT=$(cat $tmpDir/${j/.dat/}.$cmp | wc -l)
+		printf "%d\n" $NT >> $tmpDir/$j
+		cat $tmpDir/${j/.dat/}.$cmp >> $tmpDir/$j
+	    fi
+	done
+    done
+fi
+
+# process tipper
+
+grep \> $res | grep Full_Vertical_Components > /dev/null 2>&1
+
+if [[ $? == 0 ]] ; then
+    unit=$(grep \> $res | grep -A 2 Full_Vertical_Components | tail -n 1 | \
+	awk '{print $NF}')
+
+    if [[ $unit != "[]/[]" ]] ; then
+	echo "unexpected unit to Full_Vertical_Components: ${unit}"
+	rm -rf $tmpDir
+	exit 1
+    fi
+
+    for cmp in $(echo "TX TY"); do
+	grep -v ^\> $res | grep -v ^\# | grep $cmp | \
+	    awk -v dir=$tmpDir -v cmp=$cmp 'BEGIN{
+              gsub("T","TZ",cmp)
+            }
+            {
+              T=$1
+              label=$2
+              re=$9
+              im=$10
+              er=$11
+              f=sprintf("%s/%s.%s",dir,label,cmp)
+              printf "%14.4e%14.4e%14.4e%14.4e%4d\n",T,re,im,er,1 >> f
+            }'
+    done
+
+    for j in ${jFiles[*]} ; do
+	for cmp in $(echo "TZX TZY"); do
+	    if [[ -f "$tmpDir/${j/.dat/}.$cmp" ]] ; then
+		printf "%s\n" "$cmp" >> $tmpDir/$j
+		NT=$(cat $tmpDir/${j/.dat/}.$cmp | wc -l)
+		printf "%d\n" $NT >> $tmpDir/$j
+		cat $tmpDir/${j/.dat/}.$cmp >> $tmpDir/$j
+	    fi
+	done
+    done
+fi
+
+for j in ${jFiles[*]} ; do
+    mv -i $tmpDir/$j .
+done
+
+rm -rf $tmpDir

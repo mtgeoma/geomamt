@@ -1,0 +1,104 @@
+      SUBROUTINE F01AXF(M,N,QR,IQR,ALPHA,IPIVOT,Y,E,IFAIL)
+C     MARK 2 RELEASE. NAG COPYRIGHT 1972
+C     MARK 3 REVISED.
+C     MARK 4.5 REVISED
+C     MARK 11 REVISED. VECTORISATION (JAN 1984).
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 12 REVISED. EXTENDED BLAS (JUNE 1986)
+C
+C     DECOMPOSE
+C     F01AXF REDUCES THE MATRIX GIVEN IN THE ARRAY QR(M,N)
+C     (M.GE.N) TO UPPER TRIANGULAR FORM BY MEANS OF N ELEMENTARY
+C     ORTHOGONAL TRANSFORMATIONS (I-BETA*U*UT). THE DIAGONAL
+C     ELEMENTS OF THE REDUCED MATRIX ARE STORED IN THE ARRAY
+C     ALPHA(N), THE OFF DIAGONAL ELEMENTS IN THE UPPER TRIANGULAR
+C     PART OF QR. THE NONZERO COMPONENTS OF THE VECTORS U ARE
+C     STORED
+C     ON AND BELOW THE LEADING DIAGONAL OF QR. PIVOTING IS DONE BY
+C     CHOOSING AT EACH STEP THE COLUMN WITH THE LARGEST SUM OF
+C     SQUARES TO BE REDUCED NEXT. THESE INTERCHANGES ARE RECORDED
+C     IN THE ARRAY PIVOT(N). IF AT ANY STAGE THE SUM OF SQUARES
+C     OF THE COLUMN TO BE REDUCED IS EXACTLY EQUAL TO ZERO THEN
+C     IFAIL IS SET TO 1
+C     1ST. MARCH  1972
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='F01AXF')
+C     .. Scalar Arguments ..
+      INTEGER           IFAIL, IQR, M, N
+C     .. Array Arguments ..
+      DOUBLE PRECISION  ALPHA(N), E(N), QR(IQR,N), Y(N)
+      INTEGER           IPIVOT(N)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  ALPHAK, BETA, D1, QRKK, SIGMA
+      INTEGER           I, IQR1, J, J1, JBAR, K
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      INTEGER           P01ABF
+      EXTERNAL          P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          DGEMV, DGER
+C     .. Intrinsic Functions ..
+      INTRINSIC         SQRT
+C     .. Executable Statements ..
+      DO 40 J = 1, N
+C        J-TH COLUMN SUM
+         D1 = 0.0D0
+         DO 20 I = 1, M
+            D1 = D1 + QR(I,J)**2
+   20    CONTINUE
+         E(J) = D1
+         IPIVOT(J) = J
+   40 CONTINUE
+      IQR1 = IQR
+      DO 200 K = 1, N
+C        K-TH HOUSEHOLDER TRANSFORMATION
+         SIGMA = E(K)
+         JBAR = K
+         J1 = K + 1
+         IF (J1.GT.N) GO TO 80
+         DO 60 J = J1, N
+            IF (SIGMA.GE.E(J)) GO TO 60
+            SIGMA = E(J)
+            JBAR = J
+   60    CONTINUE
+   80    IF (JBAR.EQ.K) GO TO 120
+C        COLUMN INTERCHANGE
+         I = IPIVOT(K)
+         IPIVOT(K) = IPIVOT(JBAR)
+         IPIVOT(JBAR) = I
+         E(JBAR) = E(K)
+         E(K) = SIGMA
+         DO 100 I = 1, M
+            SIGMA = QR(I,K)
+            QR(I,K) = QR(I,JBAR)
+            QR(I,JBAR) = SIGMA
+  100    CONTINUE
+  120    SIGMA = 0.0D0
+         DO 140 I = K, M
+            SIGMA = SIGMA + QR(I,K)**2
+  140    CONTINUE
+         IF (SIGMA.NE.0.0D0) GO TO 160
+         IFAIL = P01ABF(IFAIL,1,SRNAME,0,P01REC)
+         RETURN
+  160    QRKK = QR(K,K)
+         ALPHAK = SQRT(SIGMA)
+         IF (QRKK.GE.0.0D0) ALPHAK = -ALPHAK
+         ALPHA(K) = ALPHAK
+         BETA = 1.0D0/(SIGMA-QRKK*ALPHAK)
+         QR(K,K) = QRKK - ALPHAK
+         IF (J1.GT.N) GO TO 200
+         IF (J1.EQ.N) IQR1 = M - N + 2
+         CALL DGEMV('T',M-K+1,N-K,BETA,QR(K,J1),IQR1,QR(K,K),1,0.0D0,
+     *              Y(J1),1)
+         CALL DGER(M-K+1,N-K,-1.0D0,QR(K,K),1,Y(J1),1,QR(K,J1),IQR1)
+         DO 180 J = J1, N
+            E(J) = E(J) - QR(K,J)*QR(K,J)
+  180    CONTINUE
+C        END OF HOUSEHOLDER TRANSFORMATION
+  200 CONTINUE
+      IFAIL = 0
+      RETURN
+      END

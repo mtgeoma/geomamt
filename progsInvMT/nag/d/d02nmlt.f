@@ -1,0 +1,330 @@
+      SUBROUTINE D02NML(NEQ,Y,YDOT,YH,NYH,SAVF,EWT,FTEM,WK,IWK,IPPER,H,
+     *                  EL0,TN,IREVCM)
+C     MARK 12 RELEASE. NAG COPYRIGHT 1986.
+C     MARK 17 REVISED. IER-1669 (JUN 1995).
+C
+C     OLD NAME PREP
+C
+C VP changed 11/5/95 following bug fix by Justin Ware -- changes marked VP
+C
+C DD02NN
+C           HAS BEEN DIVIDED UP FOR NROUTINE D02NNU
+C   IPRWK   POINTER FOR PART OF RWK TO BE USED AS WORKSPACE BY D02NNU
+C   ISPIWK  LENGTH OF AVAILABLE SPACE OF IWK TO HOLD THE ROW AND COL
+C           INDICES FOR DECOMPOSITION
+C   ISPRWK  LENGTH OF AVAILABLE SPACE OF RWK TO HOLD THE MATRIX AND
+C           THEN ITS DECOMPOSITION
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  EL0, H, TN
+      INTEGER           IPPER, IREVCM, NEQ, NYH
+C     .. Array Arguments ..
+      DOUBLE PRECISION  EWT(*), FTEM(*), SAVF(*), WK(*), Y(*), YDOT(*),
+     *                  YH(NYH,*)
+      INTEGER           IWK(*)
+C     .. Scalars in Common ..
+      DOUBLE PRECISION  CCMXJ, CON0, CONMIN, DQ, DYJ, ELH, ERWT, FAC,
+     *                  PSMALL, RBIG, RSPLIT, SETH, YDOTJ, YJ
+      INTEGER           I, IBA, IBIAN, IBJAN, IBJGP, IBR, ICN, ICOL,
+     *                  IDEV, IESP, IKEEP, IPA, IPC, IPIAN, IPIC, IPIGP,
+     *                  IPISP, IPIWK, IPJAN, IPJGP, IPLOST, IPR, IPRSP,
+     *                  IPRWK, IPTT2, IRN, IROW, ISPIWK, ISPRWK, ISPSET,
+     *                  ISTATC, ITRACE, IYS, J, K, KMAX, KMIN, KNEW,
+     *                  LDIF, LENIGP, LENIWK, LENRWK, LENWK, LICN, LIRN,
+     *                  LIWK, LIWREQ, LIWUSD, LRAT, LREQ, LREST, LRWREQ,
+     *                  LRWUSD, LWMIN, MAXG, MM4, MOSS, MOSSP1, MSBJ, N,
+     *                  NGP, NLU, NNZ, NP1, NSLJ, NSP
+      CHARACTER*6       SINGLR
+C     .. Local Scalars ..
+      INTEGER           IBICN, IER, IPTT1, IXTRAI, IXTRAR
+C     .. Local Arrays ..
+      DOUBLE PRECISION  AARG(1)
+C     .. External Subroutines ..
+      EXTERNAL          D02NMK, D02NNN, D02NNQ
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS, MAX, MIN, SIGN, DBLE, NINT
+C     .. Common blocks ..
+      COMMON            /AD02NM/ITRACE, IDEV
+      COMMON            /AD02NN/J, MM4
+      COMMON            /BD02NN/CON0, CONMIN, CCMXJ, PSMALL, RBIG, SETH,
+     *                  IPLOST, IESP, ISTATC, IYS, IBA, IBIAN, IBJAN,
+     *                  IBJGP, IPIAN, IPJAN, IPJGP, IPIGP, IPR, IPC,
+     *                  IPIC, IPISP, IPRSP, IPA, LENWK, LREQ, LRAT,
+     *                  LREST, LWMIN, MOSS, MSBJ, NSLJ, NGP, NLU, NNZ,
+     *                  NSP
+      COMMON            /CD02NN/DQ, DYJ, ELH, ERWT, FAC, YJ, YDOTJ, I,
+     *                  IBR, IPTT2, K, KMAX, KMIN, KNEW, LIWK, LDIF,
+     *                  LENIGP, MAXG, MOSSP1, N, NP1
+      COMMON            /DD02NN/IKEEP, IPIWK, IPRWK, IRN, LIRN, ICN,
+     *                  LICN, ISPRWK, ISPIWK
+      COMMON            /ED02NN/LENIWK, LENRWK
+      COMMON            /FD02NN/RSPLIT, LIWUSD, LIWREQ, LRWREQ, LRWUSD,
+     *                  ISPSET
+      COMMON            /MD02NM/SINGLR
+      COMMON            /ND02NM/IROW, ICOL
+C     .. Save statement ..
+      SAVE              /MD02NM/, /CD02NN/, /BD02NN/, /DD02NN/,
+     *                  /FD02NN/, /AD02NN/, /ND02NM/, /AD02NM/, /ED02NN/
+C     .. Executable Statements ..
+C-----------------------------------------------------------------------
+C THIS ROUTINE PERFORMS PREPROCESSING RELATED TO THE SPARSE LINEAR
+C SYSTEMS THAT MUST BE SOLVED IF MITER = 1 OR 2.
+C THE OPERATIONS THAT ARE PERFORMED HERE ARE..
+C  * COMPUTE SPARSENESS STRUCTURE OF JACOBIAN ACCORDING TO MOSS,
+C  * COMPUTE GROUPING OF COLUMN INDICES (MITER = 2),
+C  * SET POINTERS FOR SEGMENTS OF THE IWK/WK ARRAYS.
+C IN ADDITION TO VARIABLES DESCRIBED PREVIOUSLY, D02NML USES THE
+C FOLLOWING FOR COMMUNICATION..
+C Y      = CURRENT SOLUTION VECTOR AT TIME TN
+C YDOT   = CURRENT VALUES OF THE TIME DERIV AT TIME TN
+C H,TN, EL0  CURRENT STEPSIZE ,TIME AND CONST IN YDOT.
+C YH     = THE HISTORY ARRAY.  ONLY THE FIRST COLUMN, CONTAINING THE
+C          CURRENT Y VECTOR, IS USED AND THE SECOND COLUMN CONTAINING
+C          ITS CURRENT TIME DERIVATIVE MULTIPLIED BY H ARE USED.
+C          OF DIMENSION (NYH, 1)
+C SAVF   = A WORK ARRAY OF LENGTH NEQ, USED ONLY IF MOSS .NE. 0.
+C          ON ENTRY IS ASSUMED TO CONTAIN THE CURRENT RESIDUAL.
+C EWT    = ARRAY OF LENGTH NEQ CONTAINING (INVERTED) ERROR WEIGHTS.
+C          USED ONLY IF MOSS = 2 OR IF ISTATE = MOSS = 1.
+C FTEM   = A WORK ARRAY OF LENGTH NEQ, IDENTICAL TO ACOR IN THE DRIVER,
+C          USED ONLY IF MOSS = 2.
+C WK     = A REAL WORK ARRAY OF LENGTH LENWK, IDENTICAL TO WM IN
+C          THE DRIVER.
+C IWK    = INTEGER WORK ARRAY, ASSUMED TO OCCUPY THE SAME SPACE AS WK.
+C LENWK  = THE LENGTH OF THE WORK ARRAYS WK AND IWK.
+C ISTATC = A COPY OF THE DRIVER INPUT ARGUMENT ISTATE (= 1 ON THE
+C          FIRST CALL, = 3 ON A CONTINUATION CALL).
+C IYS    = FLAG VALUE FROM ODRV OR CDRV.
+C IPPER  = OUTPUT ERROR FLAG WITH THE FOLLOWING VALUES AND MEANINGS..
+C          0  NO ERROR.
+C         -1  INSUFFICIENT INTEGER STORAGE FOR INTERNAL STRUCTURE
+C             POINTERS
+C         -2  INSUFFICIENT INTEGER STORAGE FOR D02NMK
+C         -3  INSUFFICIENT INTEGER STORAGE TO ENTER D02NNU
+C         -4  INSUFFICIENT REAL STORAGE TO ENTER D02NNU
+C         -6  OTHER ERROR RETURN (SEE 1ST FEW LINES OF CODE)
+C-----------------------------------------------------------------------
+      IF (IREVCM.EQ.8) GO TO 80
+      IF (IPPER.GT.0) GO TO 160
+      IBIAN = 0
+      IPIAN = IBIAN + 1
+      LIWREQ = LENIWK
+      LIWUSD = LENIWK
+      LRWUSD = LENRWK
+      LRWREQ = LENRWK
+      N = NEQ
+      ELH = H*EL0
+      NP1 = N + 1
+      IPJAN = IPIAN + NP1
+      IBJAN = IPJAN - 1
+      IF (IPJAN+N-1.GT.LENIWK) GO TO 360
+      MOSSP1 = MOSS + 1
+      GO TO (200,20,120,200) MOSSP1
+C
+C MOSS = 1.  COMPUTE STRUCTURE FROM USER-SUPPLIED JACOBIAN ROUTINE JAC.
+C
+   20 K = IPJAN
+      IWK(IPIAN) = 1
+      J = 0
+   40 J = J + 1
+      IF (K.GT.LENIWK) GO TO 360
+      DO 60 I = 1, N
+         Y(I) = YH(I,1)
+         YDOT(I) = YH(I,2)/H
+         SAVF(I) = 0.0D0
+   60 CONTINUE
+      IREVCM = 8
+      RETURN
+C
+C          CALL JAC( NEQ, TN, Y,YDOT,H,EL0,J,IWK(IPIAN),IWK(IPJAN),SAVF)
+C
+   80 CONTINUE
+      IREVCM = 0
+      DO 100 I = 1, N
+         IF (ABS(SAVF(I)).LE.SETH) GO TO 100
+         IF (ITRACE.GT.2) THEN
+            IROW = I
+            ICOL = J
+            AARG(1) = SETH
+            CALL D02NNN(AARG,1,23)
+         END IF
+         IF (K.GT.LENIWK) GO TO 360
+         IWK(K) = I
+         K = K + 1
+  100 CONTINUE
+      IWK(IPIAN+J) = K + 1 - IPJAN
+      IF (J.EQ.N) GO TO 200
+      GO TO 40
+C
+C MOSS = 2.  COMPUTE STRUCTURE FROM RESULTS OF N + 1 CALLS TO F. -------
+C
+  120 K = IPJAN
+      IWK(IPIAN) = 1
+      IPPER = 0
+  140 IPPER = IPPER + 1
+      J = IPPER
+      IF (K.GT.LENIWK) GO TO 360
+C VP  YJ = YH(J,1)
+      YJ = Y(J)
+C VP  YDOTJ = YH(J,2)/H
+      YDOTJ = YDOT(J)
+      ERWT = 1.0D0/EWT(J)
+      DYJ = SIGN(ERWT,YJ)
+      Y(J) = YJ + DYJ
+C VP  YDOT(J) = YDOT(J) + DYJ/ELH
+      YDOT(J) = YDOTJ + DYJ/ELH
+      RETURN
+C
+C   FUNCTION CALL - REVERSE COMMUNICATIONS EXIT
+C
+  160 J = IPPER
+      DYJ = Y(J) - YJ
+      Y(J) = YJ
+      YDOT(J) = YDOTJ
+      DO 180 I = 1, N
+         DQ = (FTEM(I)-SAVF(I))/DYJ
+         IF (ABS(DQ).LE.SETH) GO TO 180
+         IF (ITRACE.GT.2) THEN
+            IROW = I
+            ICOL = J
+            AARG(1) = SETH
+            CALL D02NNN(AARG,1,23)
+         END IF
+C         CHECK IF THE WORKSPACE IS LARGE ENOUGH
+         IF (K.GT.LENIWK) GO TO 360
+         IWK(K) = I
+         K = K + 1
+  180 CONTINUE
+      IWK(IPIAN+J) = K + 1 - IPJAN
+      IF (IPPER.LT.N) GO TO 140
+      IPPER = 0
+C
+  200 CONTINUE
+      NNZ = IWK(IPIAN+N) - 1
+      IF (ITRACE.GT.2) THEN
+         AARG(1) = SETH
+         CALL D02NNN(AARG,1,24)
+      END IF
+      NGP = 0
+      LENIGP = 0
+      IPIGP = IPJAN + NNZ
+      IF (MOSS.EQ.1 .OR. MOSS.EQ.3) GO TO 220
+C
+C COMPUTE GROUPING OF COLUMN INDICES (MITER = 2). ----------------------
+C
+      MAXG = NP1
+      IPJGP = IPJAN + NNZ
+      IBJGP = IPJGP - 1
+      IPIGP = IPJGP + N
+      IPTT1 = IPIGP + NP1
+      IPTT2 = IPTT1 + N
+      LREQ = IPTT2 + N - 1
+      IF (LREQ.GT.LENIWK) GO TO 300
+      CALL D02NMK(N,IWK(IPIAN),IWK(IPJAN),MAXG,NGP,IWK(IPIGP),IWK(IPJGP)
+     *            ,IWK(IPTT1),IWK(IPTT2),IER)
+      IF (IER.NE.0) GO TO 300
+      LENIGP = NGP + 1
+  220 IPR = IPIGP + LENIGP
+C
+C  SET POINTERS FOR WORK ARRAYS
+C
+C            IPIGP                                                 L
+C I     I     :                                     I       I      E
+C P     P     :                                     P       K      N
+C I     J      I             I                      I       E      I
+C A     A      R             C                      W       E      W
+C N     N      N             N                      K       P      K
+C   N+1   NNZ      LIRN               LICN             8*N    5*N
+C              ------------ISPIWK------------------
+C
+C                              SINCE IWK IS THE LAST PART OF JACPVT
+      IKEEP = LENIWK + 1 - 5*N
+      IPIWK = IKEEP - 8*N
+      IPRWK = LENRWK + 1 - N
+      ISPRWK = LENRWK - N
+      ISPIWK = IPIWK - IPR
+C WARNING : IF THE USER HAS SUPPLIED ISPLIT THEN NO CHECK IS MADE ON
+C           ON THE LENGTH WORK SPACE SUPPLIED . THEREFORE IF THE USER
+C           HAS NOT SUPPLIED ENOUGH THE PROGRAM IS LIKELY TO OVERWRITE
+C           ITSELF.
+      IF (ISPSET.EQ.1) THEN
+         LICN = MIN(NINT(RSPLIT*ISPIWK),ISPRWK)
+         LIRN = ISPIWK - LICN
+         GO TO 260
+      END IF
+C WE CHOOSE AS MINIMUM LENGTHS FOR SPLITTING UP THE WORK ARRAYS
+C             LIRN .GE. NNZ + N
+C             LICN .GE. 2*NNZ
+      IXTRAI = 3*NNZ + N - ISPIWK
+      IXTRAR = 2*NNZ - ISPRWK
+      IF (IXTRAI.GT.0) GO TO 320
+      IF (IXTRAR.GT.0) GO TO 340
+      IF (IPPER.LT.0) RETURN
+      LICN = MIN(NINT(RSPLIT*ISPIWK),ISPRWK)
+      LIRN = ISPIWK - LICN
+      IF (LICN.LT.4*NNZ) THEN
+C        LARGER REAL AND/OR REAL WORKSPACES MAY BE NEEDED
+C        BUT WILL CARRY ON WITH DECOMPOSITION
+         LIRN = MIN(NNZ+2*N,3*NNZ/2)
+         LICN = MIN(ISPIWK-LIRN,ISPRWK)
+      END IF
+      RSPLIT = DBLE(LICN)/DBLE(ISPIWK)
+  260 CONTINUE
+      IRN = IPR
+      ICN = IRN + LIRN
+      IPA = 1
+      IBA = IPA - 1
+      IBICN = ICN - 1
+      LRWUSD = LICN + N
+      LIWUSD = LENIWK
+      LRWREQ = LRWUSD
+      LIWREQ = LIWUSD
+C
+C  COPY COLUMN POINTERS
+C      THE COPY STARTING AT IPJAN WILL BE USED IN ROUTINE F01BSF
+C      THE COPY STARTING AT IPICN WILL BE USED IN ROUTINE F01BRF
+C
+C205
+C205  REPLACE THE NEXT LOOP WITH
+C205  IWK(ICN;NNZ) = IWK(IPJAN;NNZ)
+C205
+      DO 280 I = 1, NNZ
+         IWK(IBICN+I) = IWK(IBJAN+I)
+  280 CONTINUE
+      IPPER = 0
+      RETURN
+C
+  300 IPPER = -2
+      LIWREQ = LREQ
+      CALL D02NNQ(
+     *' LARGER INTEGER WORKSPACE REQUIRED, USER               PROVIDED (
+     *=I1) AMOUNT NEEDED IS (=I2)',1,2,LENIWK,LREQ,0,0.0D0,0.0D0)
+      RETURN
+C
+  320 IPPER = -3
+      LREQ = LENIWK + IXTRAI
+      LIWREQ = LREQ
+      CALL D02NNQ(
+     *' NOT ENOUGH INTEGER STORAGE PROVIDED TO                ENTER SPAR
+     *SE MATRIX ROUTINES , AT LEAST (=I1) UNITS OF STORE      NEEDED , A
+     *MOUNT PROVIDED WAS (=I2)',1,2,LREQ,LENIWK,0,0.0D0,0.0D0)
+      RETURN
+C
+  340 IPPER = -4
+      LREQ = LENRWK + IXTRAR
+      LRWREQ = LREQ
+      CALL D02NNQ(
+     *' NOT ENOUGH REAL STORAGE PROVIDED TO                   ENTER SPAR
+     *SE MATRIX ROUTINES , AT LEAST (=I1) UNITS OF STORE      NEEDED , A
+     *MOUNT PROVIDED WAS (=I2)',1,2,LREQ,LENRWK,0,0.0D0,0.0D0)
+      RETURN
+C
+  360 IPPER = -1
+      LREQ = 2*N + 2
+      LREQ = MAX(LENIWK+1,LREQ)
+      LRWREQ = LREQ
+      CALL D02NNQ(
+     *' NOT ENOUGH INTEGER STORE PROVIDED FOR                 INTERNAL S
+     *TORAGE POINTERS, (=I1) UNITS OF STORE NEEDED , AMOUNT   PROVIDED I
+     *S (=I2)',1,2,LREQ,LENIWK,0,0.0D0,0.0D0)
+      RETURN
+      END

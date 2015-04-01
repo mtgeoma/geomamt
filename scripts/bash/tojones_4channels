@@ -1,0 +1,583 @@
+#!/bin/bash
+# tojones: transfoma arquivos de impedância para o formato Jones.
+# Restrito aos formatos reconhecidos pelo parametros-mt para impedância
+# e aos formatos reconhecidos pelo programa transferfunctions para gds.
+#+ e suas respectivas limitações: não encotra tipper no edi;
+#+ só reconhece formato egbert completo (MT+GDS).
+
+E_USAGE=64    # command line usage erro
+E_DATAERR=65  # data format error
+E_NOINPUT=66  # cannot open input
+
+# função para verificar se arquivo existe e se tem permissão de leitura
+# $1: arquivo a ser verificado;
+verifica_arquivo ()
+{
+    if [[ !(-f $1 && -r $1) ]]
+    then
+	exec 1>&2 # redireciona stdout para stderr
+	if [[ !(-f $1) ]]
+	then
+	    echo "arquivo \"$1\" não exite"
+	else
+	    echo "arquivo \"$1\" não tem permissão de leitura"
+	fi
+	exit $E_NOINPUT
+    else
+	return 0
+    fi
+}
+
+# define formatos de entrada
+FORMATO=(nulo egbert jones edi)
+# associa o índice dos formatos de entrada a uma variável com o nome do formato:
+nulo=0
+egbert=1
+jones=2
+edi=3
+
+# função para verificar o formato do arquivo
+# $1: arquivo de impedância cujo formato deve ser verificado;
+# $2: componente procurada conforme opção -D do transferfunction.
+formato_entrada ()
+{
+    # O truque seguinte baseia-se em que todos os períodos são maiores do que 0,
+    #+ de modo que, se o formato estiver correto, a conversão da primeira
+    #+ coluna será um valor maior que zero.
+    # O valor do return está relacionado com a definição da variável FORMATO
+    #+ que aparece antes da definição dessa função,
+    #+ sendo que o formato "nulo" indica que não existe a componente no arquivo
+    #  Qualquer mensagem de texto é convertida em zero pelo strtonum.
+    # O "2>&1" é para direcionar toda mensagem de erro para a saída padrão.
+    if [[ $(transferfunction $1 -Fegbert -D$2 2>&1 |\
+          awk '{if(NR==1)print strtonum($1)}') > 0 ]]
+    then
+        # o transferfunction pode não encontrar a componente
+        #+ e retornar todos os valores como nulos
+        #+ ou os valores podem realmente ser todos nulos
+        #+ por isso não é considerado erro, mas fica marcado no cabeçalho como
+        #+ sendo um formato nulo.
+	if [[ $(transferfunction $1 -Fegbert -D$2 |\
+              awk '{s+=$2+$3+$4}END{print s}') == 0 ]]
+	then
+	    return $nulo
+	else
+	    return $egbert
+	fi
+    elif  [[ $(transferfunction $1 -Fjones -D$2 2>&1 |\
+              awk '{if(NR==1)print strtonum($1)}') > 0 ]]
+    then
+	# mesmo caso anterior
+	if [[ $(transferfunction $1 -Fjones -D$2 |\
+              awk '{s+=$2+$3+$4}END{print s}') == 0 ]]
+	then
+	    return $nulo
+	else
+	    return $jones
+	fi
+    elif  [[ $(transferfunction $1 -Fedi -D$2 2>&1 |\
+              awk '{if(NR==1)print strtonum($1)}') > 0 ]]
+    then
+	# mesmo caso anterior
+	if [[ $(transferfunction $1 -Fedi -D$2 |\
+              awk '{s+=$2+$3+$4}END{print s}') == 0 ]]
+	then
+	    return $nulo
+	else
+	    return $edi
+	fi
+    else
+        # arquivo com formatação desconhecida ou componente não presente
+	return $nulo
+    fi
+}
+
+# variáveis globais para função verifica_selecao
+inicio=""
+fim=""
+# OK, variável global não é bom, mas se olhar o conjuto deste script pode-se
+#+ ver que as boas regras de programação não são levadas a ferro e fogo,
+#+ muito pelo contrário...
+
+# função para encontrar o valor inicial e final
+# $1: string no formato [1-12]
+verifica_selecao ()
+{
+  inicio=${1#[} # remove o "[" inicial
+  inicio=${inicio%\-*]} # remove qualquer coisa entre "-" e "]" final
+  fim=${1#[*\-} # remove qualquer coisa entre "[" e "-" inicial
+  fim=${fim%]} # remove o "]" final
+
+  # verifica se é um número inteiro e diferente de zero
+  # (int("1a") retorna "1")
+  inicio=$(awk -v n=$inicio 'BEGIN{if(int(n)!=n){print 0}else{print n}}')
+  fim=$(awk -v n=$fim 'BEGIN{if(int(n)!=n){print 0}else{print n}}')
+  if [[ $inicio == 0 || $fim == 0 ]]
+  then
+      exec 1>&2 # redireciona stdout para stderr
+      echo "erro na formatação da seleção: $1"
+      echo "formato esperado: [início-fim]"
+      echo "sendo início e fim números inteiros maior que zero"
+      exit $E_DATAERR
+  fi
+  # comparação aritimética
+  # Se fosse usado [[ ]], seria comparado os strings como palavras de um
+  # dicionário, gerando um resultado errado (string "4" é maior que "14")
+  if (( $inicio > $fim ))
+  then
+      exec 1>&2 # redireciona stdout para stderr
+      echo "erro na formatação da seleção: $1"
+      echo "formato esperado: [início-fim]"
+      echo "sendo início<=fim"
+      exit $E_DATAERR
+  fi
+  return 0
+}
+
+# variável global para função verifica_periodo
+T=0
+# função verifica períodos
+verifica_periodos ()
+{
+    arquivo=$1
+    form=$2 # cuidado com a variável global FORMATO!
+    componente=$3
+    inicio=$4
+    fim=$5
+    n_selecao=$(echo "$fim-$inicio+1" | bc -l)
+    n_arquivo=$(transferfunction $arquivo -F$form -D$componente |\
+                awk -v min=$inicio -v max=$fim 'BEGIN{s=0}{\
+                if (NR>=min&&NR<=max) s++}END{print s}' )
+    if [[ $n_selecao != $n_arquivo ]]
+    then
+	exec 1>&2 # redireciona stdout para stderr
+	echo "a componente " $componente "do arquivo " $arquivo
+	echo "  não possui dados suficientes"
+	echo "  para completar a seleção ["$inicio"-"$fim"]"
+	exit $E_DATAERR
+    fi
+}
+
+# função verifica períodos
+verifica_periodos2 ()
+{
+    arquivo=$1
+    componente=$2
+    inicio=$3
+    fim=$4
+    n_selecao=$(echo "$fim-$inicio+1" | bc -l)
+    n_arquivo=$(parametros-mt $arquivo $componente |\
+                awk -v min=$inicio -v max=$fim 'BEGIN{s=0}{\
+                if (NR>=min&&NR<=max) s++}END{print s}' )
+    if [[ $n_selecao != $n_arquivo ]]
+    then
+	exec 1>&2 # redireciona stdout para stderr
+	echo "a componente " $componente "do arquivo " $arquivo
+	echo "  não possui dados suficientes"
+	echo "  para completar a seleção ["$inicio"-"$fim"]"
+	exit $E_DATAERR
+    fi
+}
+
+# programa principal
+if [[ $# != 1 ]]
+then
+    exec 1>&2 # redireciona stdout para stderr
+    echo "Uso: $(basename $0) selecao.dat"
+    echo "  formato do arquivo selecao.dat:"
+    echo "    MT00256/bor601a081_03C.zss [1-10] # linha 1"
+    echo "    MT00256/bor601a081_03D.zss [1-6] MT00256/bor601a081_03C.zss\
+ [11-16] MT00256/bor601a081_03D.zss [1-6] # linha 2"
+    echo " A linha 1 indica para pegar todas as componentes do tensor e tipper"
+    echo " do arquivo indicado entre os períodos 1 a 10."
+    echo " A linha 2 indica três grupos similares ao caso anterior,"
+    echo " sendo que as componentes Zxx e Zxy serão tomados do primeiro grupo"
+    echo "         e as componentes Zyx e Zyy serão tomados do segundo grupo"
+    echo "         e as componentes Tx e Ty serão tomados do terceiro grupo."
+    exit $E_USAGE
+else
+    arquivo_selecao=$1
+fi
+
+# verifica se arquivo selecao.dat existe e se tem permissão de leitura
+verifica_arquivo $arquivo_selecao
+
+# lê o arquivo de seleção e armazena as informações
+
+lon=""
+lat=""
+station=""
+azimuth=""
+elevation=""
+i=0
+exec 6<&0 # liga o arquivo #6 com stdin (cópia de segurança)
+exec < $arquivo_selecao # stdin substituído pelo arquivo $arquivo_selecao
+while read -a coluna
+do
+    if [[ ${coluna[0]:0:1} == "#" ]] # pula linhas iniciadas com "#"
+    then
+        # verifica se há a palavra "coord" depois do "#"
+	if [[ ${coluna[1]:0:5} == "coord" ]]
+	then
+	    lon=${coluna[2]}
+	    lat=${coluna[3]}
+	    elevation=${coluna[4]}
+	fi
+        # verifica se há a palavra "station" depois do "#"
+	if [[ ${coluna[1]} == "station" ]]
+	then
+	    station=${coluna[2]}
+	fi
+        # verifica se há a palavra "azimuth" depois do "#"
+	if [[ ${coluna[1]} == "azimuth" ]]
+	then
+	    azimuth=${coluna[2]}
+	fi
+        # verifica se há a palavra "elevation" depois do "#"
+	if [[ ${coluna[1]} == "elevation" ]]
+	then
+	    elevation=${coluna[2]}
+	fi
+	continue
+    fi
+    ((i++)) # incrementa o contador do número de processos
+
+    Zx[$i]=${coluna[0]}
+    # verifica se arquivo existe e tem permissão de leitura
+    verifica_arquivo ${Zx[$i]}
+    # verifica valor inicial e final
+    verifica_selecao "${coluna[1]}"
+    inicio_Zx[$i]=$inicio
+    fim_Zx[$i]=$fim
+    nT[$i]=$(echo "$fim-$inicio+1" | bc -l)
+    # verifica periodos
+    verifica_periodos2 ${Zx[$i]} ZReal-xy ${inicio_Zx[$i]} ${fim_Zx[$i]}
+    # imprime linha de comentário
+    printf "# %s" ${Zx[$i]}
+    printf " [%s-%s]" ${inicio_Zx[$i]} ${fim_Zx[$i]}
+
+    # se hover mais uma coluna que não seja início de comentário
+    #+ registra o arquivo Zy e o verifica.
+    if [[ ${#coluna[*]} > 2 && ${coluna[2]:0:1} != "#" ]]
+    then
+	Zy[$i]=${coluna[2]}
+	verifica_arquivo ${Zy[$i]}
+        # verifica valor inicial e final
+	verifica_selecao "${coluna[3]}"
+	inicio_Zy[$i]=$inicio
+	fim_Zy[$i]=$fim
+	n=$(echo "$fim-$inicio+1" | bc -l)
+	if [[ $n != ${nT[$i]} ]]
+	then
+	    exec 1>&2 # redireciona stdout para stderr
+	    echo "seleções com número de períodos diferentes:"
+	    printf "%s %s = %s períodos\n" ${Zx[$i]} ${coluna[1]} ${nT[$i]}
+	    printf "%s %s = %s períodos\n" ${Zy[$i]} ${coluna[3]} $n
+	    exit $E_DATAERR
+	fi
+        # verifica periodos
+	verifica_periodos2 ${Zy[$i]} ZReal-yx ${inicio_Zy[$i]} ${fim_Zy[$i]}
+        # imprime linha de comentário
+	printf " %s" ${Zy[$i]}
+	printf " [%s-%s]" ${inicio_Zy[$i]} ${fim_Zy[$i]}
+
+        # se hover mais uma coluna que não seja início de comentário
+        #+ registra o arquivo Tz e o verifica.
+	if [[ ${#coluna[*]} > 4 && ${coluna[4]:0:1} != "#" ]]
+	then
+	    Tz[$i]=${coluna[4]}
+	    verifica_arquivo ${Tz[$i]}
+            # verifica valor inicial e final
+	    verifica_selecao "${coluna[5]}"
+	    inicio_Tz[$i]=$inicio
+	    fim_Tz[$i]=$fim
+	    n=$(echo "$fim-$inicio+1" | bc -l)
+	    if [[ $n != ${nT[$i]} ]]
+	    then
+		exec 1>&2 # redireciona stdout para stderr
+		echo "seleções com número de períodos diferentes:"
+		printf "%s %s = %s períodos\n" ${Zy[$i]} ${coluna[3]} ${nT[$i]}
+		printf "%s %s = %s períodos\n" ${Tz[$i]} ${coluna[5]} $n
+		exit $E_DATAERR
+	    fi
+            # verifica o formato do aquivo
+	    formato_entrada ${Tz[$i]} zzx
+	    FormatoTz[$i]=${FORMATO[$?]}
+	    verifica_periodos ${Tz[$i]} ${FormatoTz[$i]} zzx\
+                              ${inicio_Tz[$i]} ${fim_Tz[$i]}
+
+            # imprime linha de comentário, informando se é nulo
+	    printf " %s" ${Tz[$i]}
+	    if [[ ${FormatoTz[$i]} == ${FORMATO[$nulo]} ]]
+	    then
+		printf "(%s)" ${FORMATO[$nulo]}
+	    fi
+	    printf " [%s-%s]" ${inicio_Tz[$i]} ${fim_Tz[$i]}
+	else # assume que o Tz é do arquivo Zx
+	    Tz[$i]=${Zx[$i]}
+	    inicio_Tz[$i]=${inicio_Zx[$i]}
+	    fim_Tz[$i]=${fim_Zx[$i]}
+            # verifica o formato do aquivo (pode ser nulo para essa componente)
+	    formato_entrada ${Tz[$i]} zzx
+	    FormatoTz[$i]=${FORMATO[$?]}
+            # imprime linha de comentário, informando se é nulo
+	    printf " %s" ${Tz[$i]}
+	    if [[ ${FormatoTz[$i]} == ${FORMATO[$nulo]} ]]
+	    then
+		printf "(%s)" ${FORMATO[$nulo]}
+	    fi
+	    printf " [%s-%s]" ${inicio_Tz[$i]} ${fim_Tz[$i]}
+	fi
+    else # só há um arquivo com todas as componentes
+	Zy[$i]=${Zx[$i]}
+	inicio_Zy[$i]=${inicio_Zx[$i]}
+	fim_Zy[$i]=${fim_Zx[$i]}
+	
+	Tz[$i]=${Zx[$i]}
+	inicio_Tz[$i]=${inicio_Zx[$i]}
+	fim_Tz[$i]=${fim_Zx[$i]}
+        
+        # verifica o formato do aquivo
+	formato_entrada ${Zy[$i]} zyx
+	FormatoZy[$i]=${FORMATO[$?]}
+	formato_entrada ${Tz[$i]} zzx
+	FormatoTz[$i]=${FORMATO[$?]}
+        # imprime linha de comentário se um dos formatos for nulo
+	if [[ ${FormatoZy[$i]} == ${FORMATO[$nulo]} || \
+	      ${FormatoTz[$i]} == ${FORMATO[$nulo]} ]]
+	then
+	    printf " %s" ${Zy[$i]}
+	    if [[ ${FormatoZy[$i]} == ${FORMATO[$nulo]} ]]
+	    then
+		printf "(%s)" ${FORMATO[$nulo]}
+	    fi
+	    printf " [%s-%s]" ${inicio_Zy[$i]} ${fim_Zy[$i]}
+	    printf " %s" ${Tz[$i]}
+	    if [[ ${FormatoTz[$i]} == ${FORMATO[$nulo]} ]]
+	    then
+		printf "(%s)" ${FORMATO[$nulo]}
+	    fi
+	    printf " [%s-%s]" ${inicio_Tz[$i]} ${fim_Tz[$i]}
+	fi
+    fi
+    # fecha linha de comentário
+    printf "\n"
+done
+exec 0<&6 6<&- # restaura stdin do arquivo #6 e o fecha
+
+numero_processamentos=$i
+
+
+# soma o total de períodos
+soma=0
+for i in $(seq 1 $numero_processamentos)
+do
+    (( soma+=${nT[$i]} ))
+done
+nT=$soma
+
+# escreve o cabeçalho do formato Jones
+
+# se a identificação da estação não foi dada no arquivo de seleção
+#+ usa os primeiros 7 caracteres do nome do primeiro arquivo
+if [[ ${#station} == 0 ]]
+then
+    station=$(basename ${Zx[1]})
+    station=${station:0:7}
+fi
+echo ">STATION   :"$station
+# se o azimute da estação não foi dada no arquivo de seleção
+#+ busca o primeiro azimute não nulo nos arquivos Zx fomato jones ou egbert
+#+ caso não encotre, o azimute será nulo
+if [[ ${#azimuth} == 0 ]]
+then
+    for i in $(seq 1 $numero_processamentos)
+    do
+	if [[ ${FormatoZx[$i]} == ${FORMATO[$egbert]} ]]
+	then
+	    azimuth=$(awk '{if($4=="declination")print $5}' ${Zx[$i]})
+	elif [[ ${FormatoZx[$i]} == ${FORMATO[$jones]} ]]
+	then
+	    azimuth=$(awk '{if($1==">AZIMUTH")print $3}' ${Zx[$i]})
+	else
+	    continue
+	fi
+        # verifica se encontrou algum valor não nulo
+	if [[ $(echo $azimuth | awk '{print strtonum($1)}') != 0 ]]
+	then
+	    break
+	fi
+    done
+fi
+printf ">AZIMUTH   =%12.4f\n" $azimuth
+
+# se a latitude da estação não foi dada no arquivo de seleção
+#+ busca a primeira latitude não nula nos arquivos Zx fomato jones ou egbert
+#+ caso não encotre, a latitude será nula
+if [[ ${#lat} == 0 ]]
+then
+    for i in $(seq 1 $numero_processamentos)
+    do
+	if [[ ${FormatoZx[$i]} == ${FORMATO[$egbert]} ]]
+	then
+	    lat=$(awk '{if($1=="coordinate")print $2}'  ${Zx[$i]})
+	elif [[ ${FormatoZx[$i]} == ${FORMATO[$jones]} ]]
+	then
+	    lat=$(awk '{if($1==">LATITUDE")print $3}' ${Zx[$i]})
+	else
+	    continue
+	fi
+        # verifica se encontrou algum valor não nulo
+	if [[ $(echo $lat | awk '{print strtonum($1)}') != 0 ]]
+	then
+	    break
+	fi
+    done
+fi
+printf ">LATITUDE  =%12.5f\n" $lat
+
+# se a longitude da estação não foi dada no arquivo de seleção
+#+ busca a primeira longitude não nula nos arquivos Zx fomato jones ou egbert
+#+ caso não encotre, a longitude será nula
+if [[ ${#lon} == 0 ]]
+then
+    for i in $(seq 1 $numero_processamentos)
+    do
+	if [[ ${FormatoZx[$i]} == ${FORMATO[$egbert]} ]]
+	then
+	    lon=$(awk '{if($1=="coordinate")print $3}'  ${Zx[$i]})
+	elif [[ ${FormatoZx[$i]} == ${FORMATO[$jones]} ]]
+	then
+	    lon=$(awk '{if($1==">LONGITUDE")print $3}' ${Zx[$i]})
+	else
+	    continue
+	fi
+        # verifica se encontrou algum valor não nulo
+	if [[ $(echo $lon | awk '{print strtonum($1)}') != 0 ]]
+	then
+	    break
+	fi
+    done
+fi
+printf ">LONGITUDE =%12.5f\n" $lon
+
+# se a altitude da estação não foi dada no arquivo de seleção
+#+ busca a primeira longitude não nula nos arquivos Zx fomato jones
+#+ caso não encotre, a altitude será nula
+if [[ ${#elevation} == 0 ]]
+then
+    for i in $(seq 1 $numero_processamentos)
+    do
+	if [[ ${FormatoZx[$i]} == ${FORMATO[$jones]} ]]
+	then
+	    elevation=$(awk '{if($1==">ELEVATION")print $3}' ${Zx[$i]})
+	else
+	    continue
+	fi
+        # verifica se encontrou algum valor não nulo
+	if [[ $(echo $elevation | awk '{print strtonum($1)}') != 0 ]]
+	then
+	    break
+	fi
+    done
+    # se só houver arquivos formato egbert (sem informação de altitude)
+    # força altitude para zero
+    if [[ ${#elevation} == 0 ]]
+    then
+	elevation=0.0
+    fi
+fi
+printf ">ELEVATION =%12.4f\n" $elevation
+
+# linha em branco
+echo
+
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+# escreve bloco ZXX
+echo "ZXX SI units (ohms)"
+echo $nT
+for i in $(seq 1 $numero_processamentos)
+do
+    parametros-mt ${Zx[$i]} ZReal-xx > $GMT_TMPDIR/Real
+    parametros-mt ${Zx[$i]} ZImag-xx > $GMT_TMPDIR/Imag
+    paste $GMT_TMPDIR/Real $GMT_TMPDIR/Imag |\
+    awk -v min=${inicio_Zx[$i]} -v max=${fim_Zx[$i]} '{
+      if (NR>=min&&NR<=max) printf "%14.4e%14.4e%14.4e%14.4e%4d\n",\
+      $1, $2, $5, $6*sqrt(2), 1
+    }'
+done
+
+# escreve bloco ZXY
+echo "ZXY SI units (ohms)"
+echo $nT
+for i in $(seq 1 $numero_processamentos)
+do
+    parametros-mt ${Zx[$i]} ZReal-xy > $GMT_TMPDIR/Real
+    parametros-mt ${Zx[$i]} ZImag-xy > $GMT_TMPDIR/Imag
+    paste $GMT_TMPDIR/Real $GMT_TMPDIR/Imag |\
+    awk -v min=${inicio_Zx[$i]} -v max=${fim_Zx[$i]} '{
+      if (NR>=min&&NR<=max) printf "%14.4e%14.4e%14.4e%14.4e%4d\n",\
+      $1, $2, $5, $6*sqrt(2), 1
+    }'
+done
+
+# escreve bloco ZYX
+echo "ZYX SI units (ohms)"
+echo $nT
+for i in $(seq 1 $numero_processamentos)
+do
+    parametros-mt ${Zx[$i]} ZReal-yx > $GMT_TMPDIR/Real
+    parametros-mt ${Zx[$i]} ZImag-yx > $GMT_TMPDIR/Imag
+    paste $GMT_TMPDIR/Real $GMT_TMPDIR/Imag |\
+    awk -v min=${inicio_Zy[$i]} -v max=${fim_Zy[$i]} '{
+      if (NR>=min&&NR<=max) printf "%14.4e%14.4e%14.4e%14.4e%4d\n",\
+      $1, $2, $5, $6*sqrt(2), 1
+    }'
+done
+
+# escreve bloco ZYY
+echo "ZYY SI units (ohms)"
+echo $nT
+for i in $(seq 1 $numero_processamentos)
+do
+    parametros-mt ${Zx[$i]} ZReal-yy > $GMT_TMPDIR/Real
+    parametros-mt ${Zx[$i]} ZImag-yy > $GMT_TMPDIR/Imag
+    paste $GMT_TMPDIR/Real $GMT_TMPDIR/Imag |\
+    awk -v min=${inicio_Zy[$i]} -v max=${fim_Zy[$i]} '{
+      if (NR>=min&&NR<=max) printf "%14.4e%14.4e%14.4e%14.4e%4d\n",\
+      $1, $2, $5, $6*sqrt(2), 1
+    }'
+done
+
+# Clean up all temporary files and the temporary directory
+rm -rf $GMT_TMPDIR
+
+# pode não haver dados da função de transferência magnética
+if [[ ${FormatoTz[$i]} != ${FORMATO[$nulo]} ]]
+then
+    # escreve bloco TZX
+    echo "TZX"
+    echo $nT
+    for i in $(seq 1 $numero_processamentos)
+    do
+	transferfunction ${Tz[$i]} -F${FormatoTz[$i]} -Dzzx | \
+	awk -v min=${inicio_Tz[$i]} -v max=${fim_Tz[$i]} '{
+          if (NR>=min&&NR<=max) printf "%14.4e%14.4e%14.4e%14.4e%4d\n",\
+          $1, $2, $3, $4, $5
+        }'
+    done
+
+    # escreve bloco TZY
+    echo "TZY"
+    echo $nT
+    for i in $(seq 1 $numero_processamentos)
+    do
+	transferfunction ${Tz[$i]} -F${FormatoTz[$i]} -Dzzy | \
+	awk -v min=${inicio_Tz[$i]} -v max=${fim_Tz[$i]} '{
+          if (NR>=min&&NR<=max) printf "%14.4e%14.4e%14.4e%14.4e%4d\n",\
+          $1, $2, $3, $4, $5
+        }'
+    done
+fi
+
+exit 0

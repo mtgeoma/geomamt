@@ -1,0 +1,183 @@
+      SUBROUTINE D02NMU(NEQ,Y,YH,NYH,EWT,RTEM,SAVR,YDOT,WM,IWM,IFJ,H,
+     *                  EL0,TN,IFUNC,RDAE,RWORKX,IREVCM,INFORM)
+C     MARK 12 RELEASE. NAG COPYRIGHT 1986.
+C     MARK 13 REVISED. IER-629 (APR 1988).
+C     MARK 15 REVISED. IER-901 (APR 1991). (LAPACK)
+C
+C     OLD NAME PREPJF
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  EL0, H, TN
+      INTEGER           IFJ, IFUNC, IREVCM, NEQ, NYH
+C     .. Array Arguments ..
+      DOUBLE PRECISION  EWT(*), RDAE(*), RTEM(*), RWORKX(50), SAVR(*),
+     *                  WM(*), Y(*), YDOT(*), YH(NYH,*)
+      INTEGER           INFORM(*), IWM(*)
+C     .. Scalars in Common ..
+      DOUBLE PRECISION  CON, DI, DUNFLO, FAC, HL0, R, R0, SRUR, UROUND,
+     *                  YI, YJ, YJJ
+      INTEGER           I, ICOL, IDEV, IER, II, IOVFLO, IROW, ITRACE,
+     *                  IWP, J, J1, JJ, N
+      CHARACTER*6       SINGLR
+C     .. Local Scalars ..
+      DOUBLE PRECISION  D1, FAC1
+      INTEGER           ICALL, ID, IFZAF
+C     .. Local Arrays ..
+      DOUBLE PRECISION  AARG(1)
+C     .. External Functions ..
+      DOUBLE PRECISION  D02ZAF
+      EXTERNAL          D02ZAF
+C     .. External Subroutines ..
+      EXTERNAL          D02NMT, D02NNN, F07ADG
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS, MAX, SQRT, DBLE, INT
+C     .. Common blocks ..
+      COMMON            /AD02NM/ITRACE, IDEV
+      COMMON            /FD02NM/DUNFLO, UROUND, IOVFLO
+      COMMON            /MD02NM/SINGLR
+      COMMON            /ND02NM/IROW, ICOL
+      COMMON            /RD02NM/CON, DI, FAC, HL0, R, R0, SRUR, YI, YJ,
+     *                  YJJ, I, IER, II, J, J1, JJ, N
+      COMMON            /SD02NM/IWP
+C     .. Save statement ..
+      SAVE              /RD02NM/, /FD02NM/, /MD02NM/, /ND02NM/,
+     *                  /SD02NM/, /AD02NM/, ICALL
+C     .. Executable Statements ..
+C-----------------------------------------------------------------------
+C PREPJI IS CALLED BY SPRINT TO COMPUTE AND PROCESS THE MATRIX
+C P = A - H*EL(1)*J , WHERE J IS AN APPROXIMATION TO THE JACOBIAN DR/DY,
+C WHERE R = G(T,Y) - A(T,Y)*S. HERE J IS COMPUTED BY DIFFERENCING.
+C J IS STORED IN WM, AND RESCALED.
+C P IS THEN SUBJECTED TO LU DECOMPOSITION IN PREPARATION
+C FOR LATER SOLUTION OF LINEAR SYSTEMS WITH P AS COEFFICIENT
+C MATRIX.
+C
+C IN ADDITION TO VARIABLES DESCRIBED PREVIOUSLY, COMMUNICATION
+C WITH PREPJI USES THE FOLLOWING..
+C Y     = ARRAY CONTAINING PREDICTED VALUES ON ENTRY.
+C RTEM  = WORK ARRAY OF LENGTH N (ACOR IN SPRINT).
+C SAVR  = ARRAY USED FOR OUTPUT ONLY.  ON OUTPUT IT CONTAINS THE
+C         RESIDUAL EVALUATED AT CURRENT VALUES OF T AND Y.
+C YDOT  = ARRAY CONTAINING PREDICTED VALUES OF DY/DT .
+C WM    = REAL WORK SPACE FOR MATRICES.  ON OUTPUT IT CONTAINS THE
+C         LU DECOMPOSITION OF P.
+C IWM   = INTEGER WORK SPACE CONTAINING PIVOT INFORMATION.
+C  H    = CURRENT TIMESTEP .
+C  TN   = CURRENT TIME LEVEL.
+C EL0   = EL(1) (INPUT).
+C IFJ   = OUTPUT ERROR FLAG
+C         .LT. 0  IF THE P MATRIX IS SINGULAR
+C            = 0  IF THIS ROUTINE HAS SUCCESSFULLY FORMED THE JACOBIAN
+C         .GT. 0  IF THE EXIT FROM THIS ROUTINE IS A REVERSE
+C                 COMMUNICATION EXIT FOR A FUNCTION CALL TO RESID.
+C IFUNC   INDICATOR TO DETERMINE MODE OF OPERATION OF THE ROUTINE.
+C         = 1 EVALUATE THE JACOBIAN MATRIX NORMALLY
+C         = 0 REVERSE COMMUNICATION EXIT AND ENTRY.
+C THIS ROUTINE ALSO USES THE COMMON VARIABLE UROUND.
+C-----------------------------------------------------------------------
+      N = NEQ
+      IF (IREVCM.EQ.8) GO TO 60
+      IF (IFJ.GT.0) GO TO 160
+      IF (RWORKX(35).EQ.1.0D0) THEN
+         RWORKX(35) = 2.0D0
+         ICALL = INT(RWORKX(38))
+         IWP = NYH*NYH + 1
+      END IF
+C
+C  INITIALISATION OF COMMON VARIABLES FOR THIS ROUTINE
+C
+      HL0 = H*EL0
+      SRUR = SQRT(UROUND)
+      IF (ICALL.NE.1) GO TO 120
+C        ZERO THE MATRIX AND CALL THE ANALYTIC JAC ROUTINE
+      DO 20 I = 1, N
+         Y(I) = YH(I,1)
+         YDOT(I) = YH(I,2)/H
+   20 CONTINUE
+      J = N*N
+      DO 40 I = 1, J
+         WM(I) = 0.0D0
+   40 CONTINUE
+      IREVCM = 8
+      RETURN
+   60 CONTINUE
+      IREVCM = 0
+C
+C         CALL JAC( NEQ, TN, Y, YDOT, H, EL0, ML, MU, WM, N)
+C
+      CALL D02NMT(WM,N,N,RDAE,H,EL0)
+C
+      IF (ITRACE.GE.3) THEN
+         AARG(1) = HL0
+         CALL D02NNN(AARG,1,20)
+         DO 100 J = 1, N
+            DO 80 I = 1, N
+               J1 = (J-1)*N + I
+               R = ABS(WM(J1))
+               IROW = I
+               ICOL = J
+               IF (R.GT.UROUND) CALL D02NNN(WM(J1),1,22)
+   80       CONTINUE
+  100    CONTINUE
+      END IF
+      GO TO 220
+  120 CONTINUE
+C MAKE  N  CALLS TO RES TO APPROXIMATE J. --------
+      IFZAF = 1
+      FAC = D02ZAF(N,SAVR,EWT,IFZAF)
+      R0 = 1000.0D0*ABS(H)*UROUND*DBLE(N)*FAC
+      IF (R0.EQ.0.0D0) R0 = 1.0D0
+      II = 0
+      IF (ITRACE.GE.3) THEN
+         AARG(1) = HL0
+         CALL D02NNN(AARG,1,21)
+      END IF
+      IFJ = 1
+  140 I = IFJ
+      YI = Y(I)
+      R = MAX(SRUR*ABS(YI),R0/EWT(I))
+C   THE FOLLOWING LINE BY M.BERZINS 2/12/83. REMOVE FOR HINDMARSH CODE.
+      R = MAX(R,UROUND)
+      Y(I) = YH(I,1) + R
+      YDOT(I) = YH(I,2)/H + R/HL0
+      RETURN
+C
+C           REVERSE COMMUNICATION EXIT TO TIME MANAGEMENT SCHEME
+C
+  160 JJ = IFJ
+      R = Y(JJ) - YH(JJ,1)
+      YDOT(JJ) = YH(JJ,2)/H
+      Y(JJ) = YH(JJ,1)
+      YJJ = Y(JJ)
+CRWB    R =  MAX (SRUR* ABS(YJJ),R0/EWT(JJ))
+C  THE FOLLOWING LINE BY M.BERZINS 3/12/83. REMOVE FOR HINDMARSH CODE.
+CRWB    R =  MAX ( R, UROUND)
+      FAC = -HL0/R
+      FAC1 = -1.0D0/R
+      DO 180 I = 1, N
+         WM(II+I) = (RTEM(I)-SAVR(I))*(FAC*RDAE(I)+FAC1*(1.0D0-RDAE(I)))
+  180 CONTINUE
+      IF (ITRACE.GE.3) THEN
+         DO 200 I = 1, N
+            J1 = II + I
+            R = ABS(WM(J1))
+            IROW = I
+            ICOL = IFJ
+            IF (R.GT.UROUND) CALL D02NNN(WM(J1),1,22)
+  200    CONTINUE
+      END IF
+      II = II + N
+      IFJ = IFJ + 1
+      IF (IFJ.LE.N) GO TO 140
+  220 IFJ = 0
+C
+C DO LU DECOMPOSITION OF P. --------------------------------------------
+C
+      SINGLR = 'NSING2'
+      CALL F07ADG(N,N,WM,N,WM(IWP),IER)
+      IF (IER.NE.0) THEN
+         IFJ = -1
+         SINGLR = 'SINGLR'
+      END IF
+      RETURN
+      END

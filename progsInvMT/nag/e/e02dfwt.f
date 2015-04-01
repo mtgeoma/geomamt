@@ -1,0 +1,104 @@
+      SUBROUTINE E02DFW(NKNOTS,XMIN,XMAX,LAMBDA,LLMBDA,IFAIL)
+C     MARK 14 RELEASE. NAG COPYRIGHT 1989.
+C     A modified DASL routine.
+C     Originally was called for checks on interior knots only.
+C     Modified so that exterior as well as interior knots are
+C     passed in LAMDA and checked for monotonicity.
+C
+C     **********************************************************
+C
+C     D A S L  -  DATA APPROXIMATION SUBROUTINE LIBRARY
+C
+C     SUBROUTINE CHKNOT    CHECK SPLINE INTERVAL AND
+C     =================    INTERIOR KNOTS FOR NONPERIODIC
+C                          SPLINE
+C
+C     CREATED 08 05 79.  UPDATED 21 06 82.  RELEASE 00/05
+C
+C     AUTHORS ... MAURICE G. COX, PAULINE E. M. CURTIS AND
+C                 J. GEOFFREY HAYES
+C     NATIONAL PHYSICAL LABORATORY, TEDDINGTON,
+C     MIDDLESEX  TW11 0LW, ENGLAND
+C
+C     (C)  CROWN COPYRIGHT 1979-1982
+C
+C     **********************************************************
+C
+C     E02DFW.  AN ALGORITHM FOR CHECKING A SET OF CONDITIONS
+C     RELATING TO A GIVEN SPLINE INTERVAL AND ITS INTERIOR
+C     KNOTS
+C
+C     INPUT PARAMETERS
+C        NKNOTS   NUMBER OF INTERIOR AND EXTERIOR KNOTS
+C        XMIN,
+C        XMAX     LOWER AND UPPER ENDPOINTS OF INTERVAL
+C        LAMBDA   INTERIOR AND EXTERIOR KNOTS
+C        LLMBDA   DIMENSION OF LAMBDA
+C
+C     FAILURE INDICATOR PARAMETER
+C        IFAIL    FAILURE INDICATOR
+C                    1 - AT LEAST ONE OF THE FOLLOWING
+C                        RESTRICTIONS HAS BEEN VIOLATED.
+C                           NKNOTS .GE. 8,
+C                           LLMBDA .GE. NKNOTS
+C                           XMIN .LT. XMAX,
+C                           XMIN .LT. LAMBDA(5)
+C                                 (IF  NKNOTS .GT. 8),
+C                           LAMBDA(NKNOTS-4) .LT. XMAX
+C                                 (IF  NKNOTS .GT. 8),
+C                           LAMBDA(J - 1) .LE. LAMBDA(J),
+C                              FOR J = 2, 3, ..., NKNOTS
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  XMAX, XMIN
+      INTEGER           IFAIL, LLMBDA, NKNOTS
+C     .. Array Arguments ..
+      DOUBLE PRECISION  LAMBDA(LLMBDA)
+C     .. Local Scalars ..
+      INTEGER           IERROR, J
+C     .. Executable Statements ..
+C
+      IERROR = 1
+C
+C     CHECK THAT THERE IS A NONNEGATIVE NUMBER OF INTERIOR
+C     KNOTS
+C
+      IF (NKNOTS.LT.8) GO TO 60
+C
+C     CHECK THAT THE UPPER ENDPOINT IS GREATER THAN THE
+C     LOWER ENDPOINT
+C
+      IF (XMAX.LE.XMIN) GO TO 60
+C
+C     CHECK THAT THE ARRAY  LAMBDA  IS LARGE ENOUGH
+C     TO ACCOMMODATE THE NUMBER OF KNOTS.
+C
+      IF (LLMBDA.LT.NKNOTS) GO TO 60
+C
+C     IF THERE ARE NO INTERIOR KNOTS THEN IT IS
+C     NOT NECESSARY TO CARRY OUT THE REMAINING CHECKS.
+C
+      IF (NKNOTS.EQ.8) GO TO 40
+C
+C     CHECK THAT THE LOWER ENDPOINT OF THE RANGE IS LESS
+C     THAN THE FIRST INTERIOR KNOT.
+C
+      IF (LAMBDA(5).LE.XMIN) GO TO 60
+C
+C     CHECK THAT THE UPPER ENDPOINT OF THE RANGE IS
+C     GREATER THAN THE LAST KNOT.
+C
+      IF (XMAX.LE.LAMBDA(NKNOTS-4)) GO TO 60
+C
+C     CHECK THAT THE KNOT SET IS NOT DECREASING
+C
+      DO 20 J = 2, NKNOTS
+         IF (LAMBDA(J).LT.LAMBDA(J-1)) GO TO 60
+   20 CONTINUE
+   40 IERROR = 0
+   60 IFAIL = IERROR
+      RETURN
+C
+C     END E02DFW
+C
+      END

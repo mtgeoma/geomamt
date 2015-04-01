@@ -1,0 +1,336 @@
+canonic.f:c      write(0,*) 'in lrcov; cjob = ',cjob
+cn_wt.f:c      write(91,*) 'In cn_wt'
+cn_wt.f:c      write(91,*) 'p,nt,nd,npc,nfb',p,nt,nd,npc,nfb
+cn_wt.f:c      write(91,*) 'pw'
+cn_wt.f:c      write(91,'(10e12.4)') pw
+cn_wt.f:c      write(91,*) 'After sep_s_n'
+cn_wt.f:c      write(91,*) 'pw'
+cn_wt.f:c      write(91,'(10e12.4)') pw
+cn_wt.f:c      write(91,*) 'npc,CJOB = ',npc,cjob,' v'
+cn_wt.f:c      write(91,'(10e12.4)') ((v(i,j),i=1,nt),j=3,npc)
+cn_wt.f:c      write(91,*) 'nd,nv,nw,nfb,p,wt',nd,nv,nw,nfb,p
+cn_wt.f:c      write(91,'(80i1)') (nint(wt(i)),i=1,nd)
+cn_wt.f:c      write(91,'(80i2)') (nint(10*w(i)),i=1,nw)
+cn_wt.f:c      write(91,*) 'nu,nv',nu,nv
+cn_wt.f:c      write(91,*) 'u'
+cn_wt.f:c         write(91,*) (u(i,k),k=1,nu)
+cn_wt.f:c      write(91,*) 'v'
+cn_wt.f:c         write(0,*) (v(i,k),k=1,nv)
+cn_wt.f:c         write(0,*) 'after Q-R info = ',info
+cn_wt.f:c         write(0,*) 'U before multiplying by Q'
+cn_wt.f:c            write(0,'(a1,10f8.4)') 'R',(real(u(i,j)),j=1,nu)
+cn_wt.f:c            write(0,'(a1,10f8.4)') 'I',(aimag(u(i,j)),j=1,nu)
+cn_wt.f:c         write(0,*) 'info = ',info
+cn_wt.f:c         write(0,*) 'U after multiplying by Q'
+cn_wt.f:c            write(0,'(a1,10f8.4)') 'R',(real(u(i,j)),j=1,nu)
+cn_wt.f:c            write(0,'(a1,10f8.4)') 'I',(aimag(u(i,j)),j=1,nu)
+cn_wt.f:         write(0,*) 'info = ',info
+cn_wt.f:         write(0,*) 'C'
+cn_wt.f:            write(0,'(a1,10f8.4)') 'R',(real(c(i,j)),j=1,nu)
+cn_wt.f:            write(0,'(a1,10f8.4)') 'I',(aimag(c(i,j)),j=1,nu)
+cn_wt.f:       write(0,*) 'in xu_xv; nd,nv,nu',nd,nv,nu 
+cn_wt.f:       write(0,*) 'c',c
+extra.f:c      write(0,*) 'In init_xtr, isuse = ',(isuse(1,k),isuse(2,k),k=1,nd)
+extra.f:c         write(0,*) (la(ista,k),ista=1,nsta)
+extra.f:c         write(0,*) 'ix,arrayid = ',ix,arrayid
+extra.f:         write(ivunits(ix),rec=1) irecl,nbt,nt,nstau,nsig,
+extra.f:c      write(0,*) 'nxu,nf_tot,nt_tot,nsta_tot, = ',nxu,
+extra.f:c      write(0,*) 'ih_tot',(ih_tot(k),k=1,nsta_tot+1)
+extra.f:ccc         write(0,*) 'la',(la(ista,ix),ista=1,nsta_tot)
+extra.f:ccc         write(0,*) 'nt',nt(ix)
+extra.f:ccc       write(0,*) 'iuse',(iuse(k),k=1,nt(ix))
+geogcor.f:      write(0,*) 'nt,nvec,nsta',nt,nvec,nsta
+geogcor.f:      write(0,*) 'ih',(ih(k),k=1,nsta+1)
+geogcor.f:           write(0,*) 'In mkccmt : Only changing coordinates for ',
+grad.f:         write(0,*) idamp,damp,Jv(idamp),Jc(idamp)
+grad.f:         if(mod(idamp,5).eq.0) write(0,'(5(2f7.4,2x))')(bp(k),k=1,5)
+grad.f:         write(0,*) idamp,damp,Jv(idamp),Jc(idamp)
+grad.f:         write(0,'(5(2f7.4,2x))') (bp(k),k=1,5)
+grad.f:c      write(0,*) 'u'
+grad.f:c         write(0,'(10e12.4)') (u(i,j),j=1,5)
+grad.f:c      write(0,*) 'w'
+grad.f:c         write(0,'(14e10.3)') (w(i,j),j=1,7)
+grad.f:c      write(0,*) 'C'
+grad.f:c         write(0,'(12e10.3)') (c(i,j),j=1,5)
+grad.f:c      write(0,*) '!!!!! W !!!!!'
+grad.f:c       write(0,*) (w(j,i),j=1,nt)
+grad.f:c      result overwrites u
+ln_rbst.f:c         write(0,*) 'j,var(j) [ln_rbst]',j,var(j)
+ln_rbst.f:c         write(0,*) 'evals',eval
+ln_rbst.f:c         write(0,*) 'n1 = ',n1
+ln_rbst.f:c         write(0,*) 'n2 = ',n2
+ln_rbst.f:c         write(0,'(6hUsing ,i2,22h PCs for Prediction TF)') npc
+ln_rbst.f:c         write(18,*) 'STATION ',ista
+ln_rbst.f:c         write(0,*) 'nsn,ista,sn',nsn,ista,(sn(k),k=isn,isn+20)
+ln_rbst.f:c       write(0,*) 'after atf:nsn,ista,sn',nsn,ista,(sn(k),k=isn,isn+20)
+ln_rbst.f:      write(iounit,*) 'LOCAL NOISE (Variance; Correlation'
+ln_rbst.f:             write(iounit,21) real(sn(isn)),1.0,0.0,ista
+ln_rbst.f:             write(iounit,20) Real(sn(isn+k1+i-1)),
+ln_rbst.f:c          write out variances
+ln_rbst.f:c      write(iounit,*) 'VARIANCES'
+ln_rbst.f:c      write(iounit,10) (sdiag(k),k=1,nt)
+ln_rbst.f:c          write out correlation matrix
+ln_rbst.f:c      write(iounit,*) 'Squared Correlations'
+ln_rbst.f:         write(iounit,30) ( abs(s(k1+j)/(sdiag(i)*sdiag(j)))**2,j=1,i)
+ln_rbst.f:         if(mod(i,5).eq.0 ) write(iounit,*)
+mk_fd_rec.f:         write(0,*) 'ista,itape,iounit',ista,itape,iounit
+mk_fd_rec.f:      write(0,*) 'IBAND',iband(1),iband(2)
+mk_fd_rec.f:      write(0,*) 'ND,ID',nd,id
+mk_fd_rec.f:      write(0,*) 'ISUSE',(isuse(k,id),k=1,2)
+mk_fd_rec.f:      write(0,*) 'NCH',nch
+mk_fd_rec.f:      write(0,*) 'NTAPE',(ntape(k),k=1,nsta)
+mk_fd_rec.f:      write(0,*) 'LFOP',lfop
+mk_fd_rec.f:      write(0,*) 'inunit = ',(inunit(l,1),l=1,6)
+mk_fd_rec.f:c                write(0,*) 'ISTA,IORECL',ista,iorecl(ista)
+mk_fd_rec.f:                 write(0,*) 'NF,ISTA,I0,MAXGET',nf,ista,i0,maxget
+mk_fd_rec.f:          write(0,*) 'Starting Set numbers',iset(1),iset(2)
+mk_fd_rec.f:ccc            write(36,*) i,j,cfilein(i,j),istart
+mk_list.f:             write(0,*) 'id,ib,ista,itape,nd,nsta'
+mk_list.f:             write(0,*) id,ib,ista,itape,nd,nsta
+mk_list.f:                 write(0,*) 'NF,ISTA,I0,MAXGET',nf,ista,i0,maxget
+mk_list.f:      write(fid,*) nsta,id
+mk_list.f:      write(fid,'(10(a3,1x))') sta
+mk_list.f:      write(fid,*) nsets
+mk_list.f:       write(fid,'(i6)') nseg
+mk_list.f:          write(fid,'(2i6)') (iseg(l,k),l=1,2)
+mmt_mtrx.f:c        in this version output overwrites input 
+mmt_mtrx.f:c      result (output in t) may overwrite s
+mmt_mtrx.f:c     overwrite single precision sy with single precision sa*sx +sy.     sa20320
+multmtrn.f:            write(0,*) cgrp(k)
+multmtrn.f:c         write(0,*) 'igrp_tf',(igrp_tf(l,k),l=1,igrp_tf(1,k)+1)
+multmtrn.f:c         write(0,*) 'chid_grp',(chid_grp(l,k),l=1,igrp_tf(1,k))
+multmtrn.f:c         write(0,*) 'sta_grp',(sta_grp(l,k),l=1,igrp_tf(1,k))
+multmtrn.f:c      write(0,*) 'ngrp = ',ngrp_tf
+multmtrn.f:c         write(0,*) '# in group',igrp_tf(1,k)
+multmtrn.f:c         write(0,*) 'channel numbers',(igrp_tf(l,k),l=2,igrp_tf(1,k)+1)
+multmtrn.f:         write(ioupw(1)) nt_tot,nsta_tot,2,nbt
+multmtrn.f:            write(ioupw(1)) nch(ista),ih_tot(ista),
+multmtrn.f:               write(ioupw(1)) orient(1,ll),orient(2,ll),chid(ll),
+multmtrn.f:         write(iotfn,'(3i4)') nt_tot,nt_tot,nbt
+multmtrn.f:            write(57,*) ista,te(ista),sig_te(ista)
+multmtrn.f:         write(0,1010) ib,period(ib)
+multmtrn.f:         write(0,1020) 1./dr(id,1),npts(id,1),id,iband
+multmtrn.f:c         write(0,*) 'nf_tot = ',nf_tot
+multmtrn.f:c         write(0,*) 'te',te
+multmtrn.f:c         write(0,*) 'nxu = ',nxu
+multmtrn.f:c         write(0,*) 'nf,nt,npoint',(nf(k),nt(k),npoint(k),k=1,nxu)
+multmtrn.f:c                write(0,*) 'sndiag back in main',(sndiag(k,ib),k=1,14)
+multmtrn.f:                   write(0,*) ' stopping; station coordinates missing'
+multmtrn.f:c                  write(0,*) 'ntape before rr_rbst',(ntape(l),l=1,6)
+multmtrn.f:c                  write(0,*) 'ntape after rr_rbst',(ntape(l),l=1,6)
+multmtrn.f:      write(2,*) nt_tot,nbt
+multmtrn.f:      write(2,700) (ldf(1,ib),ib=1,nbt)
+multmtrn.f:      write(2,*) 'Eigenvalues in noise units'
+multmtrn.f:         write(2,710) period(ib),(eval(k,ib),k=1,nt_tot)
+multmtrn.f:      write(2,*) 'SIGNAL POWER'
+multmtrn.f:         write(2,710) period(ib),(sdiag(k,ib),k=1,nt_tot)
+multmtrn.f:      write(2,*) 'INCOHERENT NOISE POWER'
+multmtrn.f:         write(2,710) period(ib),(sndiag(k,ib),k=1,nt_tot)
+multmtrn.f:      write(2,*) 'RELATIVE INCOHERENT NOISE POWER'
+multmtrn.f:         write(2,710) period(ib),(sndiag(k,ib)/sdiag(k,ib)
+multmtrn.f:      write(2,*) 'Relative Eigenvalues : ORDER CHANGED!!!!'
+multmtrn.f:         write(2,710) period(ib),(eval2(k,ib)/tpower(ib),k=1,nsigmx)
+multmtrn.f:      write(2,*) 'Eigenvalues in nT'
+multmtrn.f:         write(2,710) period(ib),(eval2(k,ib),k=1,nsigmx)
+multmtrn.f:         write(2,*) nt_tot,nbt
+multmtrn.f:            write(2,710) period(ib),(cc(k,ib),k=1,nt_tot)
+multmtrn.f:         write(6,'(15f12.4)') (real(s(j)),j=i1,i2)
+multmtrn.f:         write(6,'(15f12.4)') (aimag(s(j)),j=i1,i2)
+multmtrn.f:         write(0,*) (x(j,i),j=1,n,3)
+multmtrn.f:         write(iounit,rec=irec) v,sigpwr(1),sigpwr(2),noisepwr(1),
+multmtrn.f:         write(0,*) 'dont know how to deal with this option in wrt_v'
+multmtrn.f:      write(ioev,'(e12.4,i6)') period,nsig
+multmtrn.f:         write(ioev,'(10f8.4)') (u2(j,i),j=1,nt)
+multmtrn.f:      write(iouev,rec=irec) period,nf,ev,var,u
+multmtrn.f:      write(iouev,rec=irec) period,nf,var,s
+multmtrn.f:c      write(91,*) 'In init_lomit'
+multmtrn.f:c      write(91,*) 'isuse = ',isuse
+multmtrn.f:c         write(91,'(80i1)') (itemp(j),j=1,i2-i+1)
+multmtrn.f:      write(0,*) 'Usage: multmrn    OPTIONS:'
+multmtrn.f:      write(0,*) '-n : no robust features'
+multmtrn.f:      write(0,*) '-m : only robust SDM'
+multmtrn.f:      write(0,*) '-f<file> : change cf_array file to <file>'
+multmtrn.f:      write(0,*) '-s<file> : change default grouping of channels'
+multmtrn.f:      write(0,*) '           into stations'
+multmtrn.f:      write(0,*) '-t : output local noise array TF files'
+multmtrn.f:      write(0,*) '-u : assume signal and coh noise are uncorrelated'
+multmtrn.f:      write(0,*) '-g : use spatial gradient model'
+multmtrn.f:      write(0,*) '-N : dont transform eigenvectors in M_ file'
+multmtrn.f:      write(0,*) '-c<?> : <?> = H for canonical covariance in units'
+multmtrn.f:      write(0,*) '      : <?> = N for canonical covariance in units'
+multmtrn.f:      write(0,*) '      : <?> = R for canonical coherence squared'
+multmtrn.f:      write(0,*) '               (default is nothing)'
+multmtrn.f:      write(0,*) '-i : change default max # of iterations for robust'
+multmtrn.f:      write(0,*) '     regression for each inner loop estimate of '
+multmtrn.f:      write(0,*) '     local noise; Default is ',itmax_ln_d
+multmtrn.f:      write(0,*) '-o : change default # of outer loops for local'
+multmtrn.f:      write(0,*) '      noise estimation/individual channel outlier'
+multmtrn.f:      write(0,*) '      cleanup; Default is ', itmax_cln_d
+multmtrn.f:      write(0,*) '-I : change default max # of iterations of iterations'
+multmtrn.f:      write(0,*) '      used for robust regression for final TF '
+multmtrn.f:      write(0,*) '      estimate;  Default is ', itmax_rrr_d
+multmtrn.f:      write(0,*) '-w : change default # of iterations for coherent'
+multmtrn.f:      write(0,*) '         noise downweighting'
+multmtrn.f:      write(0,*) '-p : change coherent noise cutoff'
+multmtrn.f:      write(0,*) '-a : omit data set ranges specified in cf_array file'
+multmtrn.f:      write(0,*) '     only on first coherent noise iteration'
+multmtrn.f:      write(0,*) '-P : output principal component FCs in PC_ file'
+multmtrn.f:      write(0,*) '-r : output raw data in PC_ file'
+multmtrn.f:      write(0,*) '-z : rotate channels into common coordinate system'
+multmtrn.f:      write(0,*) '     before outputing M_**** file'
+multmtrn.f:      write(0,*) '-C : output correlation matrices (total+local noise'
+multmtrn.f:      write(0,*) '       correlations)'
+multmtrn.f:      write(0,*) '-L : dont output Pw_ file'
+multmtrn.f:      write(0,*) '     (plane wave response space estimates)'
+multmtrn.f:      write(0,*) '-T : turn ON automatic timing error correction'
+multmtrn.f:      write(0,*) '-GX: change default channel grouping for incoherent'
+multmtrn.f:      write(0,*) '   : noise variance estimation. Here X = T,S, or A  '
+multmtrn.f:      write(0,*) '   : T => all components of a type at a site (def.)'
+multmtrn.f:      write(0,*) '   : S => all components at a single site '
+multmtrn.f:      write(0,*) '   : A => each component by itself'
+multmtrn.f:      write(0,*) '-R#: Use projection of magnetic fields from '
+multmtrn.f:      write(0,*) '      station # into coherent signal/noise space '
+multmtrn.f:      write(0,*) '      to define plane wave reference'
+multmtrn.f:      write(0,*) '-s<file_name> change default channel groupings for'
+multmtrn.f:      write(0,*) '   single station TF output files (Z*****)'
+multmtrn.f:      write(0,*) '   default is to use same grouping as FC files'
+multmtrn.f:      write(0,*) '-S<decimation_level> make a list of set numbers'
+multmtrn.f:      write(0,*) '   available for specified decimation level and quit'
+multmtrn.f:      write(0,*) '-M<pwr_min> Only use sets with sig pwr (determined'
+multmtrn.f:      write(0,*) '  by 2 dominant eigenvectors) exceeding pwr_min'
+n_rbst.f:         write(comment,*) 'Raw data in n_rbst'
+n_rbst.f:c       write(0,*) 'n_grp',n_grp
+n_rbst.f:c       write(0,*) 'ih_grp',(ih_grp(i),i=1,n)
+n_rbst.f:c      write(0,*) 'sndiag',(sndiag(l),l=1,14)
+n_rbst.f:c         write(0,*) 'iter = ',iter
+n_rbst.f:c         write(0,*) 'sndiag',(sndiag(l),l=1,14)
+n_rbst.f:        write(iocm,*) '************  PERIOD = ',period,'  ************'
+n_rbst.f:        write(iocm,*) '************* # of Data = ',nd,'   *************'
+n_rbst.f:      write(iotf,'(e12.4,i12)') 1./period,nd
+n_rbst.f:            write(iotf,'(3e12.4)') tf(i,j),tf_se(i,j)
+pc_out.f:      write(ioupc) nsta,nt,npc,nbt
+pc_out.f:      write(ioupc) ih
+pc_out.f:      write(ioupc) stcor
+pc_out.f:      write(ioupc) decl
+pc_out.f:      write(ioupc) orient
+pc_out.f:      write(ioupc) period,nd,nfb,idl,iband
+pc_out.f:      write(ioupc) ixs
+pc_out.f:      write(ioupc) var
+pc_out.f:         write(ioupc) x
+pc_out.f:         write(ioupc) ev
+pc_out.f:         write(ioupc) u
+pc_out.f:         write(ioupc) xpc
+pc_out.f:      write(ioupc) ev
+pc_out.f:      write(ioupc) u
+prteig.f:         write(iounit,601) outname,period
+prteig.f:         write(iounit,*) '# of data vectors used = ', nf
+prteig.f:         write(iounit,*) 'Decimation level  = ',id,'; Freqs. = ',iband
+prteig.f:         write(iounit,*) 'Eigenvalues (normalized to local noise):'
+prteig.f:         write(iounit,615) (ev(k),k=1,nt)
+prteig.f:         write(iounit,*) 'Fraction of Total Power (SNR units)'
+prteig.f:         write(iounit,614) (ev(k)/tev,k=1,nt)
+prteig.f:         write(iounit,*) 'Power in PCs of Sig. Comp. (nT**2/Hz):'
+prteig.f:         write(iounit,615) (ev2(k),k=1,nev)
+prteig.f:         write(iounit,*) 'Fraction of Total Power (nT**2/Hz)'
+prteig.f:         write(iounit,614) (ev2(k)/tev,k=1,nev)
+prteig.f:ccc   write out vectors in U'
+prteig.f:      write(iounit,*)
+prteig.f:         write(iounit,'(a10,i3)') cvecname,j
+prteig.f:         write(iounit,chd) 
+prteig.f:            write(iounit,cformat) sta(i),stcor(1,i),stcor(2,i),
+prteig.f:      write(iounit,*) '_______________________________________',
+rbstk2.f:             write(0,*) '!!!!!!! ERROR IN RBSTK : S SINGULAR!!!!!'
+rbstk2.f:         write(0,*) 'Maximum number of iterations exceeded'
+rbstk2.f:         write(0,*) 'itmax,schk,tol = ',itmax,schk,tol
+rbstk2.f:         write(0,*) 'Mask lch and number of components nt',
+rbstk2.f:             write(0,*) '!!!!!!! ERROR IN RBSTK : S SINGULAR!!!!!'
+rbstk2.f:         write(0,*) 'Maximum number of iterations exceeded'
+rbstk2.f:         write(0,*) 'schk,tol = ',schk,tol
+rbstreg.f:c      write(0,*) 'info, optimal block size',info,work(iw2)
+rbstreg.f:ccc    (c can overwrite r)
+rr_rbst.f:c      write(91,*) 'nomit = ',nomit
+rr_rbst.f:ccc      copy PC data series array; QR in rbstreg will overwrite
+rr_rbst.f:         write(0,*) 'in RR_RBST: did not converge'
+rr_rbst.f:         write(0,*) 'icvg= ',icvg
+rr_rbst.f:         write(0,*) '# of iterations = ',icvg
+rr_rbst.f:            write(0,*) 'nd, nu = ',nd,nu(k)
+rr_rbst.f:c      write(92,*) 'nu,nd',nu,nd
+rr_rbst.f:c      write(92,*) 'sig_s',sig_s
+rr_rbst.f:c      write(92,*) 'z',z
+rr_rbst.f:c      write(92,*) 'sig_e',sig_e
+rr_rbst.f:      write(0,*) 'Determinant is zero!!!!'
+rr_rbst.f:      write(iou_pctf) period,nf,nt,ns
+rr_rbst.f:      write(iou_pctf) pctf,xxinv,cov
+rsp.f:            write(0,*) 'error in cholesky decomposition',
+rsp.f:c      write(0,*) 'ev',ev
+sep_s_n.f:c      write(0,*) 'raw eigenvalues of singularized SDM'
+sep_s_n.f:c      write(0,*) (eval(k),k=1,n)
+sep_s_n.f:c      write(0,*) 'residual eigenvalues of projected, singularized SDM'
+sep_s_n.f:c      write(0,*) (eval(k),k=1,n)
+sep_s_n.f:c      write(0,*) 'U1^U1'
+sep_s_n.f:c      write(0,*) (work(k,1,2),k=1,4)
+sep_s_n.f:c      write(0,*) 'U2^U2'
+sep_s_n.f:c      write(0,*) (work(k,1,2),k=1,9)
+sep_s_n.f:c      write(0,*) 'U2^U1'
+sep_s_n.f:c      write(0,*) (work(k,1,2),k=1,6)
+sep_s_n.f:          write(0,*) 'assuming coherent noise correlated with PW'
+sep_s_n.f:c         write(0,*) 'U2^SU1'
+sep_s_n.f:c            write(0,'(2e12.4,2x,2e12.4)') (c(i,j),j=1,nu1)
+sep_s_n.f:c         write(0,*) 'U2^SU2'
+sep_s_n.f:c         write(0,'(2e12.4,2x,2e12.4,2x,2e12.4)') (work(k,1,1),k=1,9)
+sep_s_n.f:c         write(0,*) 'Coefficients C'
+sep_s_n.f:c            write(0,'(2e12.4,2x,2e12.4)') (c(i,j),j=1,nu1)
+sep_s_n.f:c      write(0,*) 's'
+sep_s_n.f:c         write(0,'(15e8.2)') (real(s0(i,j)),j=1,n)
+sep_s_n.f:c         write(0,'(15e8.2)') (aimag(s0(i,j)),j=1,n)
+sep_s_n.f:c      write(0,*) 'UU^S'
+sep_s_n.f:c         write(0,'(15e8.2)') (real(work(i,j,2)),j=1,n)
+sep_s_n.f:c         write(0,'(15e8.2)') (aimag(work(i,j,2)),j=1,n)
+sep_s_n.f:c      write(0,*) 'S-UU^S-SUU^'
+sep_s_n.f:c         write(0,'(15e8.2)') (real(s0(i,j)),j=1,n)
+sep_s_n.f:c         write(0,'(15e8.2)') (aimag(s0(i,j)),j=1,n)
+sep_s_n.f:c      write(0,*) 'S-UU^S-SUU^+UU^SU^U'
+sep_s_n.f:c         write(0,'(15e8.2)') (real(s0(i,j)),j=1,n)
+sep_s_n.f:c         write(0,'(15e8.2)') (aimag(s0(i,j)),j=1,n)
+setup.f:c      write(0,*) cbandf
+setup.f:c         write(0,*) i,ntape(i),nch(i)
+setup.f:c         write(0,*)  (var(k),k=i0,i0+nch(i)-1)
+setup.f:c         write(0,*) sta(i)
+setup.f:c      write(0,*) 'isuse = ',isuse
+setup.f:      write(0,*) 'done reading array.cfg'
+setup.f:       write(0,*) 'nchi,ndmax,nd(i),nfmaxi,npts(1,i)'
+setup.f:       write(0,*) nchi,ndmax,nd(i),nfmaxi,npts(1,i)
+timerr.f:      write(0,*) 'Timing Error Bands', iterrb(1,1), iterrb(2,1)
+timerr.f:      write(0,*) 'ih',(ih(k),k=1,3)
+timerr.f:         write(0,*) 'nt,nfreq',nt,nfreq
+timerr.f:         write(0,*) 'ev  = ',(ev(k),k=1,10)
+var_adj.f:c      write(0,*) 'nt = ',nt
+var_adj.f:c      write(0,*) 'var =',var
+var_adj.f:c      write(0,*) 'I-mB : m =  ',rmu
+var_adj.f:c         write(0,'(15f8.4)') (work(i,k),k=1,nt)
+var_adj.f:c      write(0,*)
+var_adj.f:c      write(0,*) 'info = ',info
+wrt_z.f:c...  write header information
+wrt_z.f:         write(fid,*) 'TRANSFER FUNCTIONS IN MEASUREMENT COORDINATES'
+wrt_z.f:         write(fid,*) '********** WITH FULL ERROR COVARINCE*********'
+wrt_z.f:         write(fid,'(a80)') chead
+wrt_z.f:         write(fid,'(a20)') cgrp(k)
+wrt_z.f:         write(fid,105) stcor(1,ista),stcor(2,ista),decl(ista)
+wrt_z.f:         write(fid,110) nch,nbt
+wrt_z.f:         write(fid,*) 'orientations and tilts of each channel '
+wrt_z.f:            write(fid,115) ll,orient(1,ll),orient(2,ll),
+wrt_z.f:         write(fid,*)
+wrt_z.f:            write(fid,120) period(ib),level(ib),ibandlim(1,ib),
+wrt_z.f:            write(fid,125) ldf(k,ib),dr(1)
+wrt_z.f:            write(fid,*) 'Transfer Functions'
+wrt_z.f:               write(fid,140) (z(ii,l,k,ib),l=1,2) 
+wrt_z.f:            write(fid,*) 'Inverse Coherent Signal Power Matrix'
+wrt_z.f:            write(fid,140) sig_s(1,1,k,ib)
+wrt_z.f:            write(fid,140) (sig_s(2,ii,k,ib),ii=1,2)
+wrt_z.f:            write(fid,*) 'Residual Covaraince'
+wrt_z.f:               write(fid,140) (sig_e(ii,l,k,ib),l=1,ii)
+wrtx.f:      write(0,*) 'ioux,cfile',ioux,cfile
+wrtx.f:      write(ioux) nt,nseg,nfb
+wrtx.f:      write(ioux) comment
+wrtx.f:      write(ioux) var
+wrtx.f:      write(ioux) x

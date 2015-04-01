@@ -1,0 +1,125 @@
+      SUBROUTINE F01CRF(A,M,N,MN,MOVE,IWRK,IFAIL)
+C     MARK 7 RELEASE. NAG COPYRIGHT 1978.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 14A REVISED. IER-684 (DEC 1989).
+C     *****
+C     ALGORITHM 380 - REVISED
+C     *****
+C     A IS A ONE-DIMENSIONAL ARRAY OF LENGTH MN = M*N, WHICH
+C     CONTAINS THE M X N MATRIX TO BE F01CRFPOSED
+C     (STORED COLUMNWISE).
+C     MOVE IS A ONE-DIMENSIONAL ARRAY OF LENGTH IWRK USED
+C     TO STORE INFORMATION TO SPEED UP THE PROCESS. THE
+C     VALUE IWRK = (M+N)/2 IS RECOMMENDED.
+C     IFAIL INDICATES THE SUCCESS OR FAILURE OF THE ROUTINE.
+C     NORMAL RETURN  IFAIL = 0
+C     ERRORS         IFAIL = 1, MN NOT EQUAL TO M*N
+C                    IFAIL = 2, IWRK NEGATIVE OR ZERO
+C                    IFAIL.LT.ZERO, (SHOULD NEVER OCCUR),
+C     IN THIS CASE WE SET IFAIL EQUAL TO THE FINAL VALUE OF I
+C     WHEN THE SEARCH IS COMPLETED BUT SOME LOOPS HAVE NOT BEEN
+C     MOVED NOTE * MOVE(I) WILL STAY ZERO FOR FIXED POINTS.
+C     CHECK ARGUMENTS AND INITIALIZE.
+C     .. Scalar Arguments ..
+      INTEGER           IFAIL, IWRK, M, MN, N
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(MN)
+      INTEGER           MOVE(IWRK)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  B, C, D
+      INTEGER           I, I1, I1C, I2, I2C, IM, IR0, IR1, IR2, J, J1,
+     *                  K, KMI, MAX, N1, NCOUNT, I1DIVN
+C     .. Intrinsic Functions ..
+      INTRINSIC         MOD
+C     .. Executable Statements ..
+      IF (M.LT.2 .OR. N.LT.2) GO TO 240
+      IF (MN.NE.M*N) GO TO 360
+      IF (IWRK.LT.1) GO TO 380
+      IF (M.EQ.N) GO TO 260
+      NCOUNT = 2
+      K = MN - 1
+      DO 20 I = 1, IWRK
+         MOVE(I) = 0
+   20 CONTINUE
+      IF (M.LT.3 .OR. N.LT.3) GO TO 60
+C     CALCULATE THE NUMBER OF FIXED POINTS, EUCLIDS ALGORITHM
+C     FOR GCD(M-1,N-1).
+      IR2 = M - 1
+      IR1 = N - 1
+   40 IR0 = MOD(IR2,IR1)
+      IR2 = IR1
+      IR1 = IR0
+      IF (IR0.NE.0) GO TO 40
+      NCOUNT = NCOUNT + IR2 - 1
+C     SET INITIAL VALUES FOR SEARCH
+   60 I = 1
+      IM = M
+C     AT LEAST ONE LOOP MUST BE RE-ARRANGED
+      GO TO 160
+C     SEARCH FOR LOOPS TO REARRANGE
+   80 MAX = K - I
+      I = I + 1
+      IF (I.GT.MAX) GO TO 320
+      IM = IM + M
+      IF (IM.GT.K) IM = IM - K
+      I2 = IM
+      IF (I.EQ.I2) GO TO 80
+      IF (I.GT.IWRK) GO TO 120
+      IF (MOVE(I).EQ.0) GO TO 160
+      GO TO 80
+  100 I1DIVN = I1/N
+      I2 = M*(I1-N*I1DIVN) + I1DIVN
+  120 IF (I2.LE.I .OR. I2.GE.MAX) GO TO 140
+      I1 = I2
+      GO TO 100
+  140 IF (I2.NE.I) GO TO 80
+C     REARRANGE THE ELEMENTS OF A LOOP AND ITS COMPANION LOOP
+  160 I1 = I
+      KMI = K - I
+      B = A(I1+1)
+      I1C = KMI
+      C = A(I1C+1)
+  180 I1DIVN = I1/N
+      I2 = M*(I1-N*I1DIVN) + I1DIVN
+      I2C = K - I2
+      IF (I1.LE.IWRK) MOVE(I1) = 2
+      IF (I1C.LE.IWRK) MOVE(I1C) = 2
+      NCOUNT = NCOUNT + 2
+      IF (I2.EQ.I) GO TO 220
+      IF (I2.EQ.KMI) GO TO 200
+      A(I1+1) = A(I2+1)
+      A(I1C+1) = A(I2C+1)
+      I1 = I2
+      I1C = I2C
+      GO TO 180
+C     FINAL STORE AND TEST FOR FINISHED
+  200 D = B
+      B = C
+      C = D
+  220 A(I1+1) = B
+      A(I1C+1) = C
+      IF (NCOUNT.LT.MN) GO TO 80
+C     NORMAL RETURN
+  240 IFAIL = 0
+      RETURN
+C     IF MATRIX IS SQUARE, EXCHANGE ELEMENTS A(I,J) AND A(J,I).
+  260 N1 = N - 1
+      DO 300 I = 1, N1
+         J1 = I + 1
+         DO 280 J = J1, N
+            I1 = I + (J-1)*N
+            I2 = J + (I-1)*M
+            B = A(I1)
+            A(I1) = A(I2)
+            A(I2) = B
+  280    CONTINUE
+  300 CONTINUE
+      GO TO 240
+C     ERROR RETURNS.
+  320 IFAIL = -I
+  340 RETURN
+  360 IFAIL = 1
+      GO TO 340
+  380 IFAIL = 2
+      GO TO 340
+      END

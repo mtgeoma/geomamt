@@ -1,0 +1,853 @@
+      SUBROUTINE D02NMZ(NEQ,Y,YH,NYH,EWT,YDOT,SAVR,ACOR,INLN,ISTEP,EL0,
+     *                  H,TN,HMIN,HMXI,RDAE,RWORK,IREVCM)
+C     MARK 14 RE-ISSUE. NAG COPYRIGHT 1989.
+C     MARK 14B REVISED. IER-841 (MAR 1990).
+C
+C     OLD NAME SBLEND
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  EL0, H, HMIN, HMXI, TN
+      INTEGER           INLN, IREVCM, ISTEP, NEQ, NYH
+C     .. Array Arguments ..
+      DOUBLE PRECISION  ACOR(*), EWT(*), RDAE(*), RWORK(50), SAVR(*),
+     *                  Y(*), YDOT(*), YH(NYH,*)
+C     .. Scalars in Common ..
+      DOUBLE PRECISION  ALJH, BLJH, BND, CCMAX, CONIT, CONST1, CONST2,
+     *                  CONST3, CONST4, CONST5, CONST6, CRATE, DAMP,
+     *                  DCON, DDN, DEL, DELP, DSN, DUP, EL, EL1H,
+     *                  ELSAVE, EXDN, EXSM, EXUP, HDONE, HMXSTT, HOLD,
+     *                  HPROP, R, RC, RH, RHDN, RHSM, RHUP, RJNORM,
+     *                  RMAX, RMWB, ROWND, TOLD, WB
+      INTEGER           I, IALTH, ICF, IDEV, IFLAG, IOMEGA, IOMEGB,
+     *                  IPUP, IREDO, IRET, ITRACE, IZ, J, JB, JC, JCUR,
+     *                  JSTART, KCUR, KFLAG, KGO, L, LMAX, M, MAXCOR,
+     *                  MAXIT, MAXORD, MEO, METH, MSBP, MXNCF, N, NCF,
+     *                  NINTER, NITER, NJE, NQ, NQU, NRE, NSLP, NST, NT,
+     *                  NZEROS
+      LOGICAL           ALLZER, CHANGE, NONZER, SOMZER, SPECLH, START
+      CHARACTER*6       ODCODE
+C     .. Arrays in Common ..
+      DOUBLE PRECISION  AL(13), ALCO(13,12), BL(12), BLCO(12,11), C(11),
+     *                  GAMMA(11), TESCO(3,12)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  ACORI, ACORMX
+      INTEGER           ICORMX, IFZAF, NEWQ
+C     .. Local Arrays ..
+      DOUBLE PRECISION  AARG(1)
+C     .. External Functions ..
+      DOUBLE PRECISION  D02ZAF
+      EXTERNAL          D02ZAF
+C     .. External Subroutines ..
+      EXTERNAL          D02NMY, D02NNN, D02NNQ
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS, DBLE, INT, MAX, MIN, SIGN
+C     .. Common blocks ..
+      COMMON            /AD02NM/ITRACE, IDEV
+      COMMON            /BD02NM/HDONE, NQ, NQU, NST, NRE, NJE, NITER,
+     *                  NINTER, KCUR
+      COMMON            /CD02NM/HMXSTT
+      COMMON            /GD02NM/DAMP, RJNORM, CRATE, MAXIT
+      COMMON            /TD02NM/ROWND, CONIT, AL, ALCO, BL, BLCO, RMAX,
+     *                  TESCO, CCMAX, RC, IALTH, IPUP, LMAX, MEO, NSLP,
+     *                  ICF, JCUR, L, METH, MAXORD, MSBP, MXNCF, N
+      COMMON            /UD02NM/CONST1, CONST2, CONST3, CONST4, CONST5,
+     *                  CONST6, START, SPECLH
+      COMMON            /VD02NM/NZEROS, NONZER, SOMZER, ALLZER
+      COMMON            /WD02NM/HPROP, CHANGE
+      COMMON            /XD02NM/HOLD
+      COMMON            /YD02NM/DDN, DSN, DUP, ALJH, BLJH, ELSAVE, DEL,
+     *                  DELP, EL1H, EL, DCON, C, GAMMA, RMWB, WB, BND,
+     *                  EXDN, EXSM, EXUP, R, RH, RHDN, RHSM, RHUP, TOLD,
+     *                  I, JC, IREDO, IRET, J, JB, KGO, NCF, IZ, JSTART,
+     *                  KFLAG, IOMEGA, IOMEGB, M, MAXCOR, IFLAG, NT
+      COMMON            /ZD02NM/ODCODE
+C     .. Save statement ..
+      SAVE              /YD02NM/, /ZD02NM/, /BD02NM/, /GD02NM/,
+     *                  /TD02NM/, /UD02NM/, /VD02NM/, /AD02NM/,
+     *                  /WD02NM/, /CD02NM/, /XD02NM/
+C     .. Executable Statements ..
+C-----------------------------------------------------------------------
+C D02NMZ PERFORMS ONE STEP OF THE INTEGRATION OF AN INITIAL VALUE
+C PROBLEM FOR A SYSTEM OF ORDINARY DIFFERENTIAL EQUATIONS.
+C NOTE..D02NMZ IS INDEPENDENT
+C OF THE TYPE OF CHORD METHOD USED, OR THE JACOBIAN STRUCTURE.
+C COMMUNICATION WITH D02NMZ IS DONE WITH THE FOLLOWING VARIABLES..
+C
+C NEQ    = INTEGER ARRAY CONTAINING PROBLEM SIZE IN NEQ, AND
+C          NOT USED EXCEPT TO INITIALISE THE COMMON BLOCK VARIABLE N
+C Y      = AN ARRAY OF LENGTH .GE. N USED AS THE Y ARGUMENT IN
+C          ALL CALLS TO RES, JAC, AND ADDA. ON THE FIRST CALL THIS
+C          ARRAY IS ASSUMED TO CONTAIN THE INITIAL SOLUTION VALUES.
+C YH     = AN NYH BY LMAX ARRAY CONTAINING THE DEPENDENT VARIABLES
+C          AND THEIR APPROXIMATE SCALED DERIVATIVES, WHERE
+C          LMAX = MAXORD + 3.  YH(I,J+1) CONTAINS THE APPROXIMATE
+C          J-TH DERIVATIVE OF Y(I), SCALED BY H**J/FACTORIAL(J)
+C          (J = 0,1,...,NQ).  YH(I,LMAX+2) AND YH(I,LMAX+3) ARE WORK
+C          ARRAYS USED IN SOLVING THE NONLINEAR SYSTEM OF EQUATIONS.
+C NYH    = A CONSTANT INTEGER .GE. N, THE FIRST DIMENSION OF YH.
+C EWT    = AN ARRAY OF LENGTH N CONTAINING MULTIPLICATIVE WEIGHTS
+C          FOR LOCAL ERROR MEASUREMENTS.  LOCAL ERRORS IN Y(I) ARE
+C          COMPARED TO 1.0/EWT(I) IN VARIOUS ERROR TESTS.
+C YDOT   = AN ARRAY OF WORKING STORAGE, OF LENGTH N. ALSO USED FOR
+C          INPUT OF YH(*,MAXORD+2) WHEN JSTART = -1 AND MAXORD IS LESS
+C          THAN THE CURRENT ORDER NQ. ON THE FIRST CALL THIS ARRAY IS
+C          ASSUMED TO HOLD THE INITIAL VALUES OF THE TIME DERIVATIVE.
+C SAVR   = AN ARRAY OF WORKING STORAGE, OF LENGTH N.
+C          THIS ARRAY IS NOT USED IN THE PRESENT IMPLEMENTATION.
+C ACOR   = A WORK ARRAY OF LENGTH N USED FOR THE ACCUMULATED
+C          CORRECTIONS. ON A SUCCESFUL RETURN, ACOR(I) CONTAINS
+C          THE ESTIMATED ONE-STEP LOCAL ERROR IN Y(I).
+C CCMAX  = MAXIMUM RELATIVE CHANGE IN H*EL0 BEFORE PJAC IS CALLED.
+C H      = THE STEP SIZE TO BE ATTEMPTED ON THE NEXT STEP.
+C          H IS ALTERED BY THE ERROR CONTROL ALGORITHM DURING THE
+C          PROBLEM.  H CAN BE EITHER POSITIVE OR NEGATIVE, BUT ITS
+C          SIGN MUST REMAIN CONSTANT THROUGHOUT THE PROBLEM.
+C HMIN   = THE MINIMUM ABSOLUTE VALUE OF THE STEP SIZE H TO BE USED.
+C HMXI   = INVERSE OF THE MAXIMUM ABSOLUTE VALUE OF H TO BE USED.
+C          HMXI = 0.0 IS ALLOWED AND CORRESPONDS TO AN INFINITE HMAX.
+C          HMIN AND HMXI MAY BE CHANGED AT ANY TIME, BUT WILL NOT
+C          TAKE EFFECT UNTIL THE NEXT CHANGE OF H IS CONSIDERED.
+C RDAE   = INDICATOR ARRAY OF DIMENSION NEQ. RDAE(J) = 0. IF THE JTH
+C          EQUTAION IS ALGEBRAIC AND 1. OTHERWISE.
+C TN     = THE INDEPENDENT VARIABLE. TN IS UPDATED ON EACH STEP TAKEN.
+C ISTEP    : INPUT AND OUTPUT ERROR INDICATOR
+C          ON INPUT ITS VALUES ARE TRANSFERRED INTO JSTART
+C          ON OUTPUT IT TAKES THE VALUES OF KFLAG . IN BOTH CASES
+C          THE ACTUAL VALUES ARE MODIFIED SO AS TO CORRESSPOND TO
+C          THE SPRINT INTERFACE.
+C    INPUT:    -1  PERFORM THE FIRST STEP  (JSTART = 0).
+C               0  REVERSE COMMUNICATION RETURN FROM NLSLVR ROUTINE.
+C               1  TAKE A NEW STEP CONTINUING FROM THE LAST (JSTART=1)
+C               2  TAKE THE NEXT STEP WITH A NEW VALUE OF H, MAXORD,
+C                    N, METH, (JSTART = -1).
+C               3  TAKE THE NEXT STEP WITH A NEW VALUE OF H,
+C                    BUT WITH OTHER INPUTS UNCHANGED (JSTART = -2)
+C          ON RETURN, ISTEP  IS SET TO 1 TO FACILITATE CONTINUATION.
+C    OUTPUT:    1  THE STEP WAS SUCCESSFUL , KFLAG = 0.
+C               0  REVERSE COMMUNICATION RETURN - CHECK INLN.
+C              -1  THE REQUESTED ERROR COULD NOT BE ACHIEVED.
+C              -2  CORRECTOR CONVERGENCE COULD NOT BE ACHIEVED.
+C              -3  RES ORDERED IMMEDIATE RETURN.
+C              -4  ERROR CONDITION FROM RES COULD NOT BE AVOIDED.
+C              -5  FATAL ERROR IN JACOBIAN FORMING OR BACKSUBSTITUTION.
+C              -6  INIT MODULE LSET WAS NOT CALLED PRIOR TO FIRST ENTRY.
+C          APART FROM WHEN ISTEP = 0 OR 1 , ISTEP = KFLAG ON OUTPUT.
+C          A RETURN WITH ISTEP = -1, -2, OR -4 MEANS EITHER
+C          ABS(H) = HMIN OR 10 CONSECUTIVE FAILURES OCCURRED.
+C          ON A RETURN WITH ISTEP NEGATIVE, THE VALUES OF TN AND
+C          THE YH ARRAY ARE AS OF THE BEGINNING OF THE LAST
+C          STEP, AND H IS THE LAST STEP SIZE ATTEMPTED.
+C MAXORD = THE MAXIMUM ORDER OF INTEGRATION METHOD TO BE ALLOWED.
+C MSBP   = MAXIMUM NUMBER OF STEPS BETWEEN PJAC CALLS.
+C MXNCF  = MAXIMUM NUMBER OF CONVERGENCE FAILURES ALLOWED.
+C METH   = THE METHOD FLAG.  SEE DESCRIPTION IN ROUTINE BLSET.
+C N      = THE NUMBER OF FIRST-ORDER DIFFERENTIAL EQUATIONS.
+C
+C INLN       = REVERSE COMMUNICATION INDICATOR
+C
+C       ON ENTRY   INLN  = 0    NORMAL ENTRY
+C                        = -1   ERROR IN JACOBIAN FORMATION
+C                        = -2   RESID ORDERED RETURN TO USER
+C                        = -3   RESID FOUND ILLEGAL T, Y, OR YDOTI.
+C                        = -4   RESID ORDERED ENTRY TO MONITR.
+C                        = 1    NONLINEAR SYSTEM SOLVED
+C                        = 2    ITERATION FAILED TO CONVERGE IN
+C                               SOLUTION OF NONLINEAR SYSTEM
+C                        = 3,4  NOT USED IN THIS MODULE
+C                        = 5    RETURN TO FORM THE PETZOLD ERROR EST
+C                               I.E. J INVERSE * DF/DYDOT * ACOR
+C
+C       ON EXIT    INLN  = 0    NORMAL EXIT
+C                        = 1    FORM JACOBIAN AND SOLVE NONLINEAR SYSTEM
+C                        = 2    AS FOR INLN = 1 BUT USING OLD JACOBIAN
+C                        = 3,4  NOT USED  HERE.
+C                        = 5    FORM PETZOLD ERROR ESTIMATE.
+C                        = 6,7  NOT USED HERE.
+C-----------------------------------------------------------------------
+C
+C     JUMP IF IT IS REVERSE COMMUNICATION
+C
+      IF (IREVCM.EQ.10) THEN
+         IF ( .NOT. CHANGE) GO TO 520
+         CHANGE = .FALSE.
+         IF (H.NE.HPROP) THEN
+            RH = H/HPROP
+            R = 1.0D0
+            DO 40 J = 2, L
+               R = R*RH
+               DO 20 I = 1, N
+                  YH(I,J) = YH(I,J)*R
+   20          CONTINUE
+   40       CONTINUE
+            RC = RC*RH
+            IALTH = L
+         END IF
+         IREVCM = 0
+         GO TO 400
+      END IF
+C
+      IZ = INLN + 5
+      INLN = 0
+      GO TO (720,720,720,720,60,540,700,560,580,
+     *       620) IZ
+   60 CONTINUE
+      KFLAG = 0
+      IF (RWORK(22).EQ.1.0D0) THEN
+         HDONE = 0.0D0
+         RWORK(22) = 2.0D0
+         CONST1 = RWORK(23)
+         CONST2 = RWORK(24)
+         CONST3 = RWORK(25)
+         CONST4 = RWORK(26)
+         CONST5 = RWORK(27)
+         CONST6 = RWORK(28)
+         MAXORD = INT(RWORK(29))
+         METH = 2
+      END IF
+      TOLD = TN
+      NCF = 0
+      KCUR = 1
+      CHANGE = .FALSE.
+      JCUR = 0
+      ICF = 0
+      IF (ISTEP.EQ.1) THEN
+         JSTART = 1
+         GO TO 400
+      ELSE IF (ISTEP.EQ.2) THEN
+         JSTART = -1
+         GO TO 120
+      ELSE IF (ISTEP.EQ.3) THEN
+         JSTART = -2
+         GO TO 300
+      END IF
+      JSTART = 0
+      START = .TRUE.
+      SPECLH = .FALSE.
+C-----------------------------------------------------------------------
+C ON THE FIRST CALL, THE ORDER IS SET TO 1, AND OTHER VARIABLES ARE
+C INITIALIZED.  RMAX IS THE MAXIMUM RATIO BY WHICH H CAN BE INCREASED
+C IN A SINGLE STEP.  IT IS INITIALLY 1.E4 TO COMPENSATE FOR THE SMALL
+C INITIAL H, BUT THEN IS NORMALLY EQUAL TO 10.  IF A FAILURE
+C OCCURS (IN CORRECTOR CONVERGENCE OR ERROR TEST), RMAX IS SET AT 2
+C FOR THE NEXT INCREASE.
+C-----------------------------------------------------------------------
+      LMAX = MAXORD + 1
+      NINTER = LMAX
+      IOMEGA = LMAX + 1
+      IOMEGB = LMAX + 2
+      N = NEQ
+      NQ = 1
+      NQU = 0
+      L = 2
+      IALTH = 2
+      MXNCF = 5
+      RMAX = CONST3
+      RC = 0.0D0
+      EL0 = 1.0D0
+      MSBP = 20
+      CCMAX = 0.3D0
+      HOLD = H
+      MEO = METH
+      NSLP = 0
+      IPUP = 1
+      IRET = 3
+C
+C   LOAD THE INITIAL VALUES OF Y AND YDOT INTO THE NORDSIECK VECTOR.
+C
+      NZEROS = 0
+      DO 80 I = 1, N
+         IF (Y(I).EQ.0.0D0 .AND. YDOT(I).EQ.0.0D0) NZEROS = NZEROS + 1
+   80 CONTINUE
+      DO 100 I = 1, N
+         YH(I,1) = Y(I)
+         YH(I,2) = YDOT(I)*H
+  100 CONTINUE
+      NONZER = NZEROS .EQ. 0
+      ALLZER = NZEROS .EQ. N
+      SOMZER = .NOT. NONZER .AND. .NOT. ALLZER
+      GO TO 240
+C-----------------------------------------------------------------------
+C THE FOLLOWING BLOCK HANDLES PRELIMINARIES NEEDED WHEN JSTART = -1.
+C IPUP IS SET TO 1 TO FORCE A MATRIX UPDATE.
+C IF AN ORDER INCREASE IS ABOUT TO BE CONSIDERED (IALTH = 1),
+C IALTH IS RESET TO 2 TO POSTPONE CONSIDERATION ONE MORE STEP.
+C IF THE CALLER HAS CHANGED METH, D02NMY IS CALLED TO RESET
+C THE COEFFICIENTS OF THE METHOD.
+C IF THE CALLER HAS CHANGED MAXORD TO A VALUE LESS THAN THE CURRENT
+C ORDER NQ, NQ IS REDUCED TO MAXORD, AND A NEW H CHOSEN ACCORDINGLY.
+C IF H IS TO BE CHANGED, YH MUST BE RESCALED.
+C IF H OR METH IS BEING CHANGED, IALTH IS RESET TO L = NQ + 1
+C TO PREVENT FURTHER CHANGES IN H FOR THAT MANY STEPS.
+C-----------------------------------------------------------------------
+  120 CONTINUE
+      IPUP = 1
+      LMAX = MAXORD + 1
+      NINTER = LMAX
+      IOMEGA = LMAX + 1
+      IOMEGB = LMAX + 2
+      IF (NEQ.LT.N) THEN
+C        NUMBER OF O.D.E.S HAS BEEN REDUCED- ZERO PART OF MEMORY VECTOR
+         J = NEQ + 1
+         DO 160 I = J, N
+            DO 140 JB = 1, NQ + 1
+               YH(I,JB) = 0.0D0
+  140       CONTINUE
+  160    CONTINUE
+      ELSE IF (NEQ.GT.N .AND. ITRACE.GE.1) THEN
+         CALL D02NNQ(
+     *       ' THE NO OF EQUATIONS (=I1) IS GREATER THAN         N(=I2)'
+     *               ,2,2,NEQ,N,0,0.0D0,0.0D0)
+      END IF
+      N = NEQ
+      IF (IALTH.EQ.1) IALTH = 2
+      IF (METH.EQ.MEO) GO TO 180
+      CALL D02NMY(METH,ALCO,BLCO,TESCO,GAMMA,C)
+      MEO = METH
+      IF (NQ.GT.MAXORD) GO TO 200
+      IALTH = L
+      IRET = 1
+      GO TO 260
+  180 CONTINUE
+      IF (NQ.LE.MAXORD) GO TO 300
+  200 CONTINUE
+      NQ = MAXORD
+C
+C   MAXORD HAS BEEN REDUCED TO BELOW NQ
+C
+      J = MAXORD + 2
+      L = LMAX
+      DO 220 I = 1, L
+         BL(I) = BLCO(I,NQ)
+         AL(I) = ALCO(I,NQ)
+  220 CONTINUE
+      RC = RC*C(NQ)/EL0
+      EL0 = C(NQ)
+      CONIT = 0.5D0/DBLE(NQ+2)
+      IFZAF = 1
+      DDN = D02ZAF(N,YH(1,J),EWT,IFZAF)/TESCO(1,L)
+      EXDN = 1.0D0/DBLE(L)
+      RHDN = 1.0D0/(CONST5*DDN**EXDN+1.0D-6*CONST5)
+      RH = MIN(RHDN,1.0D0)
+      IREDO = 3
+      IF (H.EQ.HOLD) GO TO 320
+      RH = MIN(RH,ABS(H/HOLD))
+      H = HOLD
+      GO TO 340
+C-----------------------------------------------------------------------
+C D02NMY IS CALLED TO GET ALL THE INTEGRATION COEFFICIENTS FOR THE
+C CURRENT METH.  THEN THE EL VECTOR AND RELATED CONSTANTS ARE RESET
+C WHENEVER THE ORDER NQ IS CHANGED, OR AT THE START OF THE PROBLEM.
+C-----------------------------------------------------------------------
+  240 CONTINUE
+      CALL D02NMY(METH,ALCO,BLCO,TESCO,GAMMA,C)
+  260 CONTINUE
+      DO 280 I = 1, L
+         BL(I) = BLCO(I,NQ)
+         AL(I) = ALCO(I,NQ)
+  280 CONTINUE
+      RC = RC*C(NQ)/EL0
+      EL0 = C(NQ)
+      CONIT = 0.5D0/DBLE(NQ+2)
+      GO TO (300,320,400) IRET
+C-----------------------------------------------------------------------
+C IF H IS BEING CHANGED, THE H RATIO RH IS CHECKED AGAINST
+C RMAX, HMIN, AND HMXI, AND THE YH ARRAY RESCALED.  IALTH IS SET TO
+C L = NQ + 1 TO PREVENT A CHANGE OF H FOR THAT MANY STEPS, UNLESS
+C FORCED BY A CONVERGENCE OR ERROR TEST FAILURE.
+C-----------------------------------------------------------------------
+  300 CONTINUE
+      IF (H.EQ.HOLD) GO TO 400
+      RH = H/HOLD
+      H = HOLD
+      IREDO = 3
+      GO TO 340
+  320 CONTINUE
+      RH = MAX(RH,HMIN/ABS(H))
+  340 CONTINUE
+      RH = MIN(RH,RMAX)
+      RH = RH/MAX(1.0D0,ABS(H)*HMXI*RH)
+      R = 1.0D0
+      DO 380 J = 2, L
+         R = R*RH
+         DO 360 I = 1, N
+            YH(I,J) = YH(I,J)*R
+  360    CONTINUE
+  380 CONTINUE
+      H = H*RH
+      IF (SPECLH) THEN
+         H = SIGN(1.0D0,H)*HMXSTT
+         SPECLH = .FALSE.
+      END IF
+      RC = RC*RH
+      IALTH = L
+      IF (IREDO.EQ.0) GO TO 1480
+      IF (IREVCM.EQ.10) THEN
+         HPROP = H
+         CHANGE = .TRUE.
+         RETURN
+      END IF
+C-----------------------------------------------------------------------
+C THIS SECTION COMPUTES THE PREDICTED VALUES BY EFFECTIVELY
+C MULTIPLYING THE YH ARRAY BY THE PASCAL TRIANGLE MATRIX.
+C RC IS THE RATIO OF NEW TO OLD VALUES OF THE COEFFICIENT  H*EL(1).
+C WHEN RC DIFFERS FROM 1 BY MORE THAN CCMAX, IPUP IS SET TO 1
+C TO FORCE PJAC TO BE CALLED.
+C IN ANY CASE, PJAC IS CALLED AT LEAST EVERY MSBP STEPS.
+C-----------------------------------------------------------------------
+  400 CONTINUE
+      IF (ABS(RC-1.0D0).GT.CCMAX .OR. NST.GE.(NSLP+MSBP)) IPUP = 1
+      TN = TN + H
+      DO 460 JB = NQ, 1, -1
+         DO 440 JC = JB, NQ
+            DO 420 I = 1, N
+               YH(I,JC) = YH(I,JC) + YH(I,JC+1)
+  420       CONTINUE
+  440    CONTINUE
+  460 CONTINUE
+C-----------------------------------------------------------------------
+C UP TO MAXCOR CORRECTOR ITERATIONS ARE TAKEN.  A CONVERGENCE TEST IS
+C MADE ON THE R.M.S. NORM OF EACH CORRECTION, WEIGHTED BY H AND THE
+C ERROR WEIGHT VECTOR EWT.  THE SUM OF THE CORRECTIONS IS ACCUMULATED
+C IN ACOR(I).  THE YH ARRAY IS NOT ALTERED IN THE CORRECTOR LOOP.
+C-----------------------------------------------------------------------
+  480 CONTINUE
+      DO 500 I = 1, N
+         YDOT(I) = YH(I,2)/H
+         Y(I) = YH(I,1)
+  500 CONTINUE
+C
+      IF (IREVCM.EQ.10) THEN
+         IF (IPUP.GT.0) KCUR = 0
+         RETURN
+      END IF
+  520 CONTINUE
+      IREVCM = 0
+C
+      M = 0
+      BND = 0.5D0/((NQ+2)*N)
+      ALJH = AL(2)/H
+      BLJH = BL(2)/H
+      IF (IPUP.LE.0) THEN
+         GO TO 540
+      END IF
+C
+C        EXIT TO FORM A NEW JACOBIAN WITHOUT PERFORMING ITERATIONS
+C
+      IPUP = 0
+      ELSAVE = H*EL0
+      MAXCOR = MAXIT
+      MAXIT = 0
+      CRATE = 0.7D0
+      RC = 1.0D0
+      NSLP = NST
+      INLN = 1
+      JCUR = 1
+      ISTEP = 0
+      RETURN
+  540 CONTINUE
+      INLN = 3
+      MAXIT = MAXCOR
+C----------------------------------------------------------------------
+C        EXIT FOR A FUNCTION CALL, ITERATION LOOPING POINT.
+C----------------------------------------------------------------------
+      ISTEP = 0
+      RETURN
+  560 CONTINUE
+      INLN = 4
+      ISTEP = 0
+C
+C       EXIT FOR A BACKSUBSTITUTION ONLY.
+C
+      RETURN
+  580 CONTINUE
+C      RMWB = RELAX - WB
+      DO 600 I = 1, N
+CMBZ   NEXT LINE CHANGED
+         ACOR(I) = -SAVR(I)/EL0
+  600 CONTINUE
+C
+C       EXIT FOR A FUNCTION CALL AND A BACKSUBSTITUTION
+C
+      INLN = 5
+      ISTEP = 0
+      IFLAG = 1
+      RETURN
+C
+C     START ITERATING WITH JACOBIAN MATRIX
+C
+  620 CONTINUE
+      IF (M.EQ.0) THEN
+         DO 640 I = 1, N
+            YH(I,IOMEGA) = 0.0D0
+            YH(I,IOMEGB) = 0.0D0
+  640    CONTINUE
+      END IF
+      NT = N
+      DO 660 I = 1, N
+CMBZ NEW LINE INSERTED
+         SAVR(I) = SAVR(I)/(EL0*H)
+         ACOR(I) = GAMMA(NQ)*H*(ACOR(I)+SAVR(I))/ELSAVE
+         YH(I,IOMEGA) = YH(I,IOMEGA) - SAVR(I)
+         YH(I,IOMEGB) = YH(I,IOMEGB) + ACOR(I)
+         YDOT(I) = YH(I,2)/H + ALJH*YH(I,IOMEGA) + BLJH*YH(I,IOMEGB)
+         Y(I) = YH(I,1) + AL(1)*YH(I,IOMEGA) + BL(1)*YH(I,IOMEGB)
+         SAVR(I) = ACOR(I) - SAVR(I)
+  660 CONTINUE
+      DO 680 I = 1, N
+C        ORIGINAL GEAR-TYPE CONVERGENCE TEST
+         IF (ABS(SAVR(I)*EWT(I)).LT.BND) NT = NT - 1
+  680 CONTINUE
+      IF (ITRACE.GE.2) CALL D02NNN(SAVR,N,16)
+      IF (NT.EQ.0) GO TO 820
+      IFZAF = 1
+      DEL = D02ZAF(N,SAVR,EWT,IFZAF)*(NQ+2)*0.5D0
+C-----------------------------------------------------------------------
+C TEST FOR CONVERGENCE.  IF M.GT.0, AN ESTIMATE OF THE CONVERGENCE
+C RATE CONSTANT IS STORED IN CRATE, AND THIS IS USED IN THE TEST.
+C-----------------------------------------------------------------------
+      IF (M.GE.1) THEN
+         CRATE = DEL/DELP
+         DCON = DEL*MIN(1.0D0,1.5D0*CRATE)
+         EL1H = EL0*H
+         IF (ITRACE.GE.2) THEN
+            AARG(1) = DCON
+            CALL D02NNN(AARG,1,17)
+         END IF
+         IF (DCON.LE.1.0D0) GO TO 820
+         IF (M.GE.MAXCOR .OR. DEL.GT.0.9D0*DELP) GO TO 700
+      END IF
+      M = M + 1
+      DELP = DEL
+C     REVERSE COMMUNICATION RETURN FOR ANOTHER ITERATION
+      GO TO 540
+C-----------------------------------------------------------------------
+C THE CORRECTOR ITERATION FAILED TO CONVERGE IN MAXCOR TRIES, OR ELSE
+C RES HAS RETURNED ABNORMALLY. IF INLN = -3 OR -4, RETRACT THE YH ARRAY
+C TO ITS VALUES BEFORE PREDICTION AND RETURN. OTHERWISE--
+C IF THE JACOBIAN IS OUT OF DATE, PJAC IS CALLED FOR
+C THE NEXT TRY.  OTHERWISE THE YH ARRAY IS RETRACTED TO ITS VALUES
+C BEFORE PREDICTION, AND H IS REDUCED, IF POSSIBLE.  IF H CANNOT BE
+C REDUCED OR MXNCF FAILURES HAVE OCCURRED, EXIT WITH KFLAG = -2 OR -4.
+C-----------------------------------------------------------------------
+  700 CONTINUE
+      ICF = 1
+      IREVCM = 10
+      IF (JCUR.EQ.1) GO TO 720
+      IPUP = 1
+      GO TO 480
+  720 CONTINUE
+      ICF = 2
+      MAXIT = MAXCOR
+      NCF = NCF + 1
+      RMAX = CONST1
+  740 CONTINUE
+      TN = TOLD
+      DO 800 JB = NQ, 1, -1
+         DO 780 JC = JB, NQ
+            DO 760 I = 1, N
+               YH(I,JC) = YH(I,JC) - YH(I,JC+1)
+  760       CONTINUE
+  780    CONTINUE
+  800 CONTINUE
+      IF (IZ.EQ.1 .OR. IZ.EQ.3) THEN
+         KFLAG = -3
+         GO TO 1500
+      ELSE IF (IZ.EQ.0) THEN
+         KFLAG = -7
+C         WORKSPACE ERROR IN LINEAR ALGEBRA
+         GO TO 1500
+      END IF
+      IF (ABS(H).LE.HMIN*1.00001D0) GO TO 1420
+      IF (NCF.EQ.MXNCF) THEN
+         IF (IZ.EQ.2) THEN
+            KFLAG = -4
+            GO TO 1440
+         ELSE IF (IZ.EQ.4) THEN
+            GO TO 1460
+         ELSE
+            GO TO 1400
+         END IF
+      END IF
+      RH = 0.25D0
+      IPUP = 1
+      IREDO = 1
+      GO TO 320
+C-----------------------------------------------------------------------
+C THE CORRECTOR HAS CONVERGED.  JCUR IS SET TO 0
+C TO SIGNAL THAT THE JACOBIAN INVOLVED MAY NEED UPDATING LATER.
+C THE LOCAL ERROR TEST IS MADE AND CONTROL PASSES TO STATEMENT
+C FOLLOWING THE COMMENTS THAT BEGIN 'THE ERROR TEST FAILED' IF IT FAILS.
+C-----------------------------------------------------------------------
+  820 CONTINUE
+      JCUR = 0
+      DO 840 I = 1, N
+         ACOR(I) = YH(I,IOMEGA) + YH(I,IOMEGB)
+  840 CONTINUE
+      IF (NONZER) THEN
+         IFZAF = 1
+         DSN = D02ZAF(N,ACOR,EWT,IFZAF)/TESCO(2,NQ)
+      ELSE
+         IF (SOMZER) THEN
+            DO 860 I = 1, N
+               SAVR(I) = ACOR(I)
+               IF (Y(I).EQ.0.0D0 .AND. YDOT(I).EQ.0.0D0) SAVR(I) = 0.0D0
+  860       CONTINUE
+         ELSE
+C205
+C205        THE LINES IN THIS ELSE BLOCK SHOULD BE REPLACED BY
+C205        SOMETHING LIKE IF Q8SMAXI FINDS THE LARGEST ABS ELT.
+C205        SAVR(1;N) = 0.0
+C205        ICORMX = Q8SMAXI(ACOR(1;N)) + 1
+C205        ACORMX = ACOR(ICORMX)
+C205
+            ACORMX = 0.0D0
+            DO 880 I = 1, N
+               SAVR(I) = 0.0D0
+               ACORI = ACOR(I)
+               IF (ABS(ACORI).GT.ABS(ACORMX)) THEN
+                  ICORMX = I
+                  ACORMX = ACORI
+               END IF
+  880       CONTINUE
+            SAVR(ICORMX) = ACORMX
+         END IF
+         IFZAF = 1
+         DSN = D02ZAF(N,SAVR,EWT,IFZAF)/TESCO(2,NQ)
+      END IF
+      IF (ITRACE.GE.1) THEN
+         AARG(1) = DSN
+         CALL D02NNN(AARG,1,15)
+      END IF
+      IF (DSN.GT.1.0D0) GO TO 1060
+      HDONE = H
+C
+C-----------------------------------------------------------------------
+C AFTER A SUCCESSFUL STEP, UPDATE THE YH ARRAY.
+C CONSIDER CHANGING H IF IALTH = 1.  OTHERWISE DECREASE IALTH BY 1.
+C IF IALTH IS THEN 1 AND NQ .LT. MAXORD, THEN ACOR IS SAVED FOR
+C USE IN A POSSIBLE ORDER INCREASE ON THE NEXT STEP.
+C IF A CHANGE IN H IS CONSIDERED, AN INCREASE OR DECREASE IN ORDER
+C BY ONE IS CONSIDERED ALSO.  A CHANGE IN H IS MADE ONLY IF IT IS BY A
+C FACTOR OF AT LEAST 1.1.  IF NOT, IALTH IS SET TO 3 TO PREVENT
+C TESTING FOR THAT MANY STEPS.
+C-----------------------------------------------------------------------
+      IF (START) THEN
+         IF (RMAX.NE.CONST3) GO TO 960
+C        FIRST STEP - SEE IF INTI STEP WAS TOO SMALL
+         EXSM = 1.0D0/DBLE(L)
+         RHSM = 1.0D0/(CONST4*DSN*EXSM+1.0D-6*CONST4)
+         IF (RHSM.GE.RMAX) THEN
+C           RETAKE THE STEP SINCE INIT STEP WAS FAR TOO SMALL
+            RH = RMAX
+            IF (RH*ABS(H).GE.HMXSTT) THEN
+               RH = HMXSTT/ABS(H)
+               START = .FALSE.
+               SPECLH = .TRUE.
+            END IF
+            TN = TOLD
+            DO 940 JB = NQ, 1, -1
+               DO 920 JC = JB, NQ
+                  DO 900 I = 1, N
+                     YH(I,JC) = YH(I,JC) - YH(I,JC+1)
+  900             CONTINUE
+  920          CONTINUE
+  940       CONTINUE
+            IREDO = 3
+            GO TO 320
+         END IF
+  960    CONTINUE
+         START = .FALSE.
+      END IF
+C        OTHERWISE UPDATE THE SOLUTION AND CONTINUE
+      KFLAG = 0
+      IREDO = 0
+      NQU = NQ
+      NCF = 0
+      IF ( .NOT. NONZER) THEN
+         DO 980 I = 1, N
+            IF (YH(I,1).EQ.0.0D0 .AND. YH(I,2).EQ.0.0D0 .AND. ACOR(I)
+     *          .NE.0.0D0) NZEROS = NZEROS - 1
+  980    CONTINUE
+         NONZER = NZEROS .EQ. 0
+         ALLZER = NZEROS .EQ. N
+         SOMZER = .NOT. NONZER .AND. .NOT. ALLZER
+      END IF
+      DO 1020 J = 1, L
+         ALJH = AL(J)
+         BLJH = BL(J)
+         DO 1000 I = 1, N
+            YH(I,J) = YH(I,J) + ALJH*YH(I,IOMEGA) + BLJH*YH(I,IOMEGB)
+ 1000    CONTINUE
+ 1020 CONTINUE
+      IALTH = IALTH - 1
+      IF (IALTH.EQ.0) GO TO 1140
+      IF (IALTH.GT.1) GO TO 1520
+      IF (L.EQ.LMAX) GO TO 1520
+      DO 1040 I = 1, N
+         YH(I,LMAX) = ACOR(I)
+ 1040 CONTINUE
+      GO TO 1520
+C-----------------------------------------------------------------------
+C THE ERROR TEST FAILED.  KFLAG KEEPS TRACK OF MULTIPLE FAILURES.
+C RESTORE TN AND THE YH ARRAY TO THEIR PREVIOUS VALUES, AND PREPARE
+C TO TRY THE STEP AGAIN.  COMPUTE THE OPTIMUM STEP SIZE FOR THIS OR
+C ONE LOWER ORDER.  AFTER 2 OR MORE FAILURES, H IS FORCED TO DECREASE
+C BY A FACTOR OF 0.2 OR LESS.
+C-----------------------------------------------------------------------
+ 1060 CONTINUE
+      KFLAG = KFLAG - 1
+      IREVCM = 10
+      TN = TOLD
+      DO 1120 JB = NQ, 1, -1
+         DO 1100 JC = JB, NQ
+            DO 1080 I = 1, N
+               YH(I,JC) = YH(I,JC) - YH(I,JC+1)
+ 1080       CONTINUE
+ 1100    CONTINUE
+ 1120 CONTINUE
+      RMAX = CONST1
+      IF (ABS(H).LE.HMIN*1.00001D0) GO TO 1360
+      IF (KFLAG.LE.-4) GO TO 1380
+      IREDO = 2
+      RHUP = 0.0D0
+      GO TO 1180
+C-----------------------------------------------------------------------
+C REGARDLESS OF THE SUCCESS OR FAILURE OF THE STEP, FACTORS
+C RHDN, RHSM, AND RHUP ARE COMPUTED, BY WHICH H COULD BE MULTIPLIED
+C AT ORDER NQ - 1, ORDER NQ, OR ORDER NQ + 1, RESPECTIVELY.
+C IN THE CASE OF FAILURE, RHUP = 0.0 TO AVOID AN ORDER INCREASE.
+C THE LARGEST OF THESE IS DETERMINED AND THE NEW ORDER CHOSEN
+C ACCORDINGLY.  IF THE ORDER IS TO BE INCREASED, WE COMPUTE ONE
+C ADDITIONAL SCALED DERIVATIVE.
+C-----------------------------------------------------------------------
+ 1140 CONTINUE
+      RHUP = 0.0D0
+      IF (L.EQ.LMAX) GO TO 1180
+      DO 1160 I = 1, N
+         YDOT(I) = ACOR(I) - YH(I,LMAX)
+ 1160 CONTINUE
+      IFZAF = 1
+      DUP = D02ZAF(N,YDOT,EWT,IFZAF)/TESCO(3,NQ)
+      EXUP = 1.0D0/DBLE(L+1)
+      RHUP = 1.0D0/(CONST6*DUP**EXUP+1.0D-6*CONST6)
+ 1180 CONTINUE
+      EXSM = 1.0D0/DBLE(L)
+      RHSM = 1.0D0/(CONST4*DSN**EXSM+1.0D-6*CONST4)
+      RHDN = 0.0D0
+      IF (NQ.EQ.1) GO TO 1200
+      IFZAF = 1
+      DDN = D02ZAF(N,YH(1,L),EWT,IFZAF)/TESCO(1,NQ)
+      EXDN = 1.0D0/DBLE(NQ)
+      RHDN = 1.0D0/(CONST5*DDN**EXDN+1.0D-6*CONST5)
+ 1200 CONTINUE
+      IF (RHSM.GE.RHUP) GO TO 1220
+      IF (RHUP.GT.RHDN) GO TO 1260
+      GO TO 1240
+ 1220 CONTINUE
+      IF (RHSM.LT.RHDN) GO TO 1240
+      NEWQ = NQ
+      RH = RHSM
+      GO TO 1320
+ 1240 CONTINUE
+      NEWQ = NQ - 1
+      RH = RHDN
+      IF (KFLAG.LT.0 .AND. RH.GT.1.0D0) RH = 1.0D0
+      GO TO 1320
+ 1260 CONTINUE
+      NEWQ = L
+      RH = RHUP
+      IF (RH.LT.1.1D0) GO TO 1300
+      R = AL(L)/DBLE(L)
+      DO 1280 I = 1, N
+         YH(I,NEWQ+1) = ACOR(I)*R
+ 1280 CONTINUE
+      GO TO 1340
+ 1300 CONTINUE
+      IALTH = 3
+      GO TO 1520
+ 1320 CONTINUE
+      IF ((KFLAG.EQ.0) .AND. (RH.LT.1.1D0)) GO TO 1300
+      IF (KFLAG.LE.-2) RH = MIN(RH,0.2D0)
+C-----------------------------------------------------------------------
+C IF THERE IS A CHANGE OF ORDER, RESET NQ, L, AND THE COEFFICIENTS.
+C IN ANY CASE H IS RESET ACCORDING TO RH AND THE YH ARRAY IS RESCALED.
+C THEN EXIT FROM 690 IF THE STEP WAS OK, OR REDO THE STEP OTHERWISE.
+C-----------------------------------------------------------------------
+      IF (NEWQ.EQ.NQ) GO TO 320
+ 1340 CONTINUE
+      NQ = NEWQ
+      L = NQ + 1
+      IRET = 2
+      GO TO 260
+C-----------------------------------------------------------------------
+C ALL RETURNS ARE MADE THROUGH THIS SECTION.  H IS SAVED IN HOLD
+C TO ALLOW THE CALLER TO CHANGE H ON THE NEXT STEP.
+C-----------------------------------------------------------------------
+C
+C  KFLAG = -1 : ERROR TEST FAILED REPEATEDLY WITH ABS(H) = HMIN
+C
+ 1360 CONTINUE
+      KFLAG = -1
+      CALL D02NNQ(
+     *' AT T=(R1) AND STEPSIZE H(=R2), SAY, THE ERROR TEST FAILED
+     * REPEATEDLY WITH ABS(H) = MINIMUM OF STEPSIZE.',2,0,0,0,2,TN,H)
+      GO TO 1500
+C
+C  KFLAG = -1 : ERROR TEST FAILED REPEATEDLY
+C
+ 1380 CONTINUE
+      KFLAG = -1
+      CALL D02NNQ(
+     *' AT T=(R1) AND STEPSIZE H(=R2), SAY, THE ERROR TEST FAILED
+     * REPEATEDLY. ',2,0,0,0,2,TN,H)
+      GO TO 1500
+C
+C  KFLAG = -2 : CONVERGANCE FAILURE
+C
+ 1400 CONTINUE
+      KFLAG = -2
+      CALL D02NNQ(
+     *' AT T=(R1) AND STEPSIZE H(=R2), SAY, THE CORRECTOR CONVERGENCE
+     * FAILED REPEATEDLY ',2,0,0,0,2,TN,H)
+      GO TO 1500
+C
+C  KFLAG = -2 : CONVERGANCE FAILURE  WITH MINIMUM STEPSIZE.
+C
+ 1420 CONTINUE
+      KFLAG = -2
+      CALL D02NNQ(
+     *' AT T=(R1) AND STEPSIZE H(=R2), SAY, THE CORRECTOR CONVERGENCE
+     * FAILED REPEATEDLY WITH H = HMIN',2,0,0,0,2,TN,H)
+      GO TO 1500
+C
+C     KFLAG = -4 : RES ORDERED RETURN
+C
+ 1440 CONTINUE
+      CALL D02NNQ(
+     *' AT T=(R1) WHEN EVALUATING THE RESIDUAL IRES WAS REPEATEDLY
+     * SET TO 3. ',1,0,0,0,1,TN,0.0D0)
+      GO TO 1500
+ 1460 CONTINUE
+      KFLAG = -5
+      CALL D02NNQ(
+     *' AT T(=R1) A SINGULAR JACOBIAN MATRIX WAS REPEATEDLY
+     * ENCOUNTERED',1,0,0,0,1,TN,0.0D0)
+      GO TO 1500
+ 1480 CONTINUE
+      RMAX = CONST2
+ 1500 CONTINUE
+ 1520 CONTINUE
+      R = 0.0D0
+      IF (NQU.NE.0) R = 1.0D0/TESCO(2,NQU)
+      DO 1540 I = 1, N
+C       RESET YDOT AND SCALE ACOR SO THAT IT IS LOCAL ERROR ESTIMATE.
+         Y(I) = YH(I,1)
+         YDOT(I) = YH(I,2)/H
+         ACOR(I) = ACOR(I)*R
+ 1540 CONTINUE
+      HOLD = H
+      ISTEP = KFLAG
+      IF (ISTEP.EQ.0) ISTEP = 1
+      IREVCM = 0
+      RETURN
+      END

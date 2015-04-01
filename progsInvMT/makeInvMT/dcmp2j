@@ -1,0 +1,1 @@
+g++ dcmp2j.cpp le_cab.cpp le_dados.cpp -o ~/bin/dcmp2j

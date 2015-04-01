@@ -1,0 +1,26 @@
+#!/bin/bash
+# uso:faz_TRiv -R-60/-44/-27/-17
+range=$1
+Riv_dir=/dados/marcelo/br_prov
+
+# Create a temporary directory. $GMT_TMPDIR will be set to its pathname.
+# XXXXXX is replaced by a unique random combination of characters.
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+#GMT_TMPDIR=tmp
+
+for file in $(find ${Riv_dir}/ -name 'T*.Riv') ; do
+    base=$(basename $file)
+    grep -v \> $file >> ${GMT_TMPDIR}/$base
+done
+
+for file in $(ls ${GMT_TMPDIR}/*) ; do
+    base=$(basename $file)
+    gmtselect $range $file > $base
+    n=$(wc -l $base | awk '{print $1}')
+    if [[ $n == 0 ]] ; then
+	rm $base
+    fi
+done
+
+# Clean up all temporary files and the temporary directory
+rm -rf $GMT_TMPDIR

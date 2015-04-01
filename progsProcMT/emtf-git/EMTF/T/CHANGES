@@ -1,0 +1,54 @@
+Chnages to tranmt
+
+Egbert, 2-26-98
+
+* eliminate unused source files from directory, makefile 
+  These were used for changing coordinates, computing rho and phi, tipper, etc.
+   and outputing ascii tables of results.
+
+*  changed name of wsdm to wrt_z  ... consistent with multmtrn, and function of 
+   routine
+
+*  eliminate logical variables lemap and lmt from tranmt.f and setup.f
+
+*  eliminate weighting by power:  bset no longer reads wtparam from band setup (bs_***)
+   file; wtparam eliminated from argument list for bset and rxspclev.  Call to wtbpwr
+   elminated from rxspclev
+
+*  change name of include file from iosize.h to iosize.inc
+   
+
+03/13/98    ME   some inconsistencies discovered with WATCOM/AIX-FC
+
+	tranmt:  declare logical l_PRISET, l_SETS
+		declare integer dec_fac
+	mkrec:	declare 	logical l_PRISET
+	sdmwrite:	subroutine dec2dms
+		sig(1,degs) --> sig(1.,degs)
+		dms(3) = int(mod(degs,60)) --> 
+			dms(3) = int(mod(degs,60.))
+
+
+March 20, 1998   G. Egbert
+
+
+1) changed channel IDs (array chid) from character*2
+to character*6
+
+This involves changes in D to:
+                out_pack.f
+                getsp.f
+                dnff.f
+and in T to:
+                rfhead.f
+                tranmt.f
+                wrt_z.f
+                setup.f
+                sdmwrite.f
+and in MMT to :
+                readfvg.f
+                setup.f
+                wrt_z.f
+                multmtrn.f
+                extra.f
+

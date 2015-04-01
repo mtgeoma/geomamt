@@ -1,0 +1,167 @@
+02/13/1998		Markus Eisel
+
+Changes to DNFF
+
+- moved include file  ../datsz.h  datsz.inc (into source dir)
+- include files:
+	datsz.inc		old datsz.h
+       	input.inc		all input related vars
+       	params1.inc		all general parameters
+	params2.inc 		3 general parameters also incl. 
+				in decimate.inc
+	decimate.inc		all decimation related stuff
+	iounits.inc		files, I/O units
+
+	../include/four_byte.h
+
+-	the BIN_DIR in the Makefile has to be edited to use
+	'make install' properly. In the Makefile all dependencies
+	are listed.
+
+
+-  	integer*2 and integer*4 binary input files supported.
+	Either set parameter NBYTES in PARMAS1.INC or use command
+	line option -b2 or -b4.
+-	System response tables: added to new identifiers for reading
+	the system responses from a simple table format. 
+	AP: identifier for a table which has amplitudes and phases
+	RI: identifier for table of real and imaginary parts.
+	Both are asumed to be functions of FREQUENCY. All preceding 
+	lines which start with a non-numeric character ( 0 - 9 ) 
+	on the first non-white-space field are asumed to be 
+	header/comment lines.
+	From the first line which has a numeric character a three
+	column table is read until EOF or ERROR. RESPTBL tests for
+	increasing sequence of frequnecies and reorders if not true.
+	Associated iftypes:  	AP: iftype = 98
+				RI: iftype = 99
+-	system response tables are asumed to be in a directory
+	sensors (subdirectory of the working directory). But if
+	the file is not found the user is prompted for a different
+	file name.
+-	changed the default name for the paths file to 'paths.cfg'.
+	In case this file doesn't exist, prompt the user for a 
+	different file name or hit return for no paths file.
+- 	changed the default name for the SP file from sp... to
+	croot(1:mi-3)//'.sp', assuming that the input file is in the
+	form '<siteid>.dat'. 
+
+
+-  More minor changes by Egbert, 2-19-98
+
+change variable time_interval ==> time_int  
+    (time_interval is a function in qlib, needed for seed version)
+
+-    Egbert 2-20-98
+
+changes to resptbl.f :
+   format for reading emi sensors files :   *  ==>   g6.0
+   add code for trying to avoid problems with upper/lower case
+   in sensors files names
+
+-  Egbert 2/23-24
+
+* changes to fcorsu.f to fix minor problem with correction of
+digital anti-alias filters used prior to decimation
+
+* found bug in low pass filter decimation filter routine
+dcfilt.f: array fc was declared fc(nd,*) in this routine,
+but fc(ndmax,*) in decset.
+
+*  add nfilmax to declarations in params2.inc (remove from params1.inc)
+and include params2.inc in getsp (to get rid of separate definitions
+of parameter nfilmax in several files).
+
+*  eliiminate rdfc from decset.f  (last step in fixing bug with fc() array
+
+*  changes to eliminate decimation levels with nfuse(id) = 0 in
+decset.cfg file.  This allows you to decimate and keep FCs from
+only higher decimatin levels (longer periods).
+There are three changes:  (1)  after decimation
+add line of code at begining of loop over decimation levels.  
+
+      do 200 id = 1,nd
+      if(nfuse(id) .gt. 0) then
+             .
+             .
+             .
+      endif 
+200   continue
+
+	i.e., Don't FT or save sets from decimation levels with nfuse(id) = 0 . 
+
+	(2) Before writing header for output FC file,	
+	 eliminate decimation levels 
+	with nfuse(id) = 0 ; add this code after 490  continue :
+
+	iid = 0
+	do id = 1,nd
+         if(nfuse(id) .gt. 0) then
+            iid = iid + 1
+            idl(iid) = idl(id)
+            nwin(iid) = nwin(id)
+         endif
+        enddo
+
+	(3)   change argument 2 to wfhead from nd to iid 
+		(new number of "good" decimation levels).
+
+*  Eliminate parameter fsv ... the size of FC arrays is just calculated now
+
+*  Made lpack a parameter and added declaration to params1.inc
+
+*  Changed way that the program strips off a suffix from a data file
+to make a .sp , .rec or .f5 file . Now we search from the begining of
+the string for the first occurence of a blank or period, and use
+what preceeds this as the file root.  (New function irlong, patterned 
+after iclong).   So now the .sp file for a file named either
+data_file or data_file.bin would just be data_file.sp   
+
+*  Editing out commented out lines as I go
+
+*  Add capability to read simple ascii files.  Changes include:
+  -->  additional command line options -a ( ascii file with separate
+     .clk file with clock reset info) and -A (ASCII file with
+      clock reset info in first 3 lines of file)
+  --> new logical variables to keep track of ascii options declared in
+      input.inc
+  --> additional code in cininit (in inpou_bin.f) to
+      initialize reading  from ascii files
+  --> two new subroutines in asc_rec.f: (1) asc_rec, which reads
+       clock info (from *.clk file made from input file name,(-a) or
+      from header(-A)), and initializes time_int, irec, nch;
+      (2) rdasc , which is used in place of rdblk with both -a and -A
+      options.
+
+*  corrected apparent bug:  offset to add to sample numbers  in
+data file was called ioff and was set to zero in main.
+This should be set in bdrcsu but instead ioffc was set (and never
+used for anything).
+
+*  still need to think about:  setting of   time_int
+In previous version this was set to clock0/dr ; but proper
+relation of time_int to clock0 depends on how clock0 is
+set by programs which write binary data files.  Old versions by
+egbert already added clock0 to sample numbers in data file,
+so time_int should always be zero.  But maybe this should change????
+For now time_int is set to zero in dnff ...
+
+Eisel  2/26/98
+
+added a check for overflow of nsmax (max # of sets). Program exits main
+loop and prints out warning. 
+Makefile updated for params2.inc (included in decimate.inc)
+
+2/27/98
+INCLUDE FILES: ../include/datsz.inc includes nchmx.inc. For compiling
+on the IBMs 
+       include 'nchmx.inc'
+needs to be changed to
+       include '../include/nchmx.inc'
+
+In turn, params2.inc has to be changed, because her nchmx is set again.
+
+        parameter       (nchmx = 10)
+ ==>
+	include '../include/nchmx.inc'
+

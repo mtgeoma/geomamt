@@ -1,0 +1,113 @@
+      SUBROUTINE E04GDQ(M,N,LSQLIN,LSFJSA,LSF,RTEPS,ETA,IGRADE,IPRINT,
+     *                  LSMON,STEPMX,EPSMCH,TAU,XNORM,NOMOVE,X,FVEC,
+     *                  FJAC,LJ,G,P,S,ALPHA,PNORM,SSQNEW,SSQOLD,NITER,
+     *                  NFTOTL,NWHY,IFLAG,IW,LIW,W,LW)
+C     MARK 13 RE-ISSUE. NAG COPYRIGHT 1988.
+C
+C     **************************************************************
+C
+C     INITIALIZES VARIABLES NECESSARY TO COMPUTE THE STEPLENGTH.
+C     CALLS THE STEPLENGTH SUBROUTINE AND, IF NECESSARY, PRINTS
+C     DETAILS OF THE CURRENT ITERATION.
+C
+C     PHILIP E. GILL, SUSAN M. PICKEN, WALTER MURRAY,
+C     BRIAN T. HINDE AND ENID M. R. LONG
+C     D.N.A.C., NATIONAL PHYSICAL LABORATORY, ENGLAND.
+C
+C     **************************************************************
+C
+C     Modified to call BLAS.
+C     Peter Mayes, NAG Central Office, October 1987.
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  ALPHA, EPSMCH, ETA, PNORM, RTEPS, SSQNEW,
+     *                  SSQOLD, STEPMX, TAU, XNORM
+      INTEGER           IFLAG, IGRADE, IPRINT, LIW, LJ, LW, M, N,
+     *                  NFTOTL, NITER, NWHY
+      LOGICAL           NOMOVE
+C     .. Array Arguments ..
+      DOUBLE PRECISION  FJAC(LJ,N), FVEC(M), G(N), P(N), S(N), W(LW),
+     *                  X(N)
+      INTEGER           IW(LIW)
+C     .. Subroutine Arguments ..
+      EXTERNAL          LSF, LSFJSA, LSMON, LSQLIN
+C     .. Arrays in Common ..
+      DOUBLE PRECISION  WMACH(15)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  EPS, EPSA, EPSR, GNORM, GTP, SPE, T, TNYTOL,
+     *                  TOLABS, TOLAX, TOLREL, TOLRX, U
+      INTEGER           I, NUMF
+      LOGICAL           FAIL
+C     .. External Functions ..
+      DOUBLE PRECISION  F06BLF, DDOT, DNRM2
+      EXTERNAL          F06BLF, DDOT, DNRM2
+C     .. External Subroutines ..
+      EXTERNAL          DGEMV, X02ZAZ
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS, MAX, MOD, SQRT
+C     .. Common blocks ..
+      COMMON            /AX02ZA/WMACH
+C     .. Save statement ..
+      SAVE              /AX02ZA/
+C     .. Executable Statements ..
+      CALL X02ZAZ
+C
+C     PRINT OUT THE CURRENT SOLUTION EVERY IPRINT ITERATIONS.
+C
+      IF (IPRINT.LE.0) GO TO 20
+      IF (MOD(NITER,IPRINT).EQ.0) CALL LSMON(M,N,X,FVEC,FJAC,LJ,S,
+     *    IGRADE,NITER,NFTOTL,IW,LIW,W,LW)
+C
+C     COMPUTE THE PROJECTED GRADIENT
+C
+   20 NOMOVE = .FALSE.
+      GTP = DDOT(N,G,1,P,1)
+C
+C     ENSURE THAT THE SEARCH DIRECTION IS DOWNHILL.
+C
+      IF (GTP.LE.0.0D+0) GO TO 60
+      DO 40 I = 1, N
+         P(I) = -P(I)
+   40 CONTINUE
+      GTP = -GTP
+   60 PNORM = DNRM2(N,P,1)
+      GNORM = DNRM2(N,G,1)
+      SSQOLD = SSQNEW
+      SPE = F06BLF(STEPMX,PNORM,FAIL)
+      ALPHA = 1.0D+0
+      U = 1.0D+0 + ABS(SSQNEW)
+      EPSA = 1.0D+1*EPSMCH*U
+      EPSR = EPSA/U
+      TOLRX = EPSR/(SQRT(EPSR)-ETA*F06BLF(GTP,PNORM*GNORM,FAIL))
+      TOLREL = MAX(EPSMCH,TOLRX)
+      EPS = TOLREL
+      TNYTOL = EPSMCH*F06BLF(1.0D+0+XNORM,PNORM,FAIL)
+      TOLAX = EPSA/(SQRT(EPSA)-F06BLF(GTP,PNORM,FAIL))
+      TOLABS = F06BLF(TOLRX*XNORM+TOLAX,PNORM,FAIL)
+      T = MAX(TNYTOL,TOLABS)
+      CALL LSQLIN(M,N,LSFJSA,LSF,EPS,T,ETA,0.0D+0,SPE,P,GTP,X,SSQNEW,
+     *            ALPHA,FJAC,LJ,FVEC,G,NUMF,NWHY,IW,LIW,W,LW)
+      NITER = NITER + 1
+      NFTOTL = NFTOTL + NUMF
+      IF (NWHY.LT.0) RETURN
+      IFLAG = NWHY
+      TAU = (SSQOLD-SSQNEW)/SSQOLD
+      IF (IFLAG.LE.1) RETURN
+C
+C     SINCE THE NON-DERIVATIVE SUBROUTINE E04FCV HAS BEEN USED FOR
+C     LSQLIN, IT IS NECESSARY TO EVALUATE EITHER THE JACOBIAN MATRIX
+C     AND THE GRADIENT VECTOR (IF THE LINEAR SEARCH WAS SUCCESSFUL)
+C     OR THE FUNCTION VECTOR (IF THE LINEAR SEARCH FAILED).
+C
+      NWHY = 3 - IFLAG
+      NFTOTL = NFTOTL + 1 - NWHY
+      CALL LSFJSA(NWHY,M,N,LSF,X,FVEC,FJAC,LJ,IW,LIW,W,LW)
+      IF (NWHY.LT.0) RETURN
+      IF (NWHY.GT.0) CALL DGEMV('Transpose',M,N,2.0D0,FJAC,LJ,FVEC,1,
+     *                          0.0D0,G,1)
+      NWHY = 0
+      RETURN
+C
+C     END OF E04GDQ   (GTALP)
+C
+      END

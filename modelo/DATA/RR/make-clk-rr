@@ -1,0 +1,26 @@
+#!/bin/bash
+
+if [[ ${#} == 0 ]] ; then
+    echo "usage: $0 clock.log"
+    echo " clock.log done by make-clk-log"
+    echo
+    exit 1
+fi
+clk_log=$1
+
+exec 6<&0 # liga o arquivo #6 com stdin (cópia de segurança)
+exec < $clk_log # stdin substituído pelo arquivo $clk_log
+clk_rr=""
+while read -a col
+do
+    if [[ ${col[0]} == ">" ]] ; then
+	clk_rr=""
+    elif [[ -z $clk_rr ]] ; then
+	clk_rr=${col[1]}
+    else
+	echo "${col[5]}" > ${col[0]}.clk
+	echo " ${col[1]:2:2} ${col[1]:5:2} ${col[1]:8:2} ${col[1]:11:2} ${col[1]:14:2} ${col[1]:17:2}" >> ${col[0]}.clk
+	echo " ${clk_rr:2:2} ${clk_rr:5:2} ${clk_rr:8:2} ${clk_rr:11:2} ${clk_rr:14:2} ${clk_rr:17:2}" >> ${col[0]}.clk
+    fi
+done
+exec 0<&6 6<&- # restaura stdin do arquivo #6 e o fecha

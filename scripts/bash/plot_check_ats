@@ -1,0 +1,300 @@
+#!/bin/bash
+
+# default optional arguments
+declare -A options
+options=(['ps']=check_ats.ps ['selectS']=default ['selectT']=default ['BTp']=default ['BTs']=default)
+
+usage ()
+# function to describe script usage
+# $1: script name
+{
+    echo "usage: $1 ats_dir... [ps=ps_file selectS=lon/lat/dist selectT=Tmin/Tmax BTp=param  BTs=param]"
+    echo "mandatory argument:"
+    echo "    ats_dir: directories with ats files"
+    echo
+    echo "options:"
+    echo "    ps=ps_file: ps file [${options['ps']}]"
+    echo "    selectS=lon/lat/dist: spatial selection with radius dist (in km) and centered at coordinates lon/lat"
+    echo "    selectT=Tmin/Tmax: select data between dates Tmin and Tmax in iso format(yyyy-mm-ddThh:mm:ss.s)"
+    echo "    BTp=param: B parameter to primary time scale [a1df3h]"
+    echo "    BTs=param: B parameter to secundary time scale [a1O]"
+    echo
+    exit 1
+}
+
+if [[ ${#} -lt 1 ]] ; then
+    usage $0
+fi
+
+N=0 # directory count
+# read arguments
+while [[ -n $1 ]] ; do
+    arg=($(echo $1 | gawk '{gsub("="," ");print $0}'))
+    if [[ ${#arg[*]} -ne 2 ]] ; then # hopefully a directory
+	dir[$N]=$1
+        # if exist, remove last "/"
+        # must work to something like dir=/tmp/local//"
+	while [[ ${dir[$N]} != ${dir[$N]%/} ]] ; do
+	    dir[$N]=${dir[$N]%/}
+	done
+	if [[ !(-d ${dir[$N]}) ]] ; then
+	    echo "${dir[$N]} isn't a valid directory"
+	    exit 1
+	fi
+	((N++))
+    # check if is a valid option
+    elif [[ -z ${options[${arg[0]}]} ]] ; then
+        echo "'${arg[0]}' isn't a valid option"
+	echo
+        usage $0
+    else
+        options[${arg[0]}]=${arg[1]}
+    fi
+    shift
+done
+
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+
+GMS=06
+N=0 # reset to ats file count
+for D in $(echo ${dir[*]}) ; do
+    for file in $(find ${D} -iname '*.ats') ; do
+	((N++))
+	atsdir=$(dirname $file)
+	if [[ ${D} != $atsdir ]] ; then
+	    echo "\"$file\" must be at directory \"${D}\""
+	    echo
+	    rm -rf $GMT_TMPDIR
+	    exit 1
+	fi
+	base=$(basename $file)
+	base=${base:0:$[${#base}-4]} # remove extension '.ats'
+        # create output as: adu<serial_number>_<run_number>_<band_index|sampling_frequency>
+	if [[ ${#base} == 8 ]] ; then # old adu06
+	    #format: ssscrrtb
+	    #sss: adu serial number (001..999)
+	    #c: channel number (A=1..H=8)
+	    #rr: run number (01..99)
+	    #t: channel type (a=Ex,b=Ey,x=Hx,y=Hy,z=Hz)
+	    #b: band index (a=HF,b=LF1,c=LF2,d=LF3,e=LF4,f=free sample freq.)
+	    output=$(printf "adu%s_%s_%s" ${base:0:3} ${base:4:2} ${base:7:1})
+	    GMS=06
+	else
+	    fields=($(echo $base | gawk '{gsub("_"," ",$1);print $1}'))
+	    if [[ ${#fields[*]} == 7 ]] ; then # adu07 format
+	        # 039_V01_C08_R103_TEX_BH_16384h
+	        # 039: adu serial number
+	        # V01: XML Version
+	        # C08: channel number
+	        # R103: run number
+	        # TEX: channel type (Ex,Ey,Ez,Hx,Hy,Hz)
+	        # BH: board type (L=LF-board;M=MF-board;H=HF-board)
+	        # 16384h: sample rate (h=Hz and s=sec)
+		output=$(printf "adu%s_%s_%s" ${fields[0]} ${fields[3]} ${fields[6]})
+		GMS=07
+	    else
+		echo "unexpected \"$file\""
+		echo "expected ats file name with 12 character length"
+		echo "or with 6 \"_\" field separator"
+		rm -rf $GMT_TMPDIR
+		exit 1
+	    fi
+	fi
+	atsheader $file Longitude Latitude StartDateTimeIso FileName >> $GMT_TMPDIR/$output
+    done
+done
+echo "there are $N ats files at ${dir[*]}"
+
+# check if each group have same coordinates and start time
+# store it in $GMT_TMPDIR/infoadu: lon lat start_time Nchannels group_label
+for file in $(ls $GMT_TMPDIR/adu*) ; do
+    N=$(cat $file | wc -l) # number of channels
+    group=$(basename $file)
+    group=${group:3} # remove starting "adu"
+    output=$GMT_TMPDIR/infoadu
+    tmp=$GMT_TMPDIR/tmp.tmp
+    awk -v n=$N -v g=$group '{print $1,$2,$3,n,g}' $file | sort -u > $tmp
+    N=$(cat $tmp | wc -l)
+    if [[ $N != 1 ]] ; then
+	echo "group \"$group\" didn't have same coordinates and/or start time"
+	cat $file
+	rm -rf $GMT_TMPDIR
+	exit 1
+    else
+	cat $tmp >> $output
+    fi
+    rm $tmp
+done
+
+if [[ ${options['selectT']} == default ]] ; then
+    cp $GMT_TMPDIR/infoadu $GMT_TMPDIR/selection
+else
+    # selectT=Tmin/Tmax
+    par=($(echo  ${options['selectT']} | gawk '{gsub("/"," ");print $0}'))
+    awk '{print $3,0,$1,$2,$4,$5}' $GMT_TMPDIR/infoadu | gmtselect -JX20cT/2c -R${par[0]}/${par[1]}/-1/1 |\
+    awk '{print $3,$4,$1,$5,$6}' > $GMT_TMPDIR/selection
+fi
+
+if [[ ${options['selectS']} != default ]] ; then
+    # selectS=lon/lat/dist
+    par=($(echo  ${options['selectS']} | gawk '{gsub("/"," ");print $0}'))
+    backup=$GMT_TMPDIR/backup.tmp
+    cp $GMT_TMPDIR/selection $backup
+    center=$GMT_TMPDIR/center.tmp
+    echo "${par[0]} ${par[1]}" > $center
+    gmtselect $backup -fg -C${par[2]}/$center > $GMT_TMPDIR/selection
+    rm $center $backup
+fi
+
+# check number of channels
+declare -a chan
+for nchan in $(awk '{print $4}' $GMT_TMPDIR/selection) ; do
+    ((chan[$nchan]++))
+done
+echo "in selected data there are:"
+N=0
+for nchan in $(echo ${!chan[*]}) ; do
+    echo "  ${chan[$nchan]} data group with $nchan channels"
+    N=$(echo "$N+${chan[$nchan]}*$nchan" | bc -l)
+done
+echo "into a total of $N ats files"
+
+gawk -v d=$GMT_TMPDIR 'BEGIN{c=sprintf("%s/coord",d);z=sprintf("%s/zero",d)}{if($1==0&&$2==0){print $0 >> z}else{print $0 >> c}}' $GMT_TMPDIR/selection
+
+if [[ -s $GMT_TMPDIR/coord ]] ; then
+    center=($(gawk '{print $1,$2}' $GMT_TMPDIR/coord | gmtmath -S -Ca STDIN MEAN =))
+    mapproject $GMT_TMPDIR/coord -G${center[0]}/${center[1]}/e | awk '{print $NF}' > $GMT_TMPDIR/dist
+    mapproject $GMT_TMPDIR/coord -Af${center[0]}/${center[1]} | awk '{print $NF}' > $GMT_TMPDIR/azim
+else
+    center=(0 0)
+    mapproject $GMT_TMPDIR/zero -G${center[0]}/${center[1]}/e | awk '{print $NF}' > $GMT_TMPDIR/dist
+    mapproject $GMT_TMPDIR/zero -Af${center[0]}/${center[1]} | awk '{print $NF}' > $GMT_TMPDIR/azim
+fi
+
+Maxdist=$(minmax $GMT_TMPDIR/dist -C | awk '{if($2<=1){print 1}else{p10=int(log($2)/log(10));p10=exp(p10*log(10));m=int($2/p10)+1;print p10*m}}')
+gdist=$(echo "$Maxdist/10" | bc -l)
+Rdate=($(cat $GMT_TMPDIR/selection | awk '{print $3}' | minmax --TIME_SYSTEM=UNIX -fi0T -fo0t -C))
+Rdate[0]=$(echo ${Rdate[0]} | awk '{print int($1/3600)*3600}' | gmtconvert -fi0t -fo0T --TIME_SYSTEM=UNIX)
+Rdate[1]=$(echo ${Rdate[1]} | awk '{print int($1/3600)*3600+3600}' | gmtconvert -fi0t -fo0T --TIME_SYSTEM=UNIX)
+echo "selected data is inside a circle with radius of ${Maxdist}m centered at longitude ${center[0]} and latitude ${center[1]}"
+echo "in time range ${Rdate[0]} ${Rdate[1]}"
+
+max_time=$(echo ${Rdate[0]} ${Rdate[1]} | gmtconvert -fi0-1T -fo0-1t --TIME_SYSTEM=UNIX | awk '{print $2-$1}')
+
+if [[ ${options['BTp']} == "default" ]] ; then
+    if (( $max_time < $(echo "60*5" | bc -l) )) ; then
+        options['BTp']=a10cf1c
+    elif (( $max_time < $(echo "60*10" | bc -l) )) ; then
+        options['BTp']=a20cf5c
+    elif (( $max_time <= $(echo "60*30" | bc -l) )) ; then
+        options['BTp']=a1mf10c
+    elif (( $max_time <= $(echo "60*60" | bc -l) )) ; then
+        options['BTp']=a2mf30c
+    elif (( $max_time < $(echo "60*60*3" | bc -l) )) ; then
+        options['BTp']=a5mf1m
+    elif (( $max_time < $(echo "60*60*6" | bc -l) )) ; then
+        options['BTp']=a15mf5m
+    elif (( $max_time < $(echo "60*60*24" | bc -l) )) ; then
+        options['BTp']=a1hf10m
+    elif (( $max_time < $(echo "60*60*24*2" | bc -l) )) ; then
+        options['BTp']=a3hf30m
+    elif (( $max_time < $(echo "60*60*24*5" | bc -l) )) ; then
+        options['BTp']=a6hf1h
+    elif (( $max_time < $(echo "60*60*24*10" | bc -l) )) ; then
+        options['BTp']=a8hf2h
+    elif (( $max_time <= $(echo "60*60*24*20" | bc -l) )) ; then
+        options['BTp']=a12hf3h
+    elif (( $max_time <= $(echo "60*60*24*20*4" | bc -l) )) ; then
+	aBTp=$(echo $max_time | awk '{printf "%.0f",$1/(20*60*60*24)}')
+        options['BTp']=$(echo $aBTp | awk '{printf "a%ddf%fh",$1,$1*24/4}')
+    else
+	aBTp=$(echo $max_time | awk '{printf "%.0f",$1/(20*60*60*24)}')
+        options['BTp']=$(echo $aBTp | awk '{printf "a%ddf%fd",$1,$1/4}')
+    fi
+fi
+
+if [[ ${options['BTs']} == "default" ]] ; then
+    if (( $max_time < $(echo "60*10" | bc -l) )) ; then
+	options['BTs']=a1M
+	gmtset PLOT_CLOCK_FORMAT=hh:mm
+    elif (( $max_time <= $(echo "60*60" | bc -l) )) ; then
+	options['BTs']=a10M
+	gmtset PLOT_CLOCK_FORMAT=hh:mm
+    elif (( $max_time < $(echo "60*60*6" | bc -l) )) ; then
+	options['BTs']=a1H
+	gmtset PLOT_CLOCK_FORMAT=hh:mm
+    elif (( $max_time < $(echo "60*60*24*10" | bc -l) )) ; then
+	options['BTs']=a1D
+	gmtset PLOT_DATE_FORMAT=yyyy-mm-dd
+    elif (( $max_time <= $(echo "60*60*24*20" | bc -l) )) ; then
+	options['BTs']=$(echo $max_time | awk '{printf "a%.0fD",$1/(10*60*60*24)}')
+	gmtset PLOT_DATE_FORMAT=yyyy-mm-dd
+    else
+        options['BTs']=a1O
+	gmtset PLOT_DATE_FORMAT=yyyy-mm
+    fi
+fi
+
+gmtset ANNOT_FONT_SIZE_PRIMARY=10p ANNOT_FONT_SIZE_SECONDARY=12p
+gmtset ANNOT_OFFSET_PRIMARY=0.1c ANNOT_OFFSET_SECONDARY=0.1c TICK_LENGTH=0.1c
+
+X0=1.6
+Y0=2
+if [[ $GMS == "06" ]] ; then
+    Y=2
+    DX=0.5
+elif [[ $GMS == "07" ]] ; then
+    Y=3
+    DX=0.5
+else
+    echo "expected GMS=06 or GMS=07"
+fi
+WIDTH1=$(echo "21-(2*$Y0+$Y)" | bc -l)
+X=$(echo "$WIDTH1+$DX" | bc -l)
+WIDTH2=$(echo "29.7-(2*$X0+$X)" | bc -l)
+WIDTH3=$(echo "$WIDTH1+$WIDTH2+$DX" | bc -l)
+
+ps=${options['ps']}
+psbasemap -X${X0}c -Y${Y0}c -R${Rdate[0]}/${Rdate[1]}/-1/1 -JX${WIDTH3}cT/${Y}c -Bp${options['BTp']}/a1Sew -Bs${options['BTs']}/a1Sew -K > $ps
+if [[ -s $GMT_TMPDIR/coord ]] ; then
+    awk '{printf "%s 0 10 90 0 mc %s\n",$3,$NF}' $GMT_TMPDIR/coord |\
+    pstext -N -R -J -Gblue -Wwhite -C0p -K -O >> $ps
+fi
+if [[ -s $GMT_TMPDIR/zero ]] ; then
+    awk '{printf "%s 0 10 90 0 mc %s\n",$3,$NF}' $GMT_TMPDIR/zero |\
+    pstext -N -R -J -Gred -Wwhite -C0p -K -O >> $ps
+fi
+
+psbasemap -Y${Y}c -R0/360/0/$Maxdist -JPa${WIDTH1}c -Ba30/g${gdist} -K -O >> $ps
+if [[ -s $GMT_TMPDIR/coord ]] ; then
+    paste $GMT_TMPDIR/azim $GMT_TMPDIR/dist $GMT_TMPDIR/coord |\
+    awk '{printf "%s %s 10 0 0 mc %s\n",$1,$2,$NF}' |\
+    pstext -N -R -J -Gblue -Wwhite -C0p -K -O >> $ps
+else
+    paste $GMT_TMPDIR/azim $GMT_TMPDIR/dist $GMT_TMPDIR/zero |\
+    awk '{printf "%s %s 10 0 0 mc %s\n",$1,$2,$NF}' |\
+    pstext -N -R -J -Gblue -Wwhite -C0p -K -O >> $ps
+fi
+echo "0 $Maxdist 12 0 0 tc ${Maxdist}m" | pstext -N -R -J -Wwhite -K -O >> $ps
+echo ${center[*]} | awk -v r=$Maxdist '{printf "0 %s 12 0 0 mc %.5f/%.5f\n",r,$1,$2}' |\
+pstext -N -R -J -D0c/1c -K -O >> $ps
+
+awk '{printf "%s %.6f/%.6f %d %s\n",$3,$1,$2,$4,$5}' $GMT_TMPDIR/selection | sort -k 1 > $GMT_TMPDIR/log
+awk '{printf ">\nT %02d %s\nG 12p\n",NR,$0}' $GMT_TMPDIR/log |\
+pslegend -X${X}c -Jx1c -R0/${WIDTH2}/0/${WIDTH1} -D0/0/${WIDTH2}c/${WIDTH1}c/bl -K -O >> $ps
+DX=$(echo "${WIDTH2}/2" | bc -l)
+echo "0 ${WIDTH1} 12 0 0 mc ${dir[*]}" | pstext -N -J -R -D${DX}c/1c -O >> $ps
+
+log=${options['ps']/.ps/.log}
+printf "%.6f %.6f %s %s %s\n" ${center[0]} ${center[1]} ${Maxdist} ${Rdate[0]} ${Rdate[1]} > $log
+cat $GMT_TMPDIR/log >> $log
+
+# Clean up all temporary files and the temporary directory
+rm -rf $GMT_TMPDIR
+
+ps2raster $ps -P -Tf
+if [[ -n $VIEWER_PDF ]] ; then
+    $VIEWER_PDF ${ps/.ps/.pdf}&
+else
+    echo "figure ${ps/.ps/.pdf} done"
+fi

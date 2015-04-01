@@ -1,0 +1,52 @@
+#!/bin/csh
+set HF=0
+set FILEOUT=hxcal.ps
+set TITLE=$FILEOUT
+# programa para apresentar a imagem
+set VIEWER=sdtimage
+# limites das escalas
+set FMIN=1e-6   set FMAX=1e2
+set AMPMIN=0    set AMPMAX=2
+set PHIMIN=-180  set PHIMAX=180
+
+# comprimentos dos eixos
+set FLEN=-12c
+set AMPLEN=9c
+set PHILEN=9c
+
+# apresentacao:
+# simbolos
+set SYMBOL1=s5p
+set SYMBOL2=t5p
+# legendas
+set LABEL1=mtucalb
+set LABEL2=syscal
+# canetas (Pen) e Cor de preenchimento
+set COLOR1=0               set COLOR2=100
+set PEN1=0.25p/$COLOR1     set PEN2=0.25p/$COLOR2
+
+# configura tamanho das letras
+gmtset HEADER_FONT_SIZE 16p ANOT_FONT_SIZE 12p  LABEL_FONT_SIZE 14p
+
+# simbolos das legendas
+echo "2.5 23" | psxy -Jx1 -R0/21/0/29.7 -S$SYMBOL1 -G$COLOR1 -W$PEN1 -P -K > $FILEOUT
+echo "5.0 23" | psxy -Jx -R -S$SYMBOL2 -G$COLOR2 -W$PEN2 -P -K -O >> $FILEOUT
+
+# textos das legendas
+pstext -Jx -R -D0.2/0 -K -O <<END>> $FILEOUT
+2.5 23  10 0 0 ML $LABEL1
+5.0 23  10 0 0 ML $LABEL2
+END
+
+#  basemap para amp
+psbasemap -X2.5c -Y12.4c -JX$FLEN''l/$AMPLEN -R$FMIN/$FMAX/$AMPMIN/$AMPMAX -Ba1pf3:."$TITLE":/a1f0.2:"amplitude":Wesn -P -K -O >> $FILEOUT
+awk '{print $1, $2}' 1175hx.pol | psxy -JX -R -H$HF -S$SYMBOL1 -G$COLOR1 -W$PEN1 -P -K -O >> $FILEOUT
+awk '{print $1, $2}' 1175hxpol.cal | psxy -JX -R -H$HF -S$SYMBOL2 -G$COLOR2 -W$PEN2 -P -K -O >> $FILEOUT
+# basemap para phi
+psbasemap -Y-$PHILEN -JX$FLEN''l/$PHILEN -R$FMIN/$FMAX/$PHIMIN/$PHIMAX -Ba1pf3:"T (s)":/a45f15:"fase (graus)":wESn -P -K -O >> $FILEOUT
+awk '{print $1, $3}' 1175hx.pol | psxy -JX -R -H$HF -S$SYMBOL1 -G$COLOR1 -W$PEN1 -P -K -O >> $FILEOUT
+awk '{print $1, $3}' 1175hxpol.cal | psxy -JX -R -H$HF -S$SYMBOL2 -G$COLOR2 -W$PEN2 -P -O >> $FILEOUT
+
+# retorna aos valores defaults
+gmtset HEADER_FONT_SIZE 36p ANOT_FONT_SIZE 14p  LABEL_FONT_SIZE 24p
+$VIEWER $FILEOUT &

@@ -1,0 +1,281 @@
+#!/bin/csh
+set  FILECMP=resultados/bor016i.dcmp
+set FILEZCMP=resultados/imped016i.dat
+set  FILEIN=bor016i.dcmp
+set   FILEZ=imped016i.dat
+set OUTFILE=compara.ps
+set TITLE=compara
+set TMIN=1e-3
+set TMAX=1e4
+
+gmtset ANOT_FONT_SIZE 9p LABEL_FONT_SIZE 12p
+
+
+#
+#----------------------  Titulo ------------------------------------------------
+#
+echo "6.1 0.5 16 0 0 MC $TITLE" | pstext -X4.3c -Y26.8c -R0/12.2/0/1 -Jx1 -K -P -V > $OUTFILE
+
+#
+#======================== Plota 4 Graficos (1 decada=0.8c)==============================
+# ERRO CHI^2
+
+psbasemap -Y-4.8c -JX5.6cl/4.8cl -R$TMIN/$TMAX/1e-2/1e4 -Ba1p/a1p:"Error":Wsne -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILECMP -Derr -Q | \
+psxy -JX -R -Sc8p -Gblack -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILEIN -Derr -Q | \
+psxy -JX -R -Sc4p -Gred   -K -O -V >> $OUTFILE
+
+psxy -JX -R -W0.8p -K -O -V << end >> $OUTFILE
+$TMIN 4
+$TMAX 4
+end
+
+#------------------------------------------------------------------------------
+# RESIST AP XY e YX
+
+psbasemap -X6.6c -JX5.6cl/4.8cl -R$TMIN/$TMAX/1e-1/1e5 -Ba1p/a1p:"Rho Apparent (Ohm-m)":wsnE -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILECMP -Drhoa -Q | \
+psxy -JX -R -Ss8p  -Gblack -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILEIN -Drhoa -Q | \
+psxy -JX -R -Ss4p  -Gred -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILECMP -Drhob -Q | \
+psxy -JX -R -St8p -Ggrey -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILEIN -Drhob -Q | \
+psxy -JX -R -St4p -Gblue -K -O -V >> $OUTFILE
+
+#------------------------------------------------------------------------------
+# PHASE XY e YX (360o=>5.4575 decadas)
+
+psbasemap -Y-3.2c -JX5.6cl/2.2c -R$TMIN/$TMAX/-45/135 -Ba1p:"Period (s)":/a45f15:"@~f@~ (deg)":wsnE -K -O -V >> $OUTFILE
+
+# desenha os limites de 0 e 90 graus
+psxy -JX -R -W0.5p/128 -K -O -V << EOF >> $OUTFILE
+$TMIN  0
+$TMAX  0
+EOF
+psxy -JX -R -W0.5p/128 -K -O -V << EOF >> $OUTFILE
+$TMIN 90
+$TMAX 90
+EOF
+
+dcmp2gmt -I$FILECMP -Dphia -Q | \
+psxy -JX -R -Ss8p -Gblack -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILEIN -Dphia -Q | \
+psxy -JX -R -Ss4p  -Gred -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILECMP -Dphib -Q | \
+psxy -JX -R -St8p -Ggrey -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILEIN -Dphib -Q | \
+psxy -JX -R -St4p -Gblue -K -O -V >> $OUTFILE
+
+#------------------------------------------------------------------------------
+# PHASE DIFF (360o=>5.4575 decadas)
+
+psbasemap -Y-2.2c -JX5.6cl/2.2c -R$TMIN/$TMAX/-45/45 -Ba1p:"Period (s)":/a15f5g90:"@~f@~@-dif@-(deg)":wSnE -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILECMP -Dphidif -Q | \
+psxy -JX -R -Ss8p  -Gblack -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILEIN -Dphidif -Q | \
+psxy -JX -R -Ss4p  -Gred -K -O -V >> $OUTFILE
+
+#------------------------------------------------------------------------------
+# STRIKE CURRENT SHEAR TWIST
+
+psbasemap -X-6.6c -JX5.6cl/4.4c -R$TMIN/$TMAX/-90/90 -Ba1p:"Period (s)":/a30f10:"Azimuthal Parameters (deg)":WSne -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILECMP -Dazim -Q | \
+psxy -JX -R -Sd8p  -Gblack -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILEIN -Dazim -Q | \
+psxy -JX -R -Sd4p  -Gred -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILECMP -Dch -Q | \
+psxy -JX -R -Sc8p  -W1p,black -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILEIN -Dch -Q | \
+psxy -JX -R -Sc4p  -W1p,red -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILECMP -Dsh -Q | \
+psxy -JX -R -Sl12p/+ -Gblack -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILEIN -Dsh -Q | \
+psxy -JX -R -Sl6p/+ -Gred -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILECMP -Dtw -Q | \
+psxy -JX -R -Sl12p/x -Gblack -K -O -V >> $OUTFILE
+
+dcmp2gmt -I$FILEIN -Dtw -Q | \
+psxy -JX -R -Sl6p/x -Gred -K -O -V >> $OUTFILE
+
+#
+#----------------------  Legendas  -----------------------------------------------
+# STRIKE CURRENT SHEAR TWIST
+echo "0.4 0.5" | psxy -Y4.4 -R0/12.2/0/1 -Jx1 -Sd5p -G0 -K -O -V >> $OUTFILE
+echo "0.4 0.5 8 0 0 ML strike" | pstext -R -Jx -D0.3c -K -O -V >> $OUTFILE
+#
+echo "2.0 0.5" | psxy -R -Jx -Sc5p -W0p/0 -K -O -V >> $OUTFILE
+echo "2.0 0.5 8 0 0 ML current" | pstext -R -Jx -D0.3c -K -O -V >> $OUTFILE
+#
+echo "3.6 0.5" | psxy -R -Jx -Sl6p/+ -G0 -K -O -V >> $OUTFILE
+echo "3.6 0.5 8 0 0 ML shear" | pstext -R -Jx -D0.3c -K -O -V >> $OUTFILE
+#
+echo "5.2 0.5" | psxy -R -Jx -Sl6p/x -G0 -K -O -V >> $OUTFILE
+echo "5.2 0.5 8 0 0 ML twist" | pstext -R -Jx -D0.3c -K -O -V >> $OUTFILE
+
+#----------------------------------------------------------------------------------
+# XY e YX (resist)
+echo "8.6 0.5" | psxy -R -Jx -Ss5p -G0 -K -O -V >> $OUTFILE
+echo "8.6 0.5 8 0 0 ML XY" | pstext -R -Jx -D0.3c -K -O -V >> $OUTFILE
+
+echo "10.2 0.5" | psxy -R -Jx -St5p -G100 -K -O -V >> $OUTFILE
+echo "10.2 0.5 8 0 0 ML YX" | pstext -R -Jx -D0.3c -K -O -V >> $OUTFILE
+
+#
+#======================== Plota Impedancias ==============================
+#
+
+# ZXX
+psbasemap -Y-12.2c -JX5.6cl/4.8c -R$TMIN/$TMAX/-40/40 -Ba1p/a10:"Zxx":Wsne -K -O -V >> $OUTFILE
+# dados medidos
+imped2gmt -I$FILEZCMP -Dxx -S | awk '{print $1, $2, $4}' | \
+psxy -JX -R -Ss8p -Ey0p/0.25p/0 -Gblack -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZ -Dxx -S | awk '{print $1, $2, $4}' | \
+psxy -JX -R -Ss4p -Ey0p/0.25p/0 -Gred -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZCMP -Dxx -S | awk '{print $1, $3, $4}' | \
+psxy -JX -R -St8p -Ey0p/0.25p/100 -Ggrey -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZ -Dxx -S | awk '{print $1, $3, $4}' | \
+psxy -JX -R -St4p -Ey0p/0.25p/100 -Gblue -K -O -V >> $OUTFILE
+
+# dados estimados
+imped2gmt -I$FILEZCMP -Dexx -S | awk '{print $1, $2}' | \
+psxy -JX -R -W1.6p,black -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZ -Dexx -S | awk '{print $1, $2}' | \
+psxy -JX -R -W0.8p,red -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZCMP -Dexx -S | awk '{print $1, $3}' | \
+psxy -JX -R -W1.6p,grey -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZ -Dexx -S | awk '{print $1, $3}' | \
+psxy -JX -R -W0.8p,blue -K -O -V >> $OUTFILE
+
+# ZXY
+psbasemap -X6.6c -JX5.6cl/4.8c -R$TMIN/$TMAX/0/80 -Ba1p/a10:"Zxy":wsnE -K -O -V >> $OUTFILE
+# dados medidos
+imped2gmt -I$FILEZCMP -Dxy -S | awk '{print $1, $2, $4}' | \
+psxy -JX -R -Ss8p -Ey0p/0.25p/0 -Gblack -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZ -Dxy -S | awk '{print $1, $2, $4}' | \
+psxy -JX -R -Ss4p -Ey0p/0.25p/0 -Gred -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZCMP -Dxy -S | awk '{print $1, $3, $4}' | \
+psxy -JX -R -St8p -Ey0p/0.25p/100 -Ggrey -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZ -Dxy -S | awk '{print $1, $3, $4}' | \
+psxy -JX -R -St4p -Ey0p/0.25p/100 -Gblue -K -O -V >> $OUTFILE
+
+# dados estimados
+imped2gmt -I$FILEZCMP -Dexy -S | awk '{print $1, $2}' | \
+psxy -JX -R -W1.6p,black -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZ -Dexy -S | awk '{print $1, $2}' | \
+psxy -JX -R -W0.8p,red -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZCMP -Dexy -S | awk '{print $1, $3}' | \
+psxy -JX -R -W1.6p,grey -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZ -Dexy -S | awk '{print $1, $3}' | \
+psxy -JX -R -W0.8p,blue -K -O -V >> $OUTFILE
+
+# ZYY
+psbasemap -Y-5.8c -JX5.6cl/4.8c -R$TMIN/$TMAX/-40/40 -Ba1p:"Period (s)":/a10:"Zyy":wSnE -K -O -V >> $OUTFILE
+# dados medidos
+imped2gmt -I$FILEZCMP -Dyy -S | awk '{print $1, $2, $4}' | \
+psxy -JX -R -Ss8p -Ey0p/0.25p/0 -Gblack -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZ -Dyy -S | awk '{print $1, $2, $4}' | \
+psxy -JX -R -Ss4p -Ey0p/0.25p/0 -Gred -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZCMP -Dyy -S | awk '{print $1, $3, $4}' | \
+psxy -JX -R -St8p -Ey0p/0.25p/100 -Ggrey -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZ -Dyy -S | awk '{print $1, $3, $4}' | \
+psxy -JX -R -St4p -Ey0p/0.25p/100 -Gblue -K -O -V >> $OUTFILE
+
+# dados estimados
+imped2gmt -I$FILEZCMP -Deyy -S | awk '{print $1, $2}' | \
+psxy -JX -R -W1.6p,black -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZ -Deyy -S | awk '{print $1, $2}' | \
+psxy -JX -R -W0.8p,red -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZCMP -Deyy -S | awk '{print $1, $3}' | \
+psxy -JX -R -W1.6p,grey -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZ -Deyy -S | awk '{print $1, $3}' | \
+psxy -JX -R -W0.8p,blue -K -O -V >> $OUTFILE
+
+# ZYX
+psbasemap -X-6.6c -JX5.6cl/4.8c -R$TMIN/$TMAX/-80/0 -Ba1p:"Period (s)":/a10:"Zyx":WSne -K -O -V >> $OUTFILE
+# dados medidos
+imped2gmt -I$FILEZCMP -Dyx -S | awk '{print $1, $2, $4}' | \
+psxy -JX -R -Ss8p -Ey0p/0.25p/0 -Gblack -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZ -Dyx -S | awk '{print $1, $2, $4}' | \
+psxy -JX -R -Ss4p -Ey0p/0.25p/0 -Gred -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZCMP -Dyx -S | awk '{print $1, $3, $4}' | \
+psxy -JX -R -St8p -Ey0p/0.25p/100 -Ggrey -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZ -Dyx -S | awk '{print $1, $3, $4}' | \
+psxy -JX -R -St4p -Ey0p/0.25p/100 -Gblue -K -O -V >> $OUTFILE
+
+# dados estimados
+imped2gmt -I$FILEZCMP -Deyx -S | awk '{print $1, $2}' | \
+psxy -JX -R -W1.6p,black -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZ -Deyx -S | awk '{print $1, $2}' | \
+psxy -JX -R -W0.8p,red -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZCMP -Deyx -S | awk '{print $1, $3}' | \
+psxy -JX -R -W1.6p,grey -K -O -V >> $OUTFILE
+
+imped2gmt -I$FILEZ -Deyx -S | awk '{print $1, $3}' | \
+psxy -JX -R -W0.8p,blue -K -O -V >> $OUTFILE
+
+#
+#----------------------  Legendas  -----------------------------------------------
+#
+
+echo "0.4 0.5" | psxy -Y4.8 -R0/12.2/0/1 -Jx1 -Ss5p -G0 -K -O -V >> $OUTFILE
+echo "0.4 0.5 8 0 0 ML Real Data" | pstext -R -Jx -D0.3c -K -O -V >> $OUTFILE
+
+echo "3.6 0.5" | psxy -R -Jx -St5p -G100 -K -O -V >> $OUTFILE
+echo "3.6 0.5 8 0 0 ML Imaginary Data" | pstext -R -Jx -D0.3c -K -O -V >> $OUTFILE
+
+echo "6.6 0.5 0 0.6 " | psxy -R -Jx -Sv0p/0p/0p -G0 -K -O -V >> $OUTFILE
+echo "7.0 0.5 8 0 0 ML Real Fit" | pstext -R -Jx -D0.3c -K -O -V >> $OUTFILE
+
+echo "9.8  0.5 0 0.6" | psxy -R -Jx -Sv0p/0p/0p -G100 -K -O -V >> $OUTFILE
+echo "10.2 0.5 8 0 0 ML Imaginary Fit" | pstext -R -Jx -D0.3c -O -V >> $OUTFILE
+
+#--------- Retoma Default GMT ------------------
+gmtset ANOT_FONT_SIZE 18p LABEL_FONT_SIZE 24p
+
+ps2eps -f -l $OUTFILE
+#ps2eps -f $OUTFILE
+awk 'BEGIN{cmd=sprintf("convert -density 150x150 %seps %spng\n",substr("'$OUTFILE'",1,index("'$OUTFILE'",".")),substr("'$OUTFILE'",1,index("'$OUTFILE'",".")));system(cmd)}'
+awk 'BEGIN{cmd=sprintf("eog %spng&\n",substr("'$OUTFILE'",1,index("'$OUTFILE'",".")));system(cmd)}'

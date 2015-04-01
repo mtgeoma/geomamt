@@ -1,0 +1,344 @@
+      SUBROUTINE G13BEV(XXY,IXXY,N,MR,PARA,NPARA,C,KFC,NXSP,PXS,IPXS,BF,
+     *                  NBFQ,WDS,IWDS,NBV,KEF,MT,MPAB,MQAB,A,IDA,B,IDB,
+     *                  W,IDW,KAB,NBF,LBC)
+C     MARK 11 RELEASE. NAG COPYRIGHT 1983.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     SUBROUTINE G13BEV DERIVES THE A(T),B(T) SETS  I.E. THE
+C     MAIN RESIDUAL SERIES AND THE DERIVATIVES WITH RESPECT TO
+C     THE PARAMETERS BEING ESTIMATED
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  C
+      INTEGER           IDA, IDB, IDW, IPXS, IWDS, IXXY, KAB, KEF, KFC,
+     *                  LBC, N, NBF, NBFQ, NBV, NPARA, NXSP
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(IDA), B(IDB), BF(NBFQ), PARA(NPARA),
+     *                  PXS(IPXS,NXSP), W(IDW), WDS(IWDS,NXSP),
+     *                  XXY(IXXY,NXSP)
+      INTEGER           MPAB(15), MQAB(8,NXSP), MR(7), MT(4,NXSP)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  U, ZERO
+      INTEGER           I, IFAILQ, J, JT, JW, JWQ, K, KDI, KDJ, KDL,
+     *                  KF1, KF10, KF11, KF12, KF13, KF14, KF2, KF3,
+     *                  KF4, KF5, KF6, KF7, KF8, KF9, LBCQ, LENA, LENB,
+     *                  LSA, LSB, LSC, LSD, LWA, NAS, NBS, NBSS, ND,
+     *                  NDD, NDS, NDV, NEW, NEWQ, NEX, NEXPD, NEXPDQ,
+     *                  NEXQ, NFR, NGW, NNB, NNP, NNQ, NNR, NP, NPAR,
+     *                  NPARQ, NPD, NPDQ, NPS, NPX, NQ, NQD, NQS, NS,
+     *                  NWD, NXS
+C     .. Local Arrays ..
+      INTEGER           MPQS(4)
+C     .. External Subroutines ..
+      EXTERNAL          G13AAF, G13AEU, G13AEZ, G13AJY, G13BEK, G13BEL,
+     *                  G13BEX, G13BFR
+C     .. Intrinsic Functions ..
+      INTRINSIC         MAX
+C     .. Data statements ..
+      DATA              ZERO, U/0.0D0, 1.0D0/
+C     .. Executable Statements ..
+C
+C     ZEROISE THE FULL A AND B ARRAYS
+C
+      DO 20 I = 1, IDA
+         A(I) = ZERO
+   20 CONTINUE
+      DO 40 I = 1, IDB
+         B(I) = ZERO
+   40 CONTINUE
+      NXS = NXSP - 1
+C
+C     DERIVE MISCELLANEOUS INTEGER VARIABLES ASSOCIATED WITH
+C     THE ORDERS OF THE Y SERIES
+C
+      CALL G13AJY(MR,NP,ND,NQ,NPS,NDS,NQS,NS,NPD,NDD,NQD,MPQS,NPAR)
+      LBCQ = MAX(LBC,1)
+      NPDQ = MAX(NPD,1)
+      NEW = NBF + N - NDD
+      NFR = NBV + N + NDD
+C
+C     CALCULATE THE LENGTH OF EACH A(T),B(T) SET
+C
+      NAS = NBV + N - NDD
+      NBS = NPD + NBV - NBF
+      NPARQ = MAX(NPAR,1)
+C
+C     CALCULATE THE START POINT OF COMPONENT PARTS OF THE
+C     WORKING ARRAY W AND ZEROISE THE END PART
+C
+      KF1 = 1
+      KF2 = KF1 + N
+      KF3 = KF2 + N
+      KF4 = KF3 + NFR
+      KF5 = KF4 + NFR
+      KF6 = KF5 + NBS
+      KF7 = KF6 + NBS
+      KF8 = KF7 + IPXS
+      KF9 = KF8 + IWDS
+      KF10 = KF9 + IWDS
+      KF11 = KF10 + NPARQ
+      KF12 = KF11 + NPARQ
+      KF13 = KF12 + NPARQ
+      KF14 = KF13 + NPARQ
+      DO 60 J = KF14, IDW
+         W(J) = ZERO
+   60 CONTINUE
+      IF (NPAR.LE.0) GO TO 80
+C
+C     TRANSFER ARIMA PARAMETERS FROM PARA TO W(KF10),ETC
+C
+      CALL G13AEZ(PARA,NPAR,MPQS,W,IDW,KF10)
+   80 LWA = 4*NPARQ
+C
+C     TRANSFER Y(I.E. E) TO W(KF1)
+C
+      DO 100 JT = 1, N
+         W(JT) = XXY(JT,NXSP)
+  100 CONTINUE
+      KDJ = NBV - NBF
+      NBSS = LBC + NBV - NBS
+      IF (NXS.LE.0) GO TO 360
+C
+C     PROCESS EACH INPUT SERIES IN TURN
+C
+      DO 340 I = 1, NXS
+C
+C        DERIVE MISCELLANEOUS INTEGER VARIABLES ASSOCIATED WITH
+C        EACH INPUT SERIES
+C
+         CALL G13BEX(MT,I,NXSP,NNB,NNP,NNQ,NNR,NWD,NGW,NPX)
+         KDI = NBV - NBSS
+         KDL = NBSS - NPX
+C
+C        TRANSFER X TO W(KF2)
+C
+         DO 120 JT = 1, N
+            JW = KF2 - 1 + JT
+            W(JW) = XXY(JT,I)
+  120    CONTINUE
+         IF (NPX.LE.0) GO TO 160
+C
+C        TRANSFER PRE-XS TO W(KF7)
+C
+         DO 140 J = 1, NPX
+            JW = KF7 - 1 + J
+            W(JW) = PXS(J,I)
+  140    CONTINUE
+C
+C        TRANSFER OMEGAS AND DELTAS TO W(KF8).
+C        TRANSFER ARTIFICIAL SERIES WHERE OMEGAS = 1,0,0, ETC.
+C        TO W(KF9)
+C
+  160    DO 180 J = 1, NWD
+            JW = KF8 - 1 + J
+            W(JW) = WDS(J,I)
+            JWQ = KF9 - 1 + J
+            W(JWQ) = W(JW)
+            IF (J.GT.NGW) GO TO 180
+            W(JWQ) = ZERO
+  180    CONTINUE
+         W(KF9) = U
+C
+C        DERIVE Z(T) SERIES
+C
+         CALL G13BEL(W(KF2),N,W(KF7),IPXS,W(KF8)
+     *               ,NWD,NNB,NNP,NNQ,NNR,NPX,NEX,W(KF4),W(KF3),NFR)
+C
+C        COMMENCE THE DERIVATION OF THE MAIN RESIDUAL SERIES
+C        BY BUILDING UP E(T)-Z(T) IN W(KF1)
+C
+         DO 200 JT = 1, N
+            JW = KF3 - 1 + NPX + JT
+            W(JT) = W(JT) - W(JW)
+  200    CONTINUE
+         IF (KAB.LT.4) GO TO 220
+         IF (NGW.EQ.NWD) GO TO 220
+C
+C        DELTA CALCULATIONS.
+C        USE THE CURRENT Z(T) SERIES TO DERIVE NEW Z(T) SERIES.
+C        PUT KDL ZEROS IN FRONT. DIFFERENCE. DEFINE START POINTS AND
+C        GET A(T),B(T) RESULTS IN APPROPRIATE PART OF A AND B.
+C
+         CALL G13BEL(W(KF3),NEX,W(KF7),IPXS,W(KF9)
+     *               ,NWD,0,NNP,NNQ,2,0,NEXQ,W(KF3),W(KF4),NFR)
+         CALL G13BEK(W(KF14),NBV,W(KF4),NFR,W(KF4),NFR,KDL,NEX,NEXPD)
+         IFAILQ = 1
+         CALL G13AAF(W(KF4),NEXPD,ND,NDS,NS,W(KF3),NEXQ,IFAILQ)
+         LSA = 1 + KDI + (MQAB(1,I)-1)*NAS
+         LSB = 1 + KDI + (MQAB(1,I)-1)*NBS
+         CALL G13AEU(1,W(KF3),W(KF4),A(LSA),NEXQ,W(KF5),W(KF6),B(LSB)
+     *               ,LBCQ,W(KF10),W(KF11),W(KF12),W(KF13)
+     *               ,NPARQ,NP,NQ,NPS,NQS,NS,LBC)
+  220    IF (NNR.NE.3) GO TO 260
+         IF (KAB.LT.3) GO TO 260
+C
+C        PRE-X CALCULATIONS.
+C        FIRST SET UP AN ARTIFICIAL SERIES IN W(KF3) AND USE
+C        THIS TO DERIVE A NEW Z(T) SERIES. THEN AS ABOVE.
+C
+         DO 240 JT = 1, NEX
+            JW = KF3 - 1 + JT
+            W(JW) = ZERO
+  240    CONTINUE
+         W(KF3) = U
+         CALL G13BEL(W(KF3),NEX,W(KF7),IPXS,W(KF8)
+     *               ,NWD,NNB,NNP,NNQ,2,0,NEXQ,W(KF3),W(KF4),NFR)
+         CALL G13BEK(W(KF14),NBV,W(KF4),NFR,W(KF4),NFR,KDL,NEX,NEXPD)
+         IFAILQ = 1
+         CALL G13AAF(W(KF4),NEXPD,ND,NDS,NS,W(KF3),NEXQ,IFAILQ)
+         LSA = 1 + KDI + (MQAB(2,I)-1)*NAS
+         LSB = 1 + KDI + (MQAB(2,I)-1)*NBS
+         CALL G13AEU(1,W(KF3),W(KF4),A(LSA),NEXQ,W(KF5),W(KF6),B(LSB)
+     *               ,LBCQ,W(KF10),W(KF11),W(KF12),W(KF13)
+     *               ,NPARQ,NP,NQ,NPS,NQS,NS,LBC)
+  260    IF (NNR.EQ.1) GO TO 280
+         IF (KAB.LT.4) GO TO 340
+C
+C        T.F. OMEGA CALCULATIONS.
+C        USE THE X SERIES TO DERIVE NEW Z(T) SERIES. THEN AS ABOVE.
+C
+         CALL G13BEL(W(KF2),N,W(KF7),IPXS,W(KF9)
+     *               ,NWD,NNB,NNP,NNQ,NNR,NPX,NEXQ,W(KF3),W(KF4),NFR)
+         CALL G13BEK(W(KF14),NBV,W(KF4),NFR,W(KF4),NFR,KDL,NEXQ,NEXPDQ)
+         IFAILQ = 1
+         CALL G13AAF(W(KF4),NEXPDQ,ND,NDS,NS,W(KF3),NEXQ,IFAILQ)
+         LSA = 1 + KDI + (MQAB(8,I)-1)*NAS
+         LSB = 1 + KDI + (MQAB(8,I)-1)*NBS
+         CALL G13AEU(1,W(KF3),W(KF4),A(LSA),NEXQ,W(KF5),W(KF6),B(LSB)
+     *               ,LBCQ,W(KF10),W(KF11),W(KF12),W(KF13)
+     *               ,NPARQ,NP,NQ,NPS,NQS,NS,LBC)
+         GO TO 340
+  280    IF (KAB.LT.2) GO TO 340
+C
+C        SIMPLE OMEGA CALCULATIONS.
+C        DIFFERENCE THE X SERIES. PUT ZEROS IN FRONT.
+C        CALCULATE START POINTS,ETC.
+C
+         IFAILQ = 1
+         CALL G13AAF(W(KF2),N,ND,NDS,NS,W(KF3),NDV,IFAILQ)
+         CALL G13BEK(W(KF14),NBV,W(KF3),NFR,W(KF3),NFR,NBF,NDV,NEWQ)
+         LSA = 1 + KDJ + (MQAB(3,I)-1)*NAS
+         LSB = 1 + KDJ + (MQAB(3,I)-1)*NBS
+         CALL G13AEU(1,W(KF3),W(KF4),A(LSA),NEW,W(KF5),W(KF6),B(LSB)
+     *               ,NBS,W(KF10),W(KF11),W(KF12),W(KF13)
+     *               ,NPARQ,NP,NQ,NPS,NQS,NS,NPD)
+         IF (KAB.LT.4) GO TO 340
+         IF (KEF.NE.3) GO TO 340
+C
+C        CALCULATIONS INVOLVING COMBINATIONS OF SIMPLE OMEGA
+C        AND THE ARIMA PARAMETERS.
+C        THESE INVOLVE THE APPLICATION OF ARIMA CALCS TO THE
+C        INPUT SERIES USED IN THE SIMPLE OMEGA CALCS.
+C
+         DO 300 J = 4, 7
+            K = MQAB(J,I)
+            IF (K.GT.0) GO TO 320
+  300    CONTINUE
+  320    LSC = 1 + (K-1)*NAS
+         LSD = 1 + (K-1)*NBS
+         LENA = IDA - LSC + 1
+         LENB = IDB - LSD + 1
+         CALL G13BFR(W(KF3),W(KF4),A(LSC),A(LSA),NEW,LENA,B(LSB),W(KF6)
+     *               ,B(LSD),NBS,LENB,W(KF10),LWA,NPARQ,KDJ,NP,NQ,NPS,
+     *               NQS,NS,NPD,MPQS,NAS,NBS)
+  340 CONTINUE
+C
+C     COMPLETE THE DERIVATION OF THE MAIN RESIDUAL SERIES AFTER
+C     DIFFERENCING E, SUBTRACTING THE CONSTANT AND INSERTING
+C     BACK FORECASTS TO OBTAIN THE W(T) SERIES.
+C
+  360 IFAILQ = 1
+      CALL G13AAF(W,N,ND,NDS,NS,W(KF3),NDV,IFAILQ)
+      IF (C.EQ.ZERO) GO TO 400
+      DO 380 I = 1, NDV
+         JW = KF3 - 1 + I
+         W(JW) = W(JW) - C
+  380 CONTINUE
+  400 CALL G13BEK(BF,NBFQ,W(KF3),NFR,W(KF3),NFR,NBF,N,NEWQ)
+      CALL G13AEU(1,W(KF3),W(KF4),A(KDJ+1),NEW,W(KF5),W(KF6),B(KDJ+1)
+     *            ,NBS,W(KF10),W(KF11),W(KF12),W(KF13)
+     *            ,NPARQ,NP,NQ,NPS,NQS,NS,NPD)
+      IF (KAB.LT.4) GO TO 420
+C
+C     ARIMA CALCULATIONS.
+C     THESE USE AS INPUT THE W(T) SERIES.
+C
+      LSA = 1 + NAS
+      LSB = 1 + NBS
+      LENA = IDA - LSA + 1
+      LENB = IDB - LSB + 1
+      CALL G13BFR(W(KF3),W(KF4),A(LSA),A(KDJ+1),NEW,LENA,B(KDJ+1),W(KF6)
+     *            ,B(LSB),NBS,LENB,W(KF10),LWA,NPARQ,KDJ,NP,NQ,NPS,NQS,
+     *            NS,NPD,MPQS,NAS,NBS)
+  420 IF (KAB.EQ.0) GO TO 580
+      IF (NBF.LE.0) GO TO 500
+C
+C     BACK FORECAST CALCULATIONS.
+C     THESE USE AN ARTIFICIAL SERIES AS INPUT.
+C
+      DO 440 J = 1, NEW
+         JW = KF3 - 1 + J
+         W(JW) = ZERO
+  440 CONTINUE
+      W(KF3) = U
+      LSA = 1 + KDJ + (MPAB(6)-1)*NAS
+      LSB = 1 + KDJ + (MPAB(6)-1)*NBS
+      CALL G13AEU(1,W(KF3),W(KF4),A(LSA),NEW,W(KF5),W(KF6),B(LSB)
+     *            ,NBS,W(KF10),W(KF11),W(KF12),W(KF13)
+     *            ,NPARQ,NP,NQ,NPS,NQS,NS,NPD)
+      IF (KAB.LT.4) GO TO 500
+      IF (KEF.EQ.1) GO TO 500
+C
+C     CALCULATIONS INVOLVING COMBINATIONS OF BACK FORECASTS
+C     AND ARIMA PARAMETERS.
+C     THESE USE ARIMA CALCULATIONS APPLIED TO THE INPUT
+C     SERIES USED IN THE BACK FORECAST CALCULATIONS.
+C
+      DO 460 I = 7, 10
+         J = MPAB(I)
+         IF (J.GT.0) GO TO 480
+  460 CONTINUE
+  480 LSC = 1 + (J-1)*NAS
+      LSD = 1 + (J-1)*NBS
+      LENA = IDA - LSC + 1
+      LENB = IDB - LSD + 1
+      CALL G13BFR(W(KF3),W(KF4),A(LSC),A(LSA),NEW,LENA,B(LSB),W(KF6)
+     *            ,B(LSD),NBS,LENB,W(KF10),LWA,NPARQ,KDJ,NP,NQ,NPS,NQS,
+     *            NS,NPD,MPQS,NAS,NBS)
+  500 IF (KFC.EQ.0) GO TO 580
+      IF (KAB.LT.2) GO TO 580
+C
+C     CONSTANT CALCULATIONS.
+C     THESE USE AN ARTIFICIAL SERIES AS INPUT.
+C
+      DO 520 J = 1, NDV
+         JW = KF3 - 1 + J
+         W(JW) = U
+  520 CONTINUE
+      CALL G13BEK(W(KF14),NBV,W(KF3),NFR,W(KF3),NFR,NBF,NDV,NEWQ)
+      LSA = 1 + KDJ + (MPAB(11)-1)*NAS
+      LSB = 1 + KDJ + (MPAB(11)-1)*NBS
+      CALL G13AEU(1,W(KF3),W(KF4),A(LSA),NEW,W(KF5),W(KF6),B(LSB)
+     *            ,NBS,W(KF10),W(KF11),W(KF12),W(KF13)
+     *            ,NPARQ,NP,NQ,NPS,NQS,NS,NPD)
+      IF (KAB.LT.4) GO TO 580
+      IF (KEF.NE.3) GO TO 580
+C
+C     CALCULATIONS INVOLVING COMBINATIONS OF THE CONSTANT AND
+C     THE ARIMA PARAMETERS.
+C     THESE USE ARIMA CALCULATIONS APPLIED TO THE INPUT SERIES
+C     USED IN THE CONSTANT CALCULATIONS.
+C
+      DO 540 J = 12, 15
+         K = MPAB(J)
+         IF (K.GT.0) GO TO 560
+  540 CONTINUE
+  560 LSC = 1 + (K-1)*NAS
+      LSD = 1 + (K-1)*NBS
+      LENA = IDA - LSC + 1
+      LENB = IDB - LSD + 1
+      CALL G13BFR(W(KF3),W(KF4),A(LSC),A(LSA),NEW,LENA,B(LSB),W(KF6)
+     *            ,B(LSD),NBS,LENB,W(KF10),LWA,NPARQ,KDJ,NP,NQ,NPS,NQS,
+     *            NS,NPD,MPQS,NAS,NBS)
+  580 RETURN
+      END

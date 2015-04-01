@@ -1,0 +1,6 @@
+make egb2tss
+make clean
+mv egb2tss ~/bin/_egb2tss
+make egb2tsISO
+make clean
+mv egb2tsISO ~/bin/

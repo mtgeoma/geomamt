@@ -1,0 +1,38 @@
+#!/bin/bash
+
+xml=($(ls *.xml 2> /dev/null))
+
+if [[ ${#xml[*]} == 0 ]]; then
+    echo "couldn't find any xml file in corrent directory \"$PWD\""
+    exit 1
+fi
+
+for x in ${xml[*]}; do
+    run=$(grep run_num $x | sed 's/<.\?run_num>//g')
+    run=$(printf "R%03d" ${run//[[:blank:]]/})
+    ats=($(grep ats_data_file $x | sed 's/<.\?ats_data_file>//g'))
+    
+    for f in $(echo ${ats[*]} $x); do
+	col=($(echo $f | tr '_' ' '))
+	if [[ ${f##*.} == "xml" ]] ; then
+	    oldRun=${col[5]}
+	else
+	    oldRun=${col[3]}
+	fi
+
+	if [[ $run != $oldRun ]] ; then
+	    nf=$(echo $f | sed "s/$oldRun/$run/")
+	    if [[ -f $nf ]] ; then
+		echo "couldn't rename $f because $nf already exist"
+	    else
+		echo "renaming $f to $nf"
+		mv -i $f $nf
+		if [[ ${f##*.} != "xml" ]] ; then
+		    tmpxml=$(mktemp /tmp/adu07.XXXXXX)
+		    sed "s/$f/$nf/" $x > $tmpxml
+		    mv $tmpxml $x
+		fi
+	    fi
+	fi
+    done
+done

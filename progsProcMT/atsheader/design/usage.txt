@@ -1,0 +1,11 @@
+usage 1) list all ats header parameters:
+atsheader file.ats
+
+and explicitly indicate which are only reading parameters (derived or useful
+parameter).
+
+usage 2) list only selected ats header parameters:
+atsheader file.ats parameter ...
+
+usage 3) change values in selected header parameters:
+atsheader file.ats parameter=value ...

@@ -1,0 +1,25 @@
+cd ../RF/RFASC
+make rfasc
+make install
+make clean
+cd ../../D
+make dnff
+make install
+make clean
+cd ../T
+make tranmt
+make install
+make clean
+#cd ../MMT
+#make multmtrn
+#make install
+#make clean
+#cd ../RF/RFEMI
+#make rfemi
+#make install
+#make clean
+#   need to be careful about which directory to CD to here!
+#cd ../BIN2ASC
+#make bin2asc
+#make install
+#make clean

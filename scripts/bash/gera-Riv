@@ -1,0 +1,27 @@
+#!/bin/bash
+source check-Zformat
+
+coord_file=$1
+pre=$2
+pos=$3
+
+exec 6<&0 # liga o arquivo #6 com stdin (cópia de segurança)
+exec < $coord_file # stdin substituído pelo arquivo $arquivo_selecao
+while read -a coluna ; do
+    lon=${coluna[0]}
+    lat=${coluna[1]}
+    file=${pre}${coluna[2]}${pos}
+    check-Zformat ${file} zzx
+    form=${Zformats[$?]}
+    if [[ $form == "egbert" ]] ; then
+	dec=$(gawk '{if($4=="declination"){print $NF;nextfile}}' $file)
+    elif [[ $form == "jones" ]] ; then
+	dec=$(gawk '{if($1==">AZIMUTH"){print $NF;nextfile}}' $file)
+    else
+	dec=0
+    fi
+    echo $file $form $dec
+    gds2gmt -I${file} -F$form -R$dec -DRiv |\
+    gawk -v lon=$lon -v lat=$lat '{f=sprintf("%s.Riv",$1);printf "%s %s %s %s %s %s\n",lon,lat,$2,$3,$4,$5 >> f}'
+done
+exec 0<&6 6<&- # restaura stdin do arquivo #6 e o fecha

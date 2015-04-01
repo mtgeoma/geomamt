@@ -1,0 +1,105 @@
+#!/bin/bash
+
+# default optional arguments
+declare -A options
+options=(['cmp']="eff" ['dist']="default")
+
+usage ()
+{
+    printf "usage: %s Zfile[,cmp] [parameter=value]\n" $1
+    printf "where:\n"
+    printf "\tZfile\timpedance data file\n"
+    printf "\t\tcould define which component to get appending a \",\"\n"
+    printf "\t\tDefault is ${options['cmp']}, but could change with option cmp.\n"
+    printf "\nparameters could be:\n"
+    printf "\tcmp\tdefault impedance component [${options['cmp']}]\n"
+    printf "\tdist\tstation distance, separeted by \",\"\n"
+    printf "\t\tDefault is station number.\n"
+    echo
+    exit 1
+}
+
+if [[ ${#} == 0 ]] ; then
+    usage $0
+fi
+
+declare -a Zfile
+N=0
+while [[ -n $1 ]] ; do
+    option=($(echo $1 | awk '{gsub("="," ");print $0}'))
+    if [[ ${#option[*]} -eq 1 ]] ; then
+	Zfile[$N]=${option[0]}
+	((N++))
+    elif [[ ${#option[*]} -eq 2 ]] ; then
+        # check if is a valid option
+        if [[ -z ${options[${option[0]}]} ]] ; then
+            echo "'${option[0]}' isn't a valid option"
+            usage $0
+        else
+            options[${option[0]}]=${option[1]}
+        fi
+    else
+        echo "error in option: $1"
+        usage $0
+    fi
+    shift
+done
+
+if [[ $N > 5 ]] ; then
+    echo "maximum number of Zfile is 5"
+    exit 1
+fi
+
+declare -a dist
+if [[ ${options['dist']} == "default" ]] ; then
+    for (( i=0; i<$N; i++)) ; do
+	dist[$i]=$i
+    done
+else
+    dist=($(echo ${options['dist']} | awk '{gsub(","," ");print $0}'))
+    if [[ ${#dist[*]} != $N ]] ; then
+	echo "number of distances must be equal to number of Zfiles"
+	echo
+	exit 1
+    fi
+fi
+
+TITLE=""
+declare -a cmp
+for (( i=0; i<$N; i++)) ; do
+    file=($(echo ${Zfile[$i]} | awk '{gsub(","," ");print $0}'))
+    if [[ ${#file[*]} -eq 1 ]] ; then
+	cmp[$i]=${options['cmp']}
+    else
+	Zfile[$i]=${file[0]}
+	cmp[$i]=${file[1]}
+    fi
+    if [[ !(-f ${Zfile[$i]}) ]] ; then
+	echo "couldn't find file ${Zfile[$i]}"
+	echo
+	exit 1
+    fi
+    TITLE=$TITLE" ${Zfile[$i]},${cmp[$i]}"
+done
+
+echo "$TITLE"
+echo "Dados interpolados"
+echo "1 1"
+echo "$N"
+
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+for (( i=0; i < $N; i++ )) ; do
+    ID=$(basename ${Zfile[$i]})
+    ID=${ID%.*} # remove qualquer coisa após "."
+    echo $ID
+    echo "0.0000 ${dist[$i]}"
+    parametros-mt ${Zfile[$i]} rho-${cmp[$i]} | \
+	awk '{print $1,$2}' > $GMT_TMPDIR/rho
+    parametros-mt ${Zfile[$i]} phi-${cmp[$i]} | \
+	awk '{print $2}' > $GMT_TMPDIR/phi
+    cat $GMT_TMPDIR/phi | wc -l
+    paste $GMT_TMPDIR/rho $GMT_TMPDIR/phi | \
+	awk '{printf "%.4e %.4e %.4e\n",sqrt(1.0/$1),$2,-1*$3}'
+done
+
+rm -rf $GMT_TMPDIR

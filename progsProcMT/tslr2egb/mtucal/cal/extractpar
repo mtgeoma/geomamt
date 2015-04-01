@@ -1,0 +1,19 @@
+#!/bin/csh
+# erro relativo HX
+awk '{print $1, $3}' ./box/hxteste.dat > hbox.tmp
+awk '{print $3}' ./sys/hxteste.dat > hsys.tmp
+paste hbox.tmp hsys.tmp > h.tmp
+awk '{printf "%14.6e %14.6e\n", $1, 100*($2-$3)/$2}' h.tmp > ERHX.dat
+rm -f *.tmp
+# erro relativo HY
+awk '{print $1, $3}' ./box/hyteste.dat > hbox.tmp
+awk '{print $3}' ./sys/hyteste.dat > hsys.tmp
+paste hbox.tmp hsys.tmp > h.tmp
+awk '{printf "%14.6e %14.6e\n", $1, 100*($2-$3)/$2}' h.tmp > ERHY.dat
+rm -f *.tmp
+# erro relativo HZ
+awk '{print $1, $3}' ./box/hzteste.dat > hbox.tmp
+awk '{print $3}' ./sys/hzteste.dat > hsys.tmp
+paste hbox.tmp hsys.tmp > h.tmp
+awk '{printf "%14.6e %14.6e\n", $1, 100*($2-$3)/$2}' h.tmp > ERHZ.dat
+rm -f *.tmp

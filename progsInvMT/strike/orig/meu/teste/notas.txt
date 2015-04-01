@@ -1,0 +1,2 @@
+strike_example.dcmp da versão 4.1 não é o mesmo gerado com o strike_example.run.
+Para a comparação ser válida, peguei o strike_example.dcmp da versão 3.1.

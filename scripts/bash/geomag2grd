@@ -1,0 +1,166 @@
+#!/bin/bash
+# define geomag program
+GEOMAG=geomag70
+# define awk program (perhaps will work only with gawk)
+AWK=gawk
+
+# make a array with programs used:
+progs=($GEOMAG $AWK echo tr mktemp paste xyz2grd rm)
+
+# check if programs used exist
+# at least command 'which' must exist
+for prog in $(echo ${progs[*]}) ; do
+    which $prog > /dev/null 2>&1
+    if [[ $? != 0 ]] ; then
+	echo "$0 couldn't work without program '$prog'"
+	echo
+	exit 1
+    fi
+done
+
+# set defaults values
+Date=$(date '+%Y,%m,%d')
+H='0'
+IGRF=/usr/local/share/IGRF12.COF
+
+# check usage
+if [[ $# -lt 2 ]] ; then
+    echo "usage: $0 -Rwest/east/south/north -Ixinc[/yinc] [ -Dyyyy.yyy|yyyy,mm,dd ] [ -Haltitude[m|f|k] ] [ -Mmodel_file ]"
+    echo "  default date is today"
+    echo "  default altitude is 0m"
+    echo "  default altitude unit is meter [m] (use 'f' for feet or 'k' for kilometer)"
+    echo "  default model file is $IGRF"
+    echo "  examples:"
+    echo "    $0 -R-74/-34/-34/6 -I1"
+    echo "    $0 -R-74/-34/-34/6 -I1 -D$Date"
+    echo "    $0 -R-74/-34/-34/6 -I1/2 -D$Date -H${H}m"
+    echo "    $0 -R-74/-34/-34/6 -I1/2 -D$Date -H400f -M$HOME/IGRF12.COF"
+    echo
+    exit 1
+fi
+
+# check command line parameters
+while [[ -n $1 ]] ; do
+    if [[ "${1:0:2}" == "-R" ]] ; then
+        # make an array with range values
+	range=${1:2}
+	# check if range have four components and if west<east and south<north
+	check=$(echo $range | $AWK '{n=split($1,a,"/");if(n==4&&(a[1]<a[2])&&(a[3]<a[4])){print "ok"}else{print "fail"}}')
+	if [[ $check == "fail" ]] ; then
+	    echo "error setting option: $1"
+	    echo "expected syntax: -Rwest/east/south/north"
+	    echo
+	    exit 1
+	fi
+    elif [[ "${1:0:2}" == "-I" ]] ; then
+        # make an array with inc values
+	inc=${1:2}
+	n=$(echo $inc | $AWK '{n=split($1,a,"/");print n}')
+	if [[ $n -gt 2 ]] ; then
+	    echo "error setting -I option: $1"
+	    echo "expected syntax: -Ixinc[/yinc]"
+	    echo
+	    exit 1
+	elif [[ $n == 1 ]] ; then
+	    # make yinc=xinc
+	    inc=$(printf "%s/%s" $inc $inc)
+	fi
+    elif [[ "${1:0:2}" == "-D" ]] ; then
+	Date=${1:2}
+    elif [[ "${1:0:2}" == "-H" ]] ; then
+	H=${1:2}
+    elif [[ "${1:0:2}" == "-M" ]] ; then
+	IGRF=${1:2}
+    else
+	echo "$1: unknow parameter"
+	exit 1
+    fi
+    shift
+done
+
+# check if IGRF model file exist
+if [[ !(-e $IGRF) ]] ; then
+    echo "couldn't find IGRF model file '$IGRF'"
+    exit 1
+fi
+
+# set $H to geomag70 altitude parameter:
+#   Altitude: Kxxxxxx.xxx for kilometers  (K1000.13)
+#              Mxxxxxx.xxx for meters  (m1389.24)
+#              Fxxxxxx.xxx for feet  (F192133.73)
+# use M as default
+H=$(echo $H | tr a-z A-Z) # shift characters to uppercase
+if [[ ${H:(-1)} == "F" ]] ; then
+    H=F${H/F/}
+elif [[ ${H:(-1)} == "K" ]] ; then
+    H=K${H/K/}
+else
+    H=M${H/M/}
+fi
+
+# Create a temporary directory. $GMT_TMPDIR will be set to its pathname.
+# XXXXXX is replaced by a unique random combination of characters.
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+
+# make input file to geomag70
+$AWK -v R=$range -v I=$inc -v H=$H -v D=$Date \
+'BEGIN{
+  split(R,range,"/");
+  split(I,inc,"/");
+  for(lon=range[1];lon<=range[2];lon+=inc[1]) {
+    for(lat=range[3];lat<=range[4];lat+=inc[2]) {
+      printf "%s D %s %f %f\n",D,H,lat,lon;
+    }
+  }
+}' > $GMT_TMPDIR/input.dat
+
+# run geomag70
+$GEOMAG $IGRF f $GMT_TMPDIR/input.dat $GMT_TMPDIR/output.dat > /dev/null
+
+# to each output file column, make a file using first line as file name
+# expected labels in first line of output.dat file:
+# Date Coord-System Altitude Latitude Longitude D_deg D_min I_deg I_min H_nT X_nT Y_nT Z_nT F_nT dD_min dI_min dH_nT dX_nT dY_nT dZ_nT dF_nT
+# D I H X Y Z F
+$AWK -v d=$GMT_TMPDIR '{
+  if(NR==1) {
+    for(c=1;c<=NF;c++) file[c]=sprintf("%s/%s",d,$c);
+  }
+  else { # expect that there is not an old file[c] in $GMT_TMPDIR
+    for(c=1;c<=NF;c++) print $c >> file[c];
+  }
+}' $GMT_TMPDIR/output.dat
+
+# make basename for grdfiles
+# will be 'D${Date}H$H'. If $DATE have char ',' change to '-'.
+name=$(echo $Date $H | $AWK '{gsub(",","-",$1);printf "D%sH%s",$1,$2}')
+
+# check if Latitude and Longitude files were created
+if [[ !(-e $GMT_TMPDIR/Latitude) || !(-e $GMT_TMPDIR/Longitude) ]] ; then
+    echo "couldn't find columns labeled as 'Latitude' and 'Longitude' in $GEOMAG output file"
+    echo "nothing done"
+    exit 1
+fi
+
+# make magnetic angle component grids
+for cmp in $(echo "D I") ; do
+    if [[ -e $GMT_TMPDIR/${cmp}_deg && -e $GMT_TMPDIR/${cmp}_min ]] ; then
+	grdfile=${name}_${cmp}.grd
+	paste $GMT_TMPDIR/Longitude $GMT_TMPDIR/Latitude $GMT_TMPDIR/${cmp}_deg $GMT_TMPDIR/${cmp}_min |\
+        $AWK '{gsub("d","");gsub("m","");if($3<0){d=-(-1*$3+$4/60)}else{d=$3+$4/60};printf "%s %s %f\n",$1,$2,d}' |\
+        xyz2grd -G$grdfile -I$inc -R$range
+	echo "created $grdfile file"
+    fi
+done
+
+# make magnetic field component grids
+for cmp in $(echo "H X Y Z F") ; do
+    if [[ -e $GMT_TMPDIR/${cmp}_nT ]] ; then
+	grdfile=${name}_${cmp}.grd
+	paste $GMT_TMPDIR/Longitude $GMT_TMPDIR/Latitude $GMT_TMPDIR/${cmp}_nT |\
+        xyz2grd -G$grdfile -I$inc -R$range
+	echo "created $grdfile file"
+    fi
+done
+
+# Clean up all temporary files and the temporary directory
+rm -rf $GMT_TMPDIR

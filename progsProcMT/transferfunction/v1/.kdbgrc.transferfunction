@@ -1,0 +1,17 @@
+# KDE Config File
+[Breakpoint 0]
+Enabled=true
+Temporary=false
+File=emprogformat.cpp
+Line=85
+[Breakpoint 1]
+Enabled=true
+Temporary=false
+File=egbertformat.cpp
+Line=57
+[General]
+WorkingDirectory=
+DebuggerCmdStr=
+TTYLevel=7
+FileVersion=1
+ProgramArgs=15ttrr16.zrr -Fegbert -Dzxy

@@ -1,0 +1,48 @@
+      SUBROUTINE F02WAZ(M,N,A,NRA,Z,B,C)
+C     MARK 8 RELEASE. NAG COPYRIGHT 1979.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     WRITTEN BY S. HAMMARLING, MIDDLESEX POLYTECHNIC (HOURHS)
+C
+C     F02WAZ RETURNS THE M ELEMENT VECTOR C GIVEN BY
+C
+C     C = (Q**T)*B ,
+C
+C     WHERE Q IS AN M*M ORTHOGONAL MATRIX, DETAILS OF WHICH
+C     ARE IN THE STRICTLY LOWER TRIANGULAR PART OF A THE M*N
+C     (M.GE.N) MATRIX A AND IN THE N ELEMENT VECTOR Z AS
+C     RETURNED FROM ROUTINE F01QAF, AND B IS AN M ELEMENT
+C     VECTOR.
+C
+C     THE ROUTINE MAY BE CALLED WITH C=B.
+C
+C     NRA MUST BE THE ROW DIMENSION OF A AS DECLARED IN THE
+C     CALLING PROGRAM AND MUST BE AT LEAST M.
+C
+C     .. Scalar Arguments ..
+      INTEGER           M, N, NRA
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(NRA,N), B(M), C(M), Z(N)
+C     .. Local Scalars ..
+      INTEGER           K, KLAST, NR
+C     .. External Subroutines ..
+      EXTERNAL          F01QAZ
+C     .. Intrinsic Functions ..
+      INTRINSIC         MIN
+C     .. Executable Statements ..
+      DO 20 K = 1, M
+         C(K) = B(K)
+   20 CONTINUE
+C
+      IF (M.EQ.1) RETURN
+C
+      KLAST = MIN(M-1,N)
+      NR = M + 1
+      DO 40 K = 1, KLAST
+         NR = NR - 1
+C
+         CALL F01QAZ(NR,A(K,K),Z(K),C(K))
+C
+   40 CONTINUE
+C
+      RETURN
+      END

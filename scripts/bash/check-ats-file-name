@@ -1,0 +1,50 @@
+#!/bin/bash
+
+usage ()
+{
+    echo
+    echo "$0 dir"
+    echo "will check if ats files in directory dir:"
+    echo "have lowercase extension;"
+    echo "have uppercase name, except channel subscript in gms07;"
+    echo "have lowercase channel subscript in gms07"
+    echo
+    exit 1
+}
+
+if [[ $# != 1 ]] ; then
+    usage $0
+fi
+
+dir=$1
+
+for f in $(find $dir -iname '*.ats'); do
+    name=$(basename $f)
+    ext=${name##*.}
+    name=${name%.*}
+    if [[ ${#name} != 8 ]] ; then
+	# remove channel subscript in gms7
+	name=${name:0:19}${name:20}
+	subscript=${name:19:1}
+	message=" (ignoring channel subscript)"
+    else
+	message=""
+	subscript=""
+    fi
+
+    if [[ $ext != "ats" ]] ; then
+    	echo "$f don't have ats lowercase extension"
+    fi
+
+    upper_name=$(echo $name | tr 'a-z' 'A-Z')
+
+    if [[ $name != $upper_name ]] ; then
+    	echo "$f don't have uppercase name $message"
+    fi
+
+    lowercase_subscript=$(echo $subscript | tr 'A-Z' 'a-z')
+
+    if [[ $subscript != $lowercase_subscript ]] ; then
+    	echo "$f don't have lowercase channel subscript"
+    fi
+done

@@ -1,0 +1,126 @@
+      SUBROUTINE G13AHF(ST,NST,MR,PAR,NPAR,C,RMS,NFV,FVA,FSD,WA,NWA,
+     *                  IFAIL)
+C     MARK 9 RELEASE. NAG COPYRIGHT 1981.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     G13AHF PRODUCES FORECASTS OF A TIME SERIES, GIVEN A TIME
+C     SERIES
+C     MODEL WHICH HAS ALREADY BEEN FITTED TO THE TIME SERIES USING
+C     ROUTINE G13AEF OR G13AFF.
+C
+C     USES NAG LIBRARY ROUTINE P01AAF
+C
+C     CONTRIBUTORS - G. TUNNICLIFFE WILSON, C. DALY (LANCASTER
+C     UNIVERSIT
+C     VALIDATOR    - T. LAMBERT (NAG CENTRAL OFFICE)
+C
+C
+C     ABSTRACT INFORMATION FROM ORDERS VECTOR
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='G13AHF')
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  C, RMS
+      INTEGER           IFAIL, NFV, NPAR, NST, NWA
+C     .. Array Arguments ..
+      DOUBLE PRECISION  FSD(NFV), FVA(NFV), PAR(NPAR), ST(NST), WA(NWA)
+      INTEGER           MR(7)
+C     .. Local Scalars ..
+      INTEGER           I, IERROR, IST, J, K, KSA, KSB, KSC, KSD, KSE,
+     *                  KSF, KSG, L, LQ, N, ND, NDS, NP, NPS, NQ, NQS,
+     *                  NS
+C     .. Local Arrays ..
+      INTEGER           MPQS(4)
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      INTEGER           P01ABF
+      EXTERNAL          P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          G13AHZ
+C     .. Intrinsic Functions ..
+      INTRINSIC         MAX
+C     .. Executable Statements ..
+      NP = MR(1)
+      ND = MR(2)
+      NQ = MR(3)
+      NPS = MR(4)
+      NDS = MR(5)
+      NQS = MR(6)
+      NS = MR(7)
+      MPQS(1) = NP
+      MPQS(2) = NQ
+      MPQS(3) = NPS
+      MPQS(4) = NQS
+C
+C     CHECK FOR ERRORS IN MR, NPAR
+C
+      IERROR = 1
+      DO 20 I = 1, 7
+         IF (MR(I).LT.0) GO TO 80
+   20 CONTINUE
+      IF (NP+NQ+NPS+NQS.LT.1) GO TO 80
+      IF (NP+NQ+NPS+NQS.NE.NPAR) GO TO 80
+      IF (NS.EQ.1) GO TO 80
+      IF (NS.EQ.0 .AND. NPS+NDS+NQS.NE.0) GO TO 80
+      IF (NS.NE.0 .AND. NPS+NDS+NQS.EQ.0) GO TO 80
+C
+C     CHECK THAT NST IS CONSISTENT WITH MR
+C
+      IERROR = 2
+      IST = (NPS+NDS)*NS + ND + NQ + MAX(NQS*NS,NP)
+      IF (NST.NE.IST) GO TO 80
+C
+C     CHECK DIMENSION OF FORECASTS ARRAY
+C
+      IERROR = 3
+      IF (NFV.LE.0) GO TO 80
+C
+C     CHECK WORKSPACE
+C
+      IERROR = 4
+      IF (NWA.LT.(4*NPAR+3*NST)) GO TO 80
+C
+C     CHECK THAT RMS IS NON-NEGATVE
+C
+      IERROR = 5
+      IF (RMS.LT.0.0D0) GO TO 80
+      K = 0
+C
+C     TRANSFER PARAMETER VALUES TO THE WORKING ARRAY
+C
+      DO 60 I = 1, 4
+         IF (MPQS(I).LE.0) GO TO 60
+         N = MPQS(I)
+         LQ = NPAR*(I-1)
+         DO 40 J = 1, N
+            K = K + 1
+            L = LQ + J
+            WA(L) = PAR(K)
+   40    CONTINUE
+   60 CONTINUE
+C
+C     SPECIFY SUBSCRIPTS WHICH DEFINE THE POSITIONS IN THE WORKING
+C     ARRAY OF THE FIRST VALUES OF THE FOUR PARAMETER ARRAYS  PHI,
+C     THETA,SPHI AND STHETA, AND THE THREE ARRAYS  AEX,AAL AND AEXR
+C     WHICH ARE USED TO MAKE UP THE STATE SET
+C
+      KSA = 1
+      KSB = KSA + NPAR
+      KSC = KSB + NPAR
+      KSD = KSC + NPAR
+      KSE = KSD + NPAR
+      KSF = KSE + NST
+      KSG = KSF + NST
+C
+C     CALL THE AUXILIARY SUBROUTINE WHICH CARRIES OUT THE
+C     NECESSARY CALCULATIONS
+C
+      CALL G13AHZ(ST,NST,NP,ND,NQ,NPS,NDS,NQS,NS,WA(KSA),WA(KSB),WA(KSC)
+     *            ,WA(KSD),NPAR,C,RMS,NFV,FVA,FSD,WA(KSE),WA(KSF)
+     *            ,WA(KSG))
+      IFAIL = 0
+      RETURN
+   80 IFAIL = P01ABF(IFAIL,IERROR,SRNAME,0,P01REC)
+      RETURN
+      END

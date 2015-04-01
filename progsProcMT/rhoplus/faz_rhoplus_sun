@@ -1,0 +1,3 @@
+# fica muito lento com -xtypemap=real:64,double:128,integer:64
+# /opt/sun/sunstudio12.1/bin/sunf90 -o ~/bin-sunf90/rhoplus -w1 -m64 -xtypemap=real:64,double:128,integer:64 -O rhoplus.f
+/opt/oracle/solstudio12.2/bin/sunf90 -o ~/sun/rhoplus -w1 -m64 -xtypemap=real:32,double:64,integer:32 -O rhoplus.f

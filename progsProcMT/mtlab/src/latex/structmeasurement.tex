@@ -1,0 +1,81 @@
+\section{measurement Struct Reference}
+\label{structmeasurement}\index{measurement@{measurement}}
+Representação de uma medida (valor +/- incerteza).  
+
+
+{\tt \#include $<$measure.hpp$>$}
+
+\subsection*{Public Member Functions}
+\begin{CompactItemize}
+\item 
+long double {\bf uncertainty} ()
+\begin{CompactList}\small\item\em Calcula o valor da incereteza. \item\end{CompactList}\end{CompactItemize}
+\begin{Indent}{\bf Construtor}\par
+\begin{CompactItemize}
+\item 
+{\bf measurement} (long double val=0.0, long double var=0.0)
+\begin{CompactList}\small\item\em Construtor default. \item\end{CompactList}\end{CompactItemize}
+\end{Indent}
+\subsection*{Public Attributes}
+\begin{CompactItemize}
+\item 
+long double {\bf value}
+\item 
+long double {\bf variance}
+\end{CompactItemize}
+
+
+\subsection{Detailed Description}
+Representação de uma medida (valor +/- incerteza). 
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\index{measurement@{measurement}!measurement@{measurement}}
+\index{measurement@{measurement}!measurement@{measurement}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}measurement::measurement (long double {\em val} = {\tt 0.0}, \/  long double {\em var} = {\tt 0.0})\hspace{0.3cm}{\tt  [inline]}}\label{structmeasurement_2c0b674ef81f23adb67c556ede54aa97}
+
+
+Construtor default. 
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[{\em val}]valor da medida \item[{\em var}]variança da medida\end{description}
+\end{Desc}
+\begin{Desc}
+\item[Returns:]um objeto do tipo {\em \doxyref{measurement}{p.}{structmeasurement}\/} \end{Desc}
+
+
+\subsection{Member Function Documentation}
+\index{measurement@{measurement}!uncertainty@{uncertainty}}
+\index{uncertainty@{uncertainty}!measurement@{measurement}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}long double measurement::uncertainty ()\hspace{0.3cm}{\tt  [inline]}}\label{structmeasurement_e1b18e55a849210b56e08265915b0e99}
+
+
+Calcula o valor da incereteza. 
+
+\begin{Desc}
+\item[Returns:]O valor da Incerteza \end{Desc}
+
+
+References variance.
+
+\subsection{Member Data Documentation}
+\index{measurement@{measurement}!value@{value}}
+\index{value@{value}!measurement@{measurement}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}long double {\bf measurement::value}}\label{structmeasurement_271c3c375a7fcf23cdd7b9715f01c2c4}
+
+
+valor da medida \index{measurement@{measurement}!variance@{variance}}
+\index{variance@{variance}!measurement@{measurement}}
+\subsubsection{\setlength{\rightskip}{0pt plus 5cm}long double {\bf measurement::variance}}\label{structmeasurement_c1bb4ebe8bfca76377704e9743f46511}
+
+
+variança da medida 
+
+Referenced by uncertainty().
+
+The documentation for this struct was generated from the following file:\begin{CompactItemize}
+\item 
+udouble/measure.hpp\end{CompactItemize}

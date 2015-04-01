@@ -1,0 +1,44 @@
+The programs in this directory are used to
+convert data files of variable format to a 
+standard binary form.  Currently two options are debugged
+and available.  RFEMI contains a (very ugly) program for reformatting
+EMI MT-1 data files.  This program reads the header
+on the EMI data files and also makes a system paramter file
+for running the FT progran dnff.  See the documnetation for
+the transfer function programs for a description of the format
+of the output system parameter files (SP*****).  Look in sub-directory FCOR
+for a simple way to turn the SP***** files into a system response
+correction table.  
+
+The second directory has code for a simple reformatting
+program which just reformats ASCII time series data.
+This program assumes that data is continuous, in integer format,
+with each record consisting of a single time sample for all channels
+recorded at the station (with no timing marks).
+This program could be easily modified to accomodate a variety of
+other ascii formats, and provides a reasonable starting template
+for developing programs for reformating more complicated formats.
+
+NOTE:  BIN2ASC contains a program which will read a file in the
+standard binary format and output as an ASCII file.
+FCOR contains a program which will read in a standard "system parameter
+file" and make a table incorporating all filter corrections.
+See README files in these directories for further details.
+
+Note that programs in both sub-directories use out.bin.f in
+the main directory for the output.  This ensures that all output
+files are the same, regrdless of input format.  The file
+out.bin.f contains three subroutines:
+   - outinit : initializes for output (opens file etc.)
+   - wrhdbin : writes out a header
+   - outdo : writes out a "block" of data
+If you want to change the output format, you can change the
+subroutines of out.bin.f.  If you keep the
+same subroutine names, with the same arguments, and the same 
+general functionality, you should be able to use the existing
+reformatting programs.
+
+NOTE out.bin.f gets information about the output block
+size from ../datsz.h  ... this same file provides info
+for the FT program dnff ... keep the directory structure
+the same and you shouldn't have problems.

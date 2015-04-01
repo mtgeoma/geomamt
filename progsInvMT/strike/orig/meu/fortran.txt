@@ -1,0 +1,17 @@
+
+< 	external idate
+---
+> c	external idate
+
+<       external lnblnk
+---
+> c     external lnblnk
+
+<   600 format( $, a,'  [default: ', a, ' ] >', $ )
+---
+>   600 format(a,'  [default: ', a, ' ] >', $ )
+
+veja: http://gcc.gnu.org/bugzilla/show_bug.cgi?id=24285
+      http://gcc.gnu.org/ml/fortran/2008-04/msg00116.html
+
+        if(jstack.gt.NSTACK)pause 'NSTACK too small in sort'

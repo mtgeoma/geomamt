@@ -1,0 +1,103 @@
+
+Dear Colleagues,
+
+REBOCC MT inversion is now available for download.
+
+Information about REBOCC 
+------------------------
+ o  What is REBOCC ? 
+
+   REBOCC is an inversion program for 2-D Magnetotelluric (MT) data.
+   REBOCC stands for REduced Basis OCCam's Inversion.
+   It is based on an efficient variant on the OCCAM algorithm of 
+   deGroot-Hedlin and Constable (1990).
+
+   Currently, REBOCC can invert apparent resistivity and phase of TM 
+   and TE modes, as well as the real and imaginary parts of the
+   vertical magnetic transfer function (TP) -the ratio between the 
+   vertical magnetic field and the horizontal magnetic field.
+
+ o  Why uses REBOCC ?
+
+   x  Fast
+     Numerical experiments (Siripunvaraporn and Egbert, 1999) show that 
+     the speed of REBOCC is competitive with RRI (Smith and Booker, 1991),
+     generally faster than NLCG (Rodi and Mackie, 1999), and 
+     significantly faster than OCCAM (deGroot-Hedlin and Constable, 1990).
+
+   x  Stable
+     REBOCC converges more reliably than some approximate inversions.
+
+   x  Moderate memory requirement 
+     Large data sets can be inverted with REBOCC.  It has been tested on 
+     a Sun UltraSparc I (with 288 Megabytes of RAM) on a very large 
+     problem: joint inversion of 55 stations, 41 periods and 2 responses 
+     for TM mode, 37 stations, 41 periods and 2 response for TE mode and 
+     15 stations, 41 periods and 2 response for TP data (or total number 
+     of data = 8774) and total number of model parameter of 14800 
+     (74 X 200).
+
+   x  Easy to use
+     Default options and keywords (provided for input parameters), 
+     generally, work well.  We also provide a user manual.  
+     The program is written entirely in standard FORTRAN 77.
+     Compilation with any standard Fortran compiler should be 
+     straightforward.  To date REBOCC has been tested and run on Sun 
+     workstations running Solaris and IBMs running AIX.
+
+ o  What is the condition on using REBOCC inversion ? 
+
+   REBOCC is freely available for academic use.  It cannot be used for 
+   any commercial purposes without written permission from the authors.
+
+ o  Update and bug fixed ? 
+
+   If you download the program, please send your name and email address to
+              wsiripun@oce.orst.edu or egbert@oce.orst.edu 
+   so that we can put your name into an update and bug report list.
+
+ o  Where to download ? 
+
+   The program can be downloaded via anonymous ftp at
+
+   ftp.oce.orst.edu   in   /pub/wsiripun/rebocc  
+
+   or point your browser to 
+   
+   ftp://ftp.oce.orst.edu/pub/wsiripun/rebocc
+
+   and click at the file to download.
+
+   x  rebocc.tar.gz    is for gzipped source.
+   x  rebocc.tar.Z     is for compressed source.
+
+   Note that in the case that you can not find the directory,
+   please contact the authors directly for the new location.
+
+ o  How to install the program ?
+
+   After downloading the program, at the command line
+
+   gunzip rebocc.tar.gz
+
+   or 
+   uncompress rebocc.tar.Z 
+
+   to get rebocc.tar file.
+   Then type 
+
+   tar xf rebocc.tar
+
+   at the command line. You should get four directories.
+
+   x  /data/ contains examples of the data input files.
+   x  /docs/ contains documents, including this documentation and a
+      preprint of Siripunvaraporn and Egbert (1999).
+   x  /examples/ contains examples of the startup files.
+   x  /src/ contains Fortran source codes.  
+
+ 
+ Weerachai Siripunvaraporn and Gary Egbert 
+ (wsiripun@oce.orst.edu)       (egbert@oce.orst.edu) 
+ Oregon State University
+ January 29, 1999.

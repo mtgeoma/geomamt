@@ -1,0 +1,72 @@
+      SUBROUTINE G13AAF(X,NX,ND,NDS,NS,XD,NXD,IFAIL)
+C     MARK 9 RELEASE. NAG COPYRIGHT 1981.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     G13AAF CARRIES OUT NON-SEASONAL AND SEASONAL DIFFERENCING
+C     ON AN INPUT TIME SERIES.
+C
+C     CONTRIBUTORS - G. TUNNICLIFFE WILSON, C. DALY (LANCASTER
+C     UNIV.)
+C     VALIDATOR    - T. LAMBERT (NAG CENTRAL OFFICE)
+C
+C     USES NAG LIBRARY ROUTINE P01AAF
+C
+C
+C     TEST THAT NONE OF THE ORDERS IS NEGATIVE
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='G13AAF')
+C     .. Scalar Arguments ..
+      INTEGER           IFAIL, ND, NDS, NS, NX, NXD
+C     .. Array Arguments ..
+      DOUBLE PRECISION  X(NX), XD(NX)
+C     .. Local Scalars ..
+      INTEGER           I, IERROR, J, JQ
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      INTEGER           P01ABF
+      EXTERNAL          P01ABF
+C     .. Executable Statements ..
+      IERROR = 1
+      IF (ND.LT.0) GO TO 160
+      IF (NDS.LT.0) GO TO 160
+      IF (NS.LT.0) GO TO 160
+      IF (NS.EQ.0 .AND. NDS.GT.0) GO TO 160
+C
+C     TEST THAT NUMBER OF DIFFERENCED VALUES IS NOT ZERO OR LESS
+C
+      IERROR = 2
+      NXD = NX - ND - NDS*NS
+      IF (NXD.LE.0) GO TO 160
+      NXD = NX
+      DO 20 I = 1, NX
+         XD(I) = X(I)
+   20 CONTINUE
+      IF (ND.EQ.0) GO TO 80
+C
+C     CARRY OUT NON-SEASONAL DIFFERENCING
+C
+      DO 60 I = 1, ND
+         NXD = NXD - 1
+         DO 40 J = 1, NXD
+            XD(J) = XD(J+1) - XD(J)
+   40    CONTINUE
+   60 CONTINUE
+   80 IF (NDS.EQ.0) GO TO 140
+C
+C     CARRY OUT SEASONAL DIFFERENCING
+C
+      DO 120 I = 1, NDS
+         NXD = NXD - NS
+         DO 100 J = 1, NXD
+            JQ = J + NS
+            XD(J) = XD(JQ) - XD(J)
+  100    CONTINUE
+  120 CONTINUE
+  140 IFAIL = 0
+      RETURN
+  160 IFAIL = P01ABF(IFAIL,IERROR,SRNAME,0,P01REC)
+      RETURN
+      END

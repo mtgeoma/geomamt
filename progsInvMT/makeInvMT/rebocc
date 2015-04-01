@@ -1,0 +1,5 @@
+cd src
+make rebocc
+rm -f *.o
+mv rebocc ~/bin/
+cd ..

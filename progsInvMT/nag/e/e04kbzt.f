@@ -1,0 +1,53 @@
+      SUBROUTINE E04KBZ(N,BOUNDK,HESD,COND)
+C
+C     MARK 6 RELEASE NAG COPYRIGHT 1977
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     **************************************************************
+C
+C     E04KBZ (MDCOND) MODIFIES THE CONDITION NUMBER OF THE DIAGONAL
+C     MATRIX WHOSE ELEMENTS ARE STORED IN HESD(I), I = 1(1)N, IF THE
+C     RATIO OF THE LARGEST ELEMENT TO THE SMALLEST ELEMENT IS
+C     GREATER THAN BOUNDK. EACH ELEMENT OF HESD IS RAISED TO THE
+C     POWER W, WHERE W IS SUCH THAT THE NEW RATIO OF THE LARGEST
+C     ELEMENT TO THE SMALLEST OF HESD IS BOUNDK. THE OLD RATIO IS
+C     STORED IN COND ON EXIT.
+C
+C     PHILIP E. GILL, WALTER MURRAY, SUSAN M. PICKEN, SHEDMOND R.
+C     GRAHAM AND MARGARET H. WRIGHT, D.N.A.C. NATIONAL PHYSICAL
+C     LABORATORY, ENGLAND
+C
+C     **************************************************************
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  BOUNDK, COND
+      INTEGER           N
+C     .. Array Arguments ..
+      DOUBLE PRECISION  HESD(N)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  BIG, DI, SMALL, W
+      INTEGER           I
+C     .. Intrinsic Functions ..
+      INTRINSIC         LOG
+C     .. Executable Statements ..
+      SMALL = HESD(1)
+      BIG = SMALL
+      IF (N.EQ.1) GO TO 60
+      DO 40 I = 2, N
+         DI = HESD(I)
+         IF (BIG.LT.DI) GO TO 20
+         IF (SMALL.GT.DI) SMALL = DI
+         GO TO 40
+   20    BIG = DI
+   40 CONTINUE
+   60 COND = BIG/SMALL
+      IF (BOUNDK.GE.COND) RETURN
+      W = LOG(BOUNDK)/LOG(COND)
+      DO 80 I = 1, N
+         HESD(I) = HESD(I)**W
+   80 CONTINUE
+      RETURN
+C
+C     END OF E04KBZ (MDCOND)
+C
+      END

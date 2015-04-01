@@ -1,0 +1,71 @@
+      DOUBLE PRECISION FUNCTION F04JGR(N,A,NRA,WORK)
+C     MARK 8 RELEASE. NAG COPYRIGHT 1979.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 13 REVISED. USE OF MARK 12 X02 FUNCTIONS (APR 1988).
+C     MARK 13A REVISED. IER-625 (APR 1988).
+C     WRITTEN BY S. HAMMARLING, MIDDLESEX POLYTECHNIC (UINVNM)
+C
+C     F04JGR RETURNS THE EUCLIDEAN NORM OF THE INVERSE OF THE N*N
+C     UPPER TRIANGULAR MATRIX A.
+C
+C     IF THE MATRIX A IS SINGULAR OR IF THE NORM WOULD OVERFLOW
+C     THEN F04JGR IS RETURNED AS 1.0/SMALL, WHERE SMALL IS THE
+C     SMALL REAL POSITIVE NUMBER RETURNED FROM ROUTINE X02AMF.
+C
+C     NRA MUST BE THE ACTUAL ROW DIMENSION OF A AS DECLARED IN THE
+C     CALLING PROGRAM AND MUST BE AT LEAST N.
+C
+C     WORK IS A WORK ARRAY WHOSE LENGTH MUST BE AT LEAST N.
+C
+C     ONLY THE UPPER TRIANGULAR PART OF A IS REFERENCED.
+C
+C     .. Scalar Arguments ..
+      INTEGER                          N, NRA
+C     .. Array Arguments ..
+      DOUBLE PRECISION                 A(NRA,N), WORK(N)
+C     .. Local Scalars ..
+      DOUBLE PRECISION                 BIG, SCALE, SMALL, SUMSQ, TINY
+      INTEGER                          I, IFAIL, II, IM1, J
+      LOGICAL                          UNDFLW
+C     .. External Functions ..
+      DOUBLE PRECISION                 F04JGU, X02AMF
+      LOGICAL                          X02DAF
+      EXTERNAL                         F04JGU, X02AMF, X02DAF
+C     .. External Subroutines ..
+      EXTERNAL                         F04JGT, F04JGY
+C     .. Intrinsic Functions ..
+      INTRINSIC                        SQRT
+C     .. Executable Statements ..
+      SMALL = X02AMF()
+      TINY = SQRT(SMALL)
+      BIG = 1.0D0/SMALL
+      UNDFLW = X02DAF(0.0D0)
+C
+      SCALE = 0.0D0
+      SUMSQ = 1.0D0
+C
+      IFAIL = 1
+      I = N
+      DO 60 II = 1, N
+         WORK(I) = 1.0D0
+         IF (I.EQ.1) GO TO 40
+         IM1 = I - 1
+         DO 20 J = 1, IM1
+            WORK(J) = 0.0D0
+   20    CONTINUE
+C
+   40    CALL F04JGY(I,A,NRA,WORK,WORK,IFAIL)
+C
+         IF (IFAIL.NE.0) GO TO 80
+C
+         CALL F04JGT(I,WORK,SCALE,SUMSQ,TINY,UNDFLW)
+C
+         I = I - 1
+   60 CONTINUE
+C
+      F04JGR = F04JGU(SCALE,SUMSQ,BIG)
+      RETURN
+C
+   80 F04JGR = BIG
+      RETURN
+      END

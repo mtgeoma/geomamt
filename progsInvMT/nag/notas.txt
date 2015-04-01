@@ -1,0 +1,2 @@
+Para funcionar com gfortran, precisei comentar a linha 25 do x/x05aaft.f:
+C     EXTERNAL          idate, itime

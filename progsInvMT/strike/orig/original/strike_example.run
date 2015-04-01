@@ -1,0 +1,415 @@
+{6}tuzo:/mnt/jones/src/strike/v3.1% strike_v3.1
+  
+                 Welcome to strike
+                   version: v3.1
+               Build date: 11-Nov-99
+         Todays date: Wed Nov 17 08:16:17 1999
+  
+   Version 3.+ reads in J-format files and generates
+               the realizations internally
+  
+                Version limits:
+       Max. no. sites:         1
+       Max. no. freqs:         100
+       Max. no. bands :        100
+       Max. no. freqs/band :   100
+       Max. no. data :         100
+       Max. no. realizations:  21
+  
+  Min. no. realizations for statistics:   11
+  
+Expert mode (y/n)  [default: N ] >
+Site list (.dat for single site)?  [default: site.lis ] >strike_example.dat
+No. of sites to process = 1
+ Opening file =strike_example.dat                      
+Give impedance relative error floor (in %)  [default: 1.7500 ] >
+Error floor: z_floor (%)   = 1.75
+equivalent pha_floor (deg) = 1.00
+Give normalization type (? for list)  [default: GAVSD2 ] >
+Enter minimum period?  [default: 0.10000E-03 ] >10
+Enter maximum period?  [default: 10000. ] >10e3
+Enter bandwidth (no. of period decades)?  [default: 3.0000 ] >.1
+Enter overlap   (no. of period decades)?  [default: 0.0 ] >
+No. of bands to analyze =30
+Band  1:  Periods      10.00 s     -       12.58 s
+Band  2:  Periods      12.59 s     -       15.83 s
+Band  3:  Periods      15.85 s     -       19.93 s
+Band  4:  Periods      19.95 s     -       25.09 s
+Band  5:  Periods      25.12 s     -       31.59 s
+Band  6:  Periods      31.62 s     -       39.77 s
+Band  7:  Periods      39.81 s     -       50.07 s
+Band  8:  Periods      50.12 s     -       63.03 s
+Band  9:  Periods      63.10 s     -       79.35 s
+Band 10:  Periods      79.43 s     -       99.90 s
+Band 11:  Periods     100.00 s     -      125.77 s
+Band 12:  Periods     125.89 s     -      158.33 s
+Band 13:  Periods     158.49 s     -      199.33 s
+Band 14:  Periods     199.53 s     -      250.94 s
+Band 15:  Periods     251.19 s     -      315.91 s
+Band 16:  Periods     316.23 s     -      397.71 s
+Band 17:  Periods     398.11 s     -      500.69 s
+Band 18:  Periods     501.19 s     -      630.33 s
+Band 19:  Periods     630.96 s     -      793.53 s
+Band 20:  Periods     794.33 s     -      999.00 s
+Band 21:  Periods    1000.00 s     -     1257.67 s
+Band 22:  Periods    1258.93 s     -     1583.31 s
+Band 23:  Periods    1584.89 s     -     1993.27 s
+Band 24:  Periods    1995.26 s     -     2509.37 s
+Band 25:  Periods    2511.89 s     -     3159.12 s
+Band 26:  Periods    3162.28 s     -     3977.09 s
+Band 27:  Periods    3981.07 s     -     5006.86 s
+Band 28:  Periods    5011.87 s     -     6303.26 s
+Band 29:  Periods    6309.57 s     -     7935.34 s
+Band 30:  Periods    7943.28 s     -     9990.00 s
+  
+  Regional azimuth bounds    -360.000     360.000
+             Shear bounds    -45.0000     45.0000
+             Twist bounds    -60.0000     60.0000
+  
+Change bounds from standard bounds (y/n)?  [default: N ] >
+Do statistics (y/n)  [default: N ] >
+  
+Doing band  1    Period range     10.0000  -     12.5767
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+  ... strike_example ...
+  Error     =     17.0603
+  Shear     =     38.5642
+  Twist     =    -36.7365
+  
+  Strike    =     265.729    (    85.7294)
+  
+  
+Doing band  2    Period range     12.5893  -     15.8331
+Insufficient data for site...strike_example.dat    0
+No. of sites for this band.... 0
+No data to analyze - skipping to next band
+  
+Doing band  3    Period range     15.8489  -     19.9327
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+  ... strike_example ...
+  Error     =     23.5728
+  Shear     =     39.7145
+  Twist     =    -24.6987
+  
+  Strike    =     251.370    (    71.3697)
+  
+  
+Doing band  4    Period range     19.9526  -     25.0937
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+  ... strike_example ...
+  Error     =     1441.87
+  Shear     =     40.3571
+  Twist     =    -27.9540
+  
+  Strike    =     255.243    (    75.2433)
+  
+  
+Doing band  5    Period range     25.1189  -     31.5912
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+  ... strike_example ...
+  Error     =     1820.69
+  Shear     =     40.5812
+  Twist     =    -25.0852
+  
+  Strike    =     252.122    (    72.1220)
+  
+  
+Doing band  6    Period range     31.6228  -     39.7709
+Insufficient data for site...strike_example.dat    0
+No. of sites for this band.... 0
+No data to analyze - skipping to next band
+  
+Doing band  7    Period range     39.8107  -     50.0686
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+  ... strike_example ...
+  Error     =     1904.25
+  Shear     =     40.8839
+  Twist     =    -21.9638
+  
+  Strike    =     248.749    (    68.7493)
+  
+  
+Doing band  8    Period range     50.1187  -     63.0326
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+  ... strike_example ...
+  Error     =     1043.41
+  Shear     =     40.4715
+  Twist     =    -22.9105
+  
+  Strike    =     250.300    (    70.2999)
+  
+  
+Doing band  9    Period range     63.0957  -     79.3534
+Insufficient data for site...strike_example.dat    0
+No. of sites for this band.... 0
+No data to analyze - skipping to next band
+  
+Doing band 10    Period range     79.4328  -     99.9000
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+  ... strike_example ...
+  Error     =     402.243
+  Shear     =     41.1774
+  Twist     =    -17.9293
+  
+  Strike    =     244.684    (    64.6838)
+  
+  
+Doing band 11    Period range    100.0000  -    125.7666
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+  ... strike_example ...
+  Error     =     174.518
+  Shear     =     37.8677
+  Twist     =    -28.5290
+  
+  Strike    =     259.545    (    79.5445)
+  
+Doing band 12    Period range    125.8925  -    158.3307
+Insufficient data for site...strike_example.dat    0
+No. of sites for this band.... 0
+No data to analyze - skipping to next band
+  
+Doing band 13    Period range    158.4893  -    199.3267
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+  ... strike_example ...
+  Error     =     77.9325
+  Shear     =     41.9935
+  Twist     =    -15.7211
+  
+  Strike    =     241.869    (    61.8693)
+  
+  
+Doing band 14    Period range    199.5263  -    250.9375
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+ 
+ ** Too many major iterations.
+ ** ABNORMAL EXIT from NAG Library routine E04UPF: IFAIL =     4
+ ** NAG soft failure - control returned
+ error return from e04upf: ifail =  4
+ increasing iterations =  875
+  ... strike_example ...
+  Error     =    0.131906
+  Shear     =     35.0790
+  Twist     =    -27.4170
+  
+  Strike    =     261.403    (    81.4026)
+  
+  
+Doing band 15    Period range    251.1887  -    315.9115
+Insufficient data for site...strike_example.dat    0
+No. of sites for this band.... 0
+No data to analyze - skipping to next band
+  
+Doing band 16    Period range    316.2278  -    397.7090
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+ 
+ ** Too many major iterations.
+ ** ABNORMAL EXIT from NAG Library routine E04UPF: IFAIL =     4
+ ** NAG soft failure - control returned
+ error return from e04upf: ifail =  4
+ increasing iterations =  875
+  ... strike_example ...
+  Error     =     12.7804
+  Shear     =     30.0112
+  Twist     =    -26.5762
+  
+  Strike    =     265.913    (    85.9127)
+
+  
+Doing band 17    Period range    398.1071  -    500.6858
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+  ... strike_example ...
+  Error     =     14.6492
+  Shear     =    -20.8704
+  Twist     =    -23.7714
+  
+  Strike    =     182.459    (    2.45940)
+  
+  
+Doing band 18    Period range    501.1873  -    630.3264
+Insufficient data for site...strike_example.dat    0
+No. of sites for this band.... 0
+No data to analyze - skipping to next band
+  
+Doing band 19    Period range    630.9576  -    793.5341
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+ 
+ ** Too many major iterations.
+ ** ABNORMAL EXIT from NAG Library routine E04UPF: IFAIL =     4
+ ** NAG soft failure - control returned
+ error return from e04upf: ifail =  4
+ increasing iterations =  875
+  ... strike_example ...
+  Error     =     25.5502
+  Shear     =     25.3046
+  Twist     =    -22.9623
+  
+  Strike    =     267.935    (    87.9347)
+  
+  
+Doing band 20    Period range    794.3284  -    999.0000
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+ 
+ ** Too many major iterations.
+ ** ABNORMAL EXIT from NAG Library routine E04UPF: IFAIL =     4
+ ** NAG soft failure - control returned
+ error return from e04upf: ifail =  4
+ increasing iterations =  875
+  ... strike_example ...
+  Error     =    10.22769
+  Shear     =     22.3992
+  Twist     =    -20.2278
+  
+  Strike    =     268.002    (    88.0022)
+  
+  
+Doing band 21    Period range   1000.0000  -   1257.6663
+Insufficient data for site...strike_example.dat    0
+No. of sites for this band.... 0
+No data to analyze - skipping to next band
+  
+Doing band 22    Period range   1258.9258  -   1583.3085
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+ 
+ ** Too many major iterations.
+ ** ABNORMAL EXIT from NAG Library routine E04UPF: IFAIL =     4
+ ** NAG soft failure - control returned
+ error return from e04upf: ifail =  4
+ increasing iterations =  875
+  ... strike_example ...
+  Error     =     5.79861E-04
+  Shear     =     9.55200
+  Twist     =    -6.93246
+  
+  Strike    =     267.952    (    87.9515)
+  
+  
+Doing band 23    Period range   1584.8933  -   1993.2668
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+  ... strike_example ...
+  Error     =    0.278710
+  Shear     =     42.2850
+  Twist     =     14.9303
+  
+  Strike    =     209.420    (    29.4202)
+  
+  
+Doing band 24    Period range   1995.2621  -   2509.3735
+Insufficient data for site...strike_example.dat    0
+No. of sites for this band.... 0
+No data to analyze - skipping to next band
+  
+Doing band 25    Period range   2511.8870  -   3159.1152
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+  ... strike_example ...
+  Error     =    0.285040
+  Shear     =     37.1578
+  Twist     =     32.8391
+  
+  Strike    =     185.352    (    5.35156)
+  
+  
+Doing band 26    Period range   3162.2776  -   3977.0898
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+  ... strike_example ...
+  Error     =     1.03514E-01
+  Shear     =     34.8094
+  Twist     =     31.5307
+  
+  Strike    =     185.105    (    5.10542)
+  
+  
+Doing band 27    Period range   3981.0730  -   5006.8613
+Insufficient data for site...strike_example.dat    0
+No. of sites for this band.... 0
+No data to analyze - skipping to next band
+  
+Doing band 28    Period range   5011.8730  -   6303.2632
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+  ... strike_example ...
+  Error     =     1.23253E-02
+  Shear     =     40.5022
+  Twist     =     30.1191
+  
+  Strike    =     12.4558    (    12.4558)
+  
+  
+Doing band 29    Period range   6309.5728  -   7935.3364
+No. freqs         for site.. strike_example.dat                        1
+No. of sites for this band.... 1
+No. of frequencies in this band =   1
+Doing realization... 0
+  ... strike_example ...
+  Error     =    0.120802
+  Shear     =     37.6343
+  Twist     =    -19.2521
+  
+  Strike    =     72.8758    (    72.8758)
+  
+  
+Doing band 30    Period range   7943.2842  -   9990.0000
+Insufficient data for site...strike_example.dat    0
+No. of sites for this band.... 0
+No data to analyze - skipping to next band
+Total number of estimates is =  20
+ Writing information to .dcmp files
+Writing dcmp info to file...strike_example.dcmp    no. estimates= 20
+ Note: IEEE floating-point exception flags raised: 
+    Inexact;  Underflow; 
+ See the Numerical Computation Guide, ieee_flags(3M) 

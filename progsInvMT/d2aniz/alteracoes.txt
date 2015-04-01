@@ -1,0 +1,10 @@
+em d2aniz.f
+
+remover última linha do arquivo
+
+trocar:
+\) => )
+open(5, => open(10,
+open(6, => open(11,
+read(5, => read(10,
+write(6, => write(11,

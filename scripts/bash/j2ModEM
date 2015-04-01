@@ -1,0 +1,289 @@
+#!/bin/bash
+Zformat=jones
+# default optional arguments
+
+declare -A options
+options=(['eZxx']=0 ['eZyy']=0 ['eZxy']=0 ['eZyx']=0 ['eTx']=0 ['eTy']=0 \
+    ['eZxyZyx']=0 ['eZxyZxx']=0 ['eZyxZyy']=0)
+
+usage ()
+{
+    printf "\nusage: %s list.txt data_type[=component] [e*=value]\n" $1
+    printf "where:\n"
+    printf "\tlist.txt\tfile which first column point to a J-format file\n"
+    printf "\t\t\tfollowed by site_code latitude longitude X(m) Y(m) Z(m).\n"
+    printf "\t\t\tOptionally, add a column to select data in format \"[begin-end]\" and a rotation angle\n\n"
+    printf "\tdata_type\tcould be Full_Impedance, Off_Diagonal_Impedance,\n"
+    printf "\t\t\tFull_Vertical_Components, TE_Impedance and TM_Impedance.\n\n"
+    printf "\tcomponent\tcould be xy or yx. Only to TE (default xy) or TM (default yx)\n\n"
+    printf "Could include error floor values for following components:\n"
+    printf "eZxx, eZyy, eZxy, eZyx, eTx, eTy, eZxyZyx, eZxyZxx, eZyxZyy\n\n"
+    exit 1
+}
+
+if [[ ${#} == 0 ]] ; then
+    usage $0
+fi
+
+STATIONS=$1
+shift
+TYPE=$1
+shift
+
+while [[ -n $1 ]] ; do
+    option=($(echo $1 | awk '{gsub("="," ");print $0}'))
+    if [[ ${#option[*]} -eq 2 ]] ; then
+        # check if is a valid option
+        if [[ -z ${options[${option[0]}]} ]] ; then
+            echo "'${option[0]}' isn't a valid option"
+            usage $0
+        else
+            options[${option[0]}]=${option[1]}
+        fi
+    else
+        echo "error in option:$1"
+        usage $0
+    fi
+    shift
+done
+
+PREFILE=""
+declare -A label
+label=(['zxx']="ZXX" ['zxy']="ZXY" ['zyx']="ZYX" ['zyy']="ZYY" ['Tzx']="TX" ['Tzy']="TY")
+
+unit="[mV/km]/[nT]"
+CMD="transferfunction"
+declare -a cmp
+if [[ $TYPE == "Full_Vertical_Components" ]] ; then
+    unit="[]/[]"
+    PREFILE="-I"
+    CMD="gds2gmt"
+
+    cmp=("Tzx" "Tzy")
+elif [[ $TYPE == "Full_Impedance" ]] ; then
+    cmp=("zxx" "zxy" "zyx" "zyy")
+elif [[ $TYPE == "Off_Diagonal_Impedance" ]] ; then
+    cmp=("zxy" "zyx")
+elif [[ ${TYPE:0:12} == "TE_Impedance" ]] ; then
+    if [[ ${TYPE:12:1} == "=" ]] ; then
+	cmp=("${TYPE:13:3}")
+	if [[ ${cmp[0]} != "zxy" && ${cmp[0]} != "zyx" ]] ; then
+	    echo "TE_Impedance component must be zxy or zyx"
+	    exit 1
+	fi
+    else
+	cmp=("zxy")
+    fi
+    label[$cmp]="TE"
+elif [[ ${TYPE:0:12} == "TM_Impedance" ]] ; then
+    if [[ ${TYPE:12:1} == "=" ]] ; then
+	cmp=("${TYPE:13:3}")
+	if [[ ${cmp[0]} != "zxy" && ${cmp[0]} != "zyx" ]] ; then
+	    echo "TM_Impedance component must be zxy or zyx"
+	    exit 1
+	fi
+    else
+	cmp=("zyx")
+    fi
+    label[$cmp]="TM"
+else
+    echo "$TYPE is an unknow data_type"
+    exit 1
+fi
+
+# for c in $(echo ${cmp[*]}) ; do
+#     echo "$c ${label[$c]}"
+# done
+# exit 1
+
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+declare -A pos
+
+exec 6<&0 # backup stdin
+exec < $STATIONS # replace stdin by file $STATIONS
+while read -a col
+do
+    Jfile=${col[0]}
+    code=${col[1]}
+    lon=${col[2]}
+    lat=${col[3]}
+    x=${col[4]}
+    y=${col[5]}
+    z=${col[6]}
+    R=""
+    declare -A sel
+    if [[ -n ${col[7]} ]] ; then
+	if [[ ${col[7]:0:1} == "[" ]] ; then
+	    selection=($(echo ${col[7]} | gawk '{gsub(","," ");print $0}'))
+	    for (( i=0;i<${#selection[*]};i++ )) ; do
+		tmp=($(selection.py ${selection[$i]}))
+		if [[ $? != 0 ]] ; then
+		    echo ${tmp[*]}
+		    exit 1
+		fi
+		selection[$i]=$(printf "%s,%s\n" ${tmp[0]} ${tmp[1]})
+	    done
+	    if [[ ${#selection[*]} == 1 ]] ; then
+		for (( i=0;i<${#cmp[*]};i++ )) ; do
+		    sel[${cmp[$i]}]=${selection[0]}
+		done
+	    elif [[ ${#selection[*]} == ${#cmp[*]} ]] ; then
+		for (( i=0;i<${#cmp[*]};i++ )) ; do
+		    sel[${cmp[$i]}]=${selection[$i]}
+		done
+	    else
+		echo "number of selections and components must be equal"
+		exit 1
+	    fi
+	else
+	    R=${col[7]}
+	fi
+    fi
+    if [[ -n ${col[8]} ]] ; then
+	R=${col[8]}
+    fi
+
+    if [[ -n $R ]] ; then
+	if [[ $TYPE == "Full_Vertical_Components" ]] ; then
+	    R=$(echo $R | awk '{print -1*$1}')
+	    R=-R$R
+	else
+	    R=-A$R
+	fi
+    fi
+
+    mkdir $GMT_TMPDIR/$code
+    dir=$GMT_TMPDIR/$code
+    pos[$code]=$(printf "%s %s %s %s %s %s" $code $lat $lon $x $y $z)
+
+    for c in $(echo ${cmp[*]}) ; do
+	if [[ -z ${sel[$c]} ]] ; then
+            $CMD ${PREFILE}$Jfile -F${Zformat} -D$c $R | \
+		awk '{print $1,$2,$3,$4}' | \
+		sort -g -k 1 > $dir/${label[$c]}
+	else
+	    s=($(echo ${sel[$c]} | gawk '{gsub(","," ");print $0}'))
+    	    $CMD ${PREFILE}$Jfile -F${Zformat} -D$c $R |\
+            awk -v b=${s[0]} -v e=${s[1]} '{
+               if(NR>=b&&NR<=e)print $1,$2,$3,$4}' | \
+		   sort -g -k 1 > $dir/${label[$c]}
+	fi
+    done
+done
+exec 0<&6 6<&- # restore stdin from backup and close backup
+
+Nstn=$(ls -d $GMT_TMPDIR/* | wc -l)
+NT=$(awk '{print $1}' $GMT_TMPDIR/*/* | sort -gu | wc -l)
+
+if [[ ${options['eZxyZyx']} != 0 ]] ; then
+    for code in $(awk '{print $2}' $STATIONS) ; do
+	paste $GMT_TMPDIR/$code/ZXY $GMT_TMPDIR/$code/ZYX | \
+	    awk -v e=${options['eZxyZyx']} '{
+              r=$2*$6-$3*$7
+              i=$2*$7+$3*$6
+              mod=sqrt(r**2+i**2)
+              printf "%.6E\n",e*sqrt(mod)
+            }' > $GMT_TMPDIR/$code/ef
+	for c in $(echo "ZXY ZYX ZXX ZYY") ; do
+	    paste $GMT_TMPDIR/$code/$c $GMT_TMPDIR/$code/ef > $GMT_TMPDIR/tmp
+	    mv $GMT_TMPDIR/tmp $GMT_TMPDIR/$code/$c
+	done
+    done
+else
+    if [[ ${options['eZxy']} != 0 ]] ; then
+	for code in $(awk '{print $2}' $STATIONS) ; do
+	    awk -v e=${options['eZxy']} '{
+              printf "%s %.6E\n",$0,e*sqrt($2**2+$3**2)
+            }' $GMT_TMPDIR/$code/ZXY > $GMT_TMPDIR/tmp
+	    mv $GMT_TMPDIR/tmp $GMT_TMPDIR/$code/ZXY
+	done
+    fi
+
+    if [[ ${options['eZyx']} != 0 ]] ; then
+	for code in $(awk '{print $2}' $STATIONS) ; do
+	    awk -v e=${options['eZyx']} '{
+              printf "%s %.6E\n",$0,e*sqrt($2**2+$3**2)
+            }' $GMT_TMPDIR/$code/ZYX > $GMT_TMPDIR/tmp
+	    mv $GMT_TMPDIR/tmp $GMT_TMPDIR/$code/ZYX
+	done
+    fi
+
+    if [[ ${options['eZxx']} != 0 ]] ; then
+	for code in $(awk '{print $2}' $STATIONS) ; do
+	    awk -v e=${options['eZxx']} '{
+              printf "%s %.6E\n",$0,e*sqrt($2**2+$3**2)
+            }' $GMT_TMPDIR/$code/ZXX > $GMT_TMPDIR/tmp
+	    mv $GMT_TMPDIR/tmp $GMT_TMPDIR/$code/ZXX
+	done
+    fi
+
+    if [[ ${options['eZyy']} != 0 ]] ; then
+	for code in $(awk '{print $2}' $STATIONS) ; do
+	    awk -v e=${options['eZyy']} '{
+              printf "%s %.6E\n",$0,e*sqrt($2**2+$3**2)
+            }' $GMT_TMPDIR/$code/ZYY > $GMT_TMPDIR/tmp
+	    mv $GMT_TMPDIR/tmp $GMT_TMPDIR/$code/ZYY
+	done
+    fi
+
+    if [[ ${options['eTx']} != 0 ]] ; then
+	for code in $(awk '{print $2}' $STATIONS) ; do
+	    awk -v e=${options['eTx']} '{
+              printf "%s %.6E\n",$0,e
+            }' $GMT_TMPDIR/$code/TX > $GMT_TMPDIR/tmp
+	    mv $GMT_TMPDIR/tmp $GMT_TMPDIR/$code/TX
+	done
+    fi
+
+    if [[ ${options['eTy']} != 0 ]] ; then
+	for code in $(awk '{print $2}' $STATIONS) ; do
+	    awk -v e=${options['eTy']} '{
+              printf "%s %.6E\n",$0,e
+            }' $GMT_TMPDIR/$code/TY > $GMT_TMPDIR/tmp
+	    mv $GMT_TMPDIR/tmp $GMT_TMPDIR/$code/TY
+	done
+    fi
+
+    if [[ ${options['eZxyZxx']} != 0 ]] ; then
+	for code in $(awk '{print $2}' $STATIONS) ; do
+	    awk -v e=${options['eZxyZxx']} '{
+              printf "%.6E\n",e*sqrt($2**2+$3**2)
+            }' $GMT_TMPDIR/$code/ZXY > $GMT_TMPDIR/$code/ef
+	    for c in $(echo "ZXY ZXX") ; do
+		paste $GMT_TMPDIR/$code/$c $GMT_TMPDIR/$code/ef > $GMT_TMPDIR/tmp
+		mv $GMT_TMPDIR/tmp $GMT_TMPDIR/$code/$c
+	    done
+	done
+    fi
+
+    if [[ ${options['eZyxZyy']} != 0 ]] ; then
+	for code in $(awk '{print $2}' $STATIONS) ; do
+	    awk -v e=${options['eZyxZyy']} '{
+              printf "%.6E\n",e*sqrt($2**2+$3**2)
+            }' $GMT_TMPDIR/$code/ZYX > $GMT_TMPDIR/$code/ef
+	    for c in $(echo "ZYX ZYY") ; do
+		paste $GMT_TMPDIR/$code/$c $GMT_TMPDIR/$code/ef > $GMT_TMPDIR/tmp
+		mv $GMT_TMPDIR/tmp $GMT_TMPDIR/$code/$c
+	    done
+	done
+    fi
+fi
+
+echo "# j2ModEM output"
+echo "# Period(s) Code GG_Lat GG_Lon X(m) Y(m) Z(m) Component Real Imag Error"
+echo "> $TYPE"
+echo "> exp(+i\omega t)"
+echo "> $unit"
+echo "> 0"
+echo "> 0 0"
+echo "> $NT $Nstn"
+for c in $(echo ${cmp[*]}) ; do
+    for code in $(awk '{print $2}' $STATIONS) ; do
+	awk -v cmp=${label[$c]} -v pos="${pos[$code]}" \
+       '{
+          if($5>$4){$4=$5}
+          printf "%12.6E %s %s %13.6E %13.6E %12.6E\n",$1,pos,cmp,$2,$3,$4
+        }' $GMT_TMPDIR/$code/${label[$c]}
+    done
+done
+rm -rf $GMT_TMPDIR

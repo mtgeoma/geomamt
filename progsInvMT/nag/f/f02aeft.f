@@ -1,0 +1,46 @@
+      SUBROUTINE F02AEF(A,IA,B,IB,N,R,V,IV,DL,E,IFAIL)
+C     MARK 2 RELEASE. NAG COPYRIGHT 1972
+C     MARK 3 REVISED.
+C     MARK 4.5 REVISED
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 13 REVISED. USE OF MARK 12 X02 FUNCTIONS (APR 1988).
+C     MARK 14 REVISED. IER-737 (DEC 1989).
+C
+C     EIGENVALUES AND EIGENVECTORS OF A-LAMBDA*B
+C     1ST DECEMBER 1971
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='F02AEF')
+C     .. Scalar Arguments ..
+      INTEGER           IA, IB, IFAIL, IV, N
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(IA,N), B(IB,N), DL(N), E(N), R(N), V(IV,N)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  XXXX
+      INTEGER           ISAVE
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      DOUBLE PRECISION  X02AJF
+      INTEGER           P01ABF
+      EXTERNAL          X02AJF, P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          F01AEF, F01AFF, F01AJF, F02AMF
+C     .. Executable Statements ..
+      ISAVE = IFAIL
+      IFAIL = 1
+      CALL F01AEF(N,A,IA,B,IB,DL,IFAIL)
+      IF (IFAIL.EQ.0) GO TO 20
+      IFAIL = P01ABF(ISAVE,IFAIL,SRNAME,0,P01REC)
+      RETURN
+   20 CONTINUE
+      CALL F01AJF(N,XXXX,A,IA,R,E,V,IV)
+      IFAIL = 1
+      CALL F02AMF(N,X02AJF(),R,E,V,IV,IFAIL)
+      IF (IFAIL.EQ.0) GO TO 40
+      IFAIL = P01ABF(ISAVE,2,SRNAME,0,P01REC)
+      RETURN
+   40 CALL F01AFF(N,1,N,B,IB,DL,V,IV)
+      RETURN
+      END

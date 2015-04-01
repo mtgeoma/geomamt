@@ -1,0 +1,64 @@
+      SUBROUTINE E04LBZ(N,IBOUND,BNDMAX,BL,BU)
+C
+C     MARK 6 RELEASE NAG COPYRIGHT 1977
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     **************************************************************
+C
+C     E04LBZ (SETBND) SETS THE LOWER AND UPPER BOUNDS ON ALL
+C     VARIABLES UNIFORMLY TO THE VALUES INDICATED BY IBOUND. THE
+C     VALUE OF BNDMAX IS NOT MACHINE-DEPENDENT AND MUST NOT BE
+C     ALTERED BY THE USER.
+C
+C     PHILIP E. GILL, WALTER MURRAY, SUSAN M. PICKEN, MARGARET H.
+C     WRIGHT AND ENID M. R. LONG, D.N.A.C., NATIONAL PHYSICAL
+C     LABORATORY, ENGLAND
+C
+C     **************************************************************
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  BNDMAX
+      INTEGER           IBOUND, N
+C     .. Array Arguments ..
+      DOUBLE PRECISION  BL(N), BU(N)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  BNDL, BNDU
+      INTEGER           I
+C     .. Executable Statements ..
+      IF (IBOUND.LE.0) RETURN
+      BNDMAX = 1.0D+6
+      GO TO (20,60,100,20) IBOUND
+C
+C     SET LOWER BOUNDS TO LARGE NEGATIVE NUMBER AND UPPER BOUNDS TO
+C     LARGE POSITIVE NUMBER.
+C
+   20 DO 40 I = 1, N
+         BL(I) = -BNDMAX
+         BU(I) = BNDMAX
+   40 CONTINUE
+      RETURN
+C
+C     SET LOWER BOUNDS TO ZERO AND UPPER BOUNDS TO LARGE POSITIVE
+C     NUMBER.
+C
+   60 DO 80 I = 1, N
+         BL(I) = 0.0D+0
+         BU(I) = BNDMAX
+   80 CONTINUE
+      RETURN
+C
+C     SET LOWER BOUNDS AND UPPER BOUNDS TO NUMBERS SPECIFIED BY
+C     USER.
+C
+  100 IF (N.EQ.1) RETURN
+      BNDL = BL(1)
+      BNDU = BU(1)
+      DO 120 I = 2, N
+         BL(I) = BNDL
+         BU(I) = BNDU
+  120 CONTINUE
+      RETURN
+C
+C     END OF E04LBZ (SETBND)
+C
+      END

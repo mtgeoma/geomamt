@@ -1,0 +1,21 @@
+{
+  if($1==">STATION")
+  {
+    stn=$NF
+    if(substr(stn,1,1)==":")
+    {
+      stn=substr(stn,2)
+    }
+  }
+  if($1==">LATITUDE")
+  {
+    lat=$NF
+  }
+  if($1==">LONGITUDE")
+  {
+    lon=$NF
+  }
+}
+END{
+  printf "%s %s %s\n",lon,lat,stn
+}

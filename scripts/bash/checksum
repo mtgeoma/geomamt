@@ -1,0 +1,28 @@
+#!/bin/bash
+checksum=md5sum
+if [[ -n $2 ]]
+then
+    checksum=$2
+fi
+if [[ -z $1 ]]
+then
+    echo "usage: $0 dir [checksum]"
+    echo "will criate a file (dir.check) with sorted checksum values of files in dir tree"
+    echo "default checksum=$checksum"
+    exit 1
+elif [[ -e $1 ]]
+then
+    dir=$1
+else
+    echo "couldn't find directory $1"
+    exit 1
+fi
+
+which $checksum > /dev/null 2>&1
+if [[ $? != 0 ]]
+then
+    echo "couldn't find $checksum program"
+    exit 1
+fi
+output=${dir}.${checksum/sum/}
+find $dir -type f -exec $checksum '{}' ';' | sort > $output

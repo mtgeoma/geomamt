@@ -1,0 +1,37 @@
+#!/bin/csh
+
+set FILEIN=tmte/tmte1_mdl.029
+rebocc_mdl2gmt -Itmte/tmte1_model.029 -O$FILEIN -S1.e3 -L
+set OUTFILE=tmte/tmte1_mdl29a.ps
+
+# configura tamanho das letras
+gmtset HEADER_FONT_SIZE 16p ANOT_FONT_SIZE 12p LABEL_FONT_SIZE 14p
+
+makecpt -I -Cno_green -T1/4.0/0.25 > colors.cpt
+
+# escala de cores
+psscale -D13.815c/-1.0c/15c/0.5ch -Ccolors.cpt -Ba1f0.25:"log(@~r@~)":/:"@~W@~.m": -K -V > $OUTFILE
+
+# grafico da parte central linear do modelo
+psbasemap -Y0.8c -R0/327/0/220 -Jx7e-2c/-7e-2c -Ba18f3:"dist\342ncia (km)":/a10f2:"profundidade (km)":nSeW -K -O -V >> $OUTFILE
+# com grade
+#psxy $FILEIN -R61/388/0/220 -Jx -M -H -L -Ccolors.cpt -W0.1p/0 -K -O -V >> $OUTFILE
+# sem grade
+psxy $FILEIN -R61/388/0/220 -Jx -M -H -L -Ccolors.cpt -K -O -V >> $OUTFILE
+
+# localização das estações
+awk '{printf "%6.0f  -3.0\n", $1+70}' bor.dist | \
+psxy -R -Jx -Si10p -N -G0 -K -O -V >> $OUTFILE
+
+# rotula as estacoes
+
+awk 'BEGIN{n=18}{printf "%6.1f  -3.0  12   90   0  MC %02d\n", $1+70,n; n--}' bor.dist | \
+pstext -D0c/0.5c -Jx -R -N -O -V >> $OUTFILE
+
+# retorna aos valores defaults
+gmtset HEADER_FONT_SIZE 36p ANOT_FONT_SIZE 14p LABEL_FONT_SIZE 24p
+
+#ggv $OUTFILE&
+ps2eps -f -R + $OUTFILE
+awk 'BEGIN{cmd=sprintf("convert -density 150x150 %seps %spng\n",substr("'$OUTFILE'",1,index("'$OUTFILE'",".")),substr("'$OUTFILE'",1,index("'$OUTFILE'",".")));system(cmd)}'
+awk 'BEGIN{cmd=sprintf("gwenview %spng&\n",substr("'$OUTFILE'",1,index("'$OUTFILE'",".")));system(cmd)}'

@@ -1,0 +1,43 @@
+      SUBROUTINE F01BEF(N,IM1,IM2,B,IB,DL,Z,IZ)
+C     MARK 3 RELEASE NAG COPYRIGHT 1972
+C     MARK 4.5 REVISED
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     MAY 1ST.  1972
+C     REBAKB
+C     THIS SUBROUTINE PERFORMS, ON THE MATRIX OF EIGENVECTORS, Z,
+C     STORED
+C     IN COLUMNS IM1 TO IM2 OF THE ARRAY Z(N,N), A FORWARD
+C     SUBSTITUTION
+C     Y = L * Z, OVERWRITING Y AND Z. THE DIAGONAL ELEMENTS OF L
+C     MUST
+C     BE STORED IN THE ARRAY DL(N), AND THE REMAINING TRIANGLE
+C     IN THE STRICTLY LOWER TRIANGLE OF THE ARRAY B(N,N). THE
+C     SUBROUTINES F01AEF AND F01BDF LEAVE L IN THIS DESIRED FORM.
+C     IF
+C     Y DENOTES ANY COLUMN OF THE RESULTANT MATRIX Y, THEN Y
+C     SATISFIES YT * INV(B) * Y = ZT * Z, WHERE B = L * LT.
+C
+C     .. Scalar Arguments ..
+      INTEGER           IB, IM1, IM2, IZ, N
+C     .. Array Arguments ..
+      DOUBLE PRECISION  B(IB,N), DL(N), Z(IZ,IM2)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  X
+      INTEGER           I, I1, II, J, K, KK
+C     .. Executable Statements ..
+      DO 80 J = IM1, IM2
+         DO 60 II = 1, N
+            I = N - II + 1
+            X = DL(I)*Z(I,J)
+            I1 = I - 1
+            IF (I1.EQ.0) GO TO 40
+            DO 20 KK = 1, I1
+               K = I1 - KK + 1
+               X = X + B(I,K)*Z(K,J)
+   20       CONTINUE
+   40       Z(I,J) = X
+   60    CONTINUE
+   80 CONTINUE
+      RETURN
+      END

@@ -1,0 +1,81 @@
+      SUBROUTINE F02FHF(N,MA,A,NRA,MB,B,NRB,D,WORK,LWORK,IFAIL)
+C     MARK 11 RELEASE. NAG COPYRIGHT 1983.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 13 REVISED. USE OF MARK 12 X02 FUNCTIONS (APR 1988).
+C
+C     F02FHF FINDS THE EIGENVALUES FOR THE GENERALIZED BAND SYMMETRIC
+C     EIGENVALUE PROBLEM
+C
+C     A*X = LAMBDA*B*X ,
+C
+C     WHERE A AND B ARE N BY N BAND SYMMETRIC MATRICES OF HALF-BAND
+C     WIDTHS MA AND MB RESPECTIVELY AND B IS POSITIVE DEFINITE, BY
+C     A VARIANT OF THE METHOD OF CRAWFORD.
+C
+C     FOR A DESCRIPTION OF THE PARAMETERS AND USE OF THIS ROUTINE SEE
+C     THE NAG LIBRARY MANUAL.
+C
+C     -- WRITTEN ON 20-DECEMBER-1982.  S.J.HAMMARLING.
+C
+C     NAG FORTRAN 66 BLACK BOX ROUTINE.
+C
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='F02FHF')
+C     .. Scalar Arguments ..
+      INTEGER           IFAIL, LWORK, MA, MB, N, NRA, NRB
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(NRA,N), B(NRB,N), D(N), WORK(LWORK)
+C     .. Local Scalars ..
+      INTEGER           IERR, K, L
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      DOUBLE PRECISION  X02AJF
+      INTEGER           P01ABF
+      EXTERNAL          X02AJF, P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          F01BUF, F01BVF, F01BWF, F02AVF
+C     .. Intrinsic Functions ..
+      INTRINSIC         MAX, MIN
+C     .. Executable Statements ..
+      L = MAX(3*MA+MB,1)
+      K = MAX(N,L*(MA+MB+1))
+      IF (N.LT.1 .OR. MA.LT.MB .OR. MA.GE.N .OR. NRA.LE.MA .OR. MB.LT.
+     *    0 .OR. NRB.LE.MB .OR. LWORK.LT.K) GO TO 20
+C
+      K = N/2
+      IF (MA.GT.0) K = (K+MA/2)/MA
+      K = MIN(K,N)
+      K = MAX(K,MB)
+C
+      IERR = 1
+      CALL F01BUF(N,MB+1,K,B,NRB,WORK,IERR)
+      IF (IERR.NE.0) GO TO 40
+C
+      IERR = 0
+      CALL F01BVF(N,MA+1,MB+1,L,K,A,NRA,B,NRB,WORK(L+1),MAX(MA+MB,1)
+     *            ,WORK,IERR)
+C
+      CALL F01BWF(N,MA+1,A,NRA,D,WORK)
+C
+      IERR = 1
+      CALL F02AVF(N,X02AJF(),D,WORK,IERR)
+      IF (IERR.NE.0) GO TO 60
+C
+      IFAIL = 0
+      RETURN
+C
+   20 IERR = 1
+      GO TO 80
+   40 IERR = 2
+      GO TO 80
+   60 IERR = 3
+C
+   80 IFAIL = P01ABF(IFAIL,IERR,SRNAME,0,P01REC)
+      RETURN
+C
+C     END OF F02FHF.
+C
+      END

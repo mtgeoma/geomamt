@@ -1,0 +1,90 @@
+      SUBROUTINE E02CAF(M,N,K,L,X,Y,F,W,NX,A,NA,XMIN,XMAX,NUX,INUXP1,
+     *                  NUY,INUYP1,WORK,NWORK,IFAIL)
+C     MARK 7 RELEASE. NAG COPYRIGHT 1978.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     E02CAF IS A CALLING ROUTINE WHICH SETS UP WORK SPACE ARRAYS
+C     FOR THE SUBROUTINE E02CAZ AND THEN CALLS IT TO OBTAIN AN
+C     APPROXIMATION TO THE LEAST SQUARES POLYNOMIAL SURFACE FIT
+C     TO DATA ARBITRARILY DISTRIBUTED ON LINES PARALLEL TO ONE
+C     INDEPENDENT COORDINATE AXIS.
+C
+C     STARTED - 1978.
+C     COMPLETED - 1978.
+C     AUTHOR - GTA.
+C
+C
+C     FIND MAXIMUM OF N AND THE ELEMENTS OF M, AND LARGER OF K AND
+C     L, AND THE SUM OF THE ELEMENTS OF M
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='E02CAF')
+C     .. Scalar Arguments ..
+      INTEGER           IFAIL, INUXP1, INUYP1, K, L, N, NA, NWORK, NX
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(NA), F(NX), NUX(INUXP1), NUY(INUYP1), W(NX),
+     *                  WORK(NWORK), X(NX), XMAX(N), XMIN(N), Y(N)
+      INTEGER           M(N)
+C     .. Local Scalars ..
+      INTEGER           I, IERROR, IW, KP1, MI, MJ, MJP1, MSUM, NCI,
+     *                  NCII, NFI, NRESID, NS, NW, NWI, NWT, NYW
+C     .. Local Arrays ..
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      INTEGER           P01ABF
+      EXTERNAL          P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          E02CAZ
+C     .. Executable Statements ..
+      IERROR = 1
+      IF (INUXP1.LT.1 .OR. INUYP1.LT.1 .OR. INUXP1.GT.K+1 .OR.
+     *    INUYP1.GT.L+1) GO TO 80
+      IF (N.LT.L-INUYP1+2) GO TO 80
+      MSUM = 0
+      MI = N
+      DO 20 I = 1, N
+         MJ = M(I)
+         IF (MJ.LT.K-INUXP1+2) GO TO 80
+         MSUM = MSUM + MJ
+         IF (MJ.GT.MI) MI = MJ
+   20 CONTINUE
+      MJ = L
+      IF (K.GT.L) MJ = K
+      MJP1 = MJ + 1
+C
+C     CHECK THAT THE INTEGER PARAMETERS HAVE REASONABLE VALUES
+C
+      KP1 = K + 1
+      MJ = KP1*(L+1)
+      NW = 2*MI + 2*N*KP1 + 5*MJP1 + 2*N + MSUM
+      IF (NX.LT.MSUM .OR. NA.LT.MJ .OR. NWORK.LT.NW) GO TO 80
+C
+C     CHECK THAT THE Y(I) ARE STRICTLY INCREASING
+C
+      IF (N.EQ.1) GO TO 60
+      IERROR = 3
+      DO 40 I = 2, N
+         IF (Y(I).LE.Y(I-1)) GO TO 80
+   40 CONTINUE
+      IERROR = 1
+C
+C     ALLOCATE WORKSPACE FOR E02CAZ
+C
+   60 NWI = 1
+      NCI = NWI + N
+      NYW = NCI + N*KP1
+      NCII = NYW + N*KP1
+      NWT = NCII + MJP1
+      NS = NWT + MJP1
+      NFI = NS + MJP1
+      NRESID = NFI + N
+      NW = NRESID + MSUM
+      IW = NWORK - NW + 1
+      CALL E02CAZ(M,N,KP1,L,X,Y,F,W,NX,A,NA,XMIN,XMAX,NUX,INUXP1,NUY,
+     *            INUYP1,WORK(NWI),WORK(NCI),WORK(NYW),WORK(NCII)
+     *            ,WORK(NWT),WORK(NS),WORK(NFI),WORK(NRESID)
+     *            ,MSUM,MJP1,WORK(NW),IW,IERROR)
+   80 IFAIL = P01ABF(IFAIL,IERROR,SRNAME,0,P01REC)
+      RETURN
+      END

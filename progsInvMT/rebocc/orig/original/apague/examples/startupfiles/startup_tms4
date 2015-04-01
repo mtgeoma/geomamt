@@ -1,0 +1,17 @@
+
+# Short startup file, 
+# UPPER CASE is required command, 
+# and lower case is optional command which can be ignore.
+# 
+# TM Inversion using 4th-stripe with 100 Ohm-m half space as initial model.
+
+
+NUMBER_OF_MODE 1
+DATA_FILE      ../../data/data.tm
+SENS_INCLUSION stripe:p=4
+LEFT_OFFSET    295000.
+OUTPUT_FILE    tms4
+STARTING_MODEL ../../data/initmodel.h100
+DESIRED_RMS    1
+MAX_ITERATION  10
+MAX_SMOOTHING  5

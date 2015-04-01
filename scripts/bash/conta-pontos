@@ -1,0 +1,19 @@
+#!/bin/bash
+modo_de_usar ()
+{
+  echo "uso:" $1 "arquivos_de_impedândia"
+  echo
+  echo "  arquivos_de_impedância: arquivos com dados do tensor de impedância"
+  exit 1
+}
+
+if [[ -z "$1" ]] ; then
+    modo_de_usar $0
+fi
+
+if [[ !(-f $1) ]] ; then
+    echo "arquivo $1 não foi encontrado."
+    exit 1
+fi
+
+parametros-mt $1 rho-xy | wc -l

@@ -1,0 +1,83 @@
+// The real ATSHeader according to the definition from Metronix.
+qint16  HeaderLength      0x000   2
+qint16  HeaderVers        0x002   2
+// This information can be found in the ChannelTS datastructure
+quint32 Samples           0x004   4
+float   SampleFreq        0x008   4
+qint32  StartDateTime     0x00C   4
+double  LSBMV             0x010   8
+qint32  GMTOffset         0x018   4
+float   OrigSampleFreq    0x01C   4
+// The required data could probably found in the HardwareConfig
+qint16  ADUSerNum         0x020   2
+qint16  ADCSerNum         0x022   2
+char    ChanNo            0x024   1
+char    Chopper           0x025   1
+// Data from XML Job-specification
+char    ChanType          0x026   2   [2]
+char    SensorType        0x028   6   [6]
+qint16  SensorSerNum      0x02E   2
+float   PosX1             0x030   4
+float   PosY1             0x034   4
+float   PosZ1             0x038   4
+float   PosX2             0x03C   4
+float   PosY2             0x040   4
+float   PosZ2             0x044   4
+float   DipLength         0x048   4
+float   Angle             0x04C   4
+// Data from Selftest ?
+float   ProbeRes          0x050   4
+float   DCOffset          0x054   4
+float   PreGain           0x058   4
+float   PostGain          0x05C   4
+// Data from status information ?
+qint32  Latitude_msec     0x060   4
+qint32  Longitude_msec    0x064   4
+qint32  Elevation_cm      0x068   4
+char    LatLongType       0x06C   1
+char    AddCoordType      0x06D   1
+qint16  RefMedian         0x06E   2
+double  XCoord            0x070   8
+double  YCoord            0x078   8
+char    GPSStat           0x080   1
+char    GPSAccuracy       0x081   1
+qint16  UTCOffset         0x082   2
+char    SystemType        0x084  12  [12]
+// Data from XML-Job specification
+char    SurveyHeaderName  0x090  12  [12]
+char    MeasType          0x09C   4   [4]
+// TODO[OKH]
+// Next three fields will not be supported any more.
+char    LogFileName       0x0A0  12  [12]
+char    SelfTestResult    0x0AC   2   [2]
+char    Reserved5         0x0AE   2   [2]
+// TODO[OKH]
+// Were the following fields ever used ?
+qint16  CalFreqs          0x0B0   2
+qint16  CalEntryLength    0x0B2   2
+qint16  CalVersion        0x0B4   2
+qint16  CalStartAddress   0x0B6   2
+char    LFFilters         0x0B8   8   [8]
+char    ADU06CalFilename  0x0C0  12  [12]
+qint32  ADUCalTimeDate    0x0CC   4
+char    SensorCalFilename 0x0D0  12  [12]
+qint32  SensorCalTimeDate 0x0DC   4
+float   PowerlineFreq1    0x0E0   4
+float   PowerlineFreq2    0x0E4   4
+char    HFFilters         0x0E8   8   [8]
+// Unused ?
+float   CSAMTFreq         0x0F0   4
+qint16  CSAMTBlocks       0x0F4   2
+qint16  CSAMTStacksPBlock 0x0F6   2
+qint32  CSAMTBlockLength  0x0F8   4
+char    ADBBoardType      0x0FC   4   [4]
+// Comes from XML-Job spec.
+// Substructure for the comments section of the ATS header.
+char    Client            0x100  16  [16]
+char    Contractor        0x110  16  [16]
+char    Area              0x120  16  [16]
+char    SurveyID          0x130  16  [16]
+char    Operator          0x140  16  [16]
+char    Reserved          0x150 112 [112]
+char    XmlHeader         0x1C0  64  [64]
+char    Comments          0x200 512 [512]

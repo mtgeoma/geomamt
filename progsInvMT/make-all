@@ -1,0 +1,27 @@
+#!/bin/bash
+
+scriptName=${0##*/}
+if [[ -z $1 ]] ; then
+    echo "usage: $scriptName makeDir"
+    exit 1
+fi
+
+# remove any last "/"
+dir=${1%/}
+
+check=$(echo -e "makeInvMT\nmakeProcMT\n$dir" | sort -u | wc -l)
+
+if [[ $check != 2 ]] ; then
+    echo "unknow directory: $dir"
+    exit 1
+fi
+
+for d in $(ls $dir/) ; do
+    if [[ -d "$d" ]] ; then
+	cd $d
+	source ../$dir/$d > ../$d.log 2>&1
+	cd ..
+    else
+	echo "couldn't find directory \"$d\""
+    fi
+done

@@ -1,0 +1,2 @@
+g++ sn2tab3ch.cpp -o ~/bin/sn2tab3ch
+g++ sn2tab5ch.cpp -o ~/bin/sn2tab5ch

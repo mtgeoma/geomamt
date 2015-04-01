@@ -1,0 +1,84 @@
+#!/bin/bash
+
+usage ()
+{
+    echo "usage: $1 input_date output_format"
+    echo "input_date could be: yyyy-mm-dd; yyyy-jjj; dd/mm/yyyy; ssss.fff; wwww"
+    echo "output_format could be: day-of-year doy gps-week gw iso sec"
+    exit 1
+}
+
+if [[ $# != 2 ]] ; then
+    usage $0
+fi
+
+date=$1
+out=$2
+epoch="--TIME_EPOCH=2000-01-01T12"
+
+if [ "$(echo $date | tr '/' ' ' | wc -w)" == 3 ] ; then
+    input_date="--FORMAT_DATE_IN=dd/mm/yyyy"
+    gmt_fi=-fi0T
+elif [ "$(echo $date | tr '-' ' ' | wc -w)" == 3 ] ; then
+    input_date="--FORMAT_DATE_IN=yyyy-mm-dd"
+    gmt_fi=-fi0T
+elif [ "$(echo $date | tr '-' ' ' | wc -w)" == 2 ] ; then
+    input_date="--FORMAT_DATE_IN=yyyy-jjj"
+    gmt_fi=-fi0T
+else
+    if [ "$(echo ${#date})" == 4 ] ; then
+    date=$(seq $[10#${date#*\-}*7] $[10#${date#*\-}*7+6] | \
+	gmt gmtconvert -fi0t -fo0T --FORMAT_DATE_OUT=yyyy-jjj \
+	--TIME_UNIT=d --TIME_EPOCH=1980-01-06)
+    input_date="--FORMAT_DATE_IN=yyyy-jjj"
+    gmt_fi=-fi0T
+    else
+	input_date=""
+	gmt_fi=-fi0t
+	time_unit="--TIME_UNIT=s"
+    fi
+fi
+
+# if [[ -z $sec ]] ; then
+#     sec=$(echo $date | \
+# 	gmtconvert -fi0T -fo0t $input_date --TIME_UNIT=c)
+# fi
+
+if [[ $out == "day-of-year" || $out == "doy" ]] ; then
+    output_date="--FORMAT_DATE_OUT=yyyy-jjj"
+    gmt_fo=-fo0T
+elif [[ $out == "iso" ]] ; then
+    output_date="--FORMAT_DATE_OUT=yyyy-mm-dd"
+    gmt_fo=-fo0T
+elif [[ $out == "sec" ]] ; then
+    output_date=""
+    gmt_fo=-fo0t
+    time_unit="--TIME_UNIT=s"
+elif [[ $out == "gps-week" || $out == "gw" ]] ; then
+    # if input date is in seconds,
+    # must convert to some date that don't depend upon Time Epoch
+    if [ -z $input_date ] ; then
+	date=$(echo $date | \
+	    gmt gmtconvert $gmt_fi $time_unit $epoch -fo0T \
+	    --FORMAT_DATE_OUT=yyyy-jjj)
+	input_date="--FORMAT_DATE_IN=yyyy-jjj"
+	gmt_fi=-fi0T
+    fi
+    output_date=""
+    gmt_fo=-fo0t
+    time_unit="--TIME_UNIT=d"
+    epoch="--TIME_EPOCH=1980-01-06"
+else
+    echo "unknow output format"
+    exit 1
+fi
+
+date=$(for d in $(echo $date); do echo $d | \
+    gmt gmtconvert $gmt_fi $gmt_fo $input_date $output_date \
+    $time_unit $epoch; done)
+
+if [[ $out == "gps-week" || $out == "gw" ]] ; then
+    echo $date | awk '{print int($1/7)}'
+else
+    echo $date
+fi

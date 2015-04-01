@@ -1,0 +1,12 @@
+      SUBROUTINE D02KAZ(XL,XR,ELAM,YL,YR)
+C     MARK 7 RELEASE. NAG COPYRIGHT 1978.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     YL,YR HAVE CONSTANT VALUES ALREADY SET UP(AS THEY ARE IN
+C     COMMON)
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  ELAM, XL, XR
+C     .. Array Arguments ..
+      DOUBLE PRECISION  YL(3), YR(3)
+C     .. Executable Statements ..
+      RETURN
+      END

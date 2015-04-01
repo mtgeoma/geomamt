@@ -1,0 +1,11 @@
+      SUBROUTINE D02SAS(ISTATE,IFLAG,IFAIL1,P,M,F,PNORM,PNORM1,EPS,D)
+C     MARK 11.5 RELEASE. NAG COPYRIGHT 1986.
+C     DUMMY MONIT ROUTINE FOR D02SAF
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  EPS, PNORM, PNORM1
+      INTEGER           IFAIL1, IFLAG, ISTATE, M
+C     .. Array Arguments ..
+      DOUBLE PRECISION  D(M), F(M), P(M)
+C     .. Executable Statements ..
+      RETURN
+      END

@@ -1,0 +1,56 @@
+#!/bin/bash
+
+usage ()
+{
+    echo
+    echo "usage: $1 yyyy-mm-dd prod"
+    echo "where:"
+    echo "yyyy-mm-dd is the data date"
+    echo "prod could any -s option from goa_prod_ftp.pl"
+    echo "     if it is *R*, will include -hr"
+    echo
+    exit 1
+}
+
+if [[ $# != 2 ]] ; then
+    usage $0
+fi
+
+date=$1
+prod=$2
+
+if [[ -z $GOA ]];then
+    echo "must first run the command: source /opt/goa-6.?/rc_gipsy.sh"
+    exit 1
+fi
+
+if [[ !(-d $DIR_GOA_PROD/$prod) ]] ; then
+    echo "can't find directory $DIR_GOA_PROD/$prod"
+    exit 1
+fi
+
+ls $DIR_GOA_PROD/$prod/${date}* > /dev/null 2>&1
+EX=$?
+if [[ $EX != 0 ]] ; then
+    OLDDIR=$(pwd)
+    TMPDIR=$(mktemp -d /tmp/GOA_PROD.XXXXXXXXXX)
+    cd $TMPDIR
+    echo $prod | grep R > /dev/null 2>&1
+    if [[ $? == 0 ]] ; then
+	S=$(printf "%s -hr" $prod)
+    else
+	S=$prod
+    fi
+    goa_prod_ftp.pl -d $date -s $S > goa_prod_ftp.log 2>&1
+    EX=$?
+    if [[ $EX == 0 ]] ; then
+	mv -i ./*.gz $DIR_GOA_PROD/$prod
+    else
+	cat goa_prod_ftp.log
+    fi
+    cd $OLDDIR
+
+    rm -rf $TMPDIR
+fi
+
+exit $EX

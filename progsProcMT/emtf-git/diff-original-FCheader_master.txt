@@ -1,0 +1,229 @@
+diff --git a/D/out_pack.f b/D/out_pack.f
+index 40ca8c7..bb69297 100644
+--- a/D/out_pack.f
++++ b/D/out_pack.f
+@@ -184,7 +184,7 @@ c
+       include 'iounits.inc'
+       include '../include/nchmx.inc'
+       integer maxHeaderLength 
+-      parameter (maxHeaderLength = 20*(nchmx*8+4))
++      parameter (maxHeaderLength = 20*(nchmx*8+4)) 
+ 
+       integer nwin(nd),idl(nd)
+       real dr(nd),stcor(2),orient(2,nch),decl
+@@ -194,42 +194,33 @@ c
+ 
+ ccc   ctemp of this size should allow for 100 channels + 20 decimation levels
+       data ctemp/maxHeaderLength*' '/
+-
+-      if(nd>3*nch) then
+-         write(6,*) "nd>3*nch cannot be properly writing by wfhead"
+-         stop
+-      endif
+-      if(nd>99) then
+-         write(6,*) "nd>99 cannot be properly writing by wfhead"
+-         stop
+-      endif
+-
++ 
+       i1 = 1
+       write(cr,101) nch
+ 101   format('nch',i5)
+ 
+       call cmove(ctemp,cr,8,i1)
+-
++ 
+       write(cr,102) nd
+ 102   format('nd',i6)
+ 
+       call cmove(ctemp,cr,8,i1)
+-
++  
+       write(cr,103) nfreqmx 
+-103   format('nfmx',i6)
++103   format('nfmx',i4)
+ 
+-      call cmove(ctemp,cr,10,i1)
++      call cmove(ctemp,cr,8,i1)      
+ 
+       call cmove(ctemp,'nwin',4,i1)
+       do i = 1,nd
+-         write(cr,'(i2i6)') idl(i),nwin(i)
++         write(cr,'(2i4)') idl(i),nwin(i)
+          call cmove(ctemp,cr,8,i1)
+       enddo
+-
++                
+       call cmove(ctemp,'dr  ',4,i1)
+       do i = 1,nd
+-         write(cr,'(1pe12.6)') dr(i)
+-         call cmove(ctemp,cr,12,i1)
++         write(cr,'(e12.4)') dr(i)
++         call cmove(ctemp,cr,12,i1)    
+       enddo
+ 
+       call cmove(ctemp,'ch,orien',8,i1)
+@@ -241,15 +232,15 @@ ccc   ctemp of this size should allow for 100 channels + 20 decimation levels
+       enddo
+ 
+       call cmove(ctemp,'scor',4,i1)
+-      write(cr,'(f10.5)') stcor(1)
+-
+-      call cmove(ctemp,cr,10,i1)
+-      write(cr,'(f10.5)') stcor(2)
++      write(cr,'(f8.4)') stcor(1)
+ 
+-      call cmove(ctemp,cr,10,i1)
++      call cmove(ctemp,cr,8,i1)
++      write(cr,'(f8.4)') stcor(2)
+ 
++      call cmove(ctemp,cr,8,i1)
++                                   
+       call cmove(ctemp,'decl',4,i1)
+-      write(cr,'(f8.4)') decl
++      write(cr,'(f8.4)') decl  
+ 
+       call cmove(ctemp,cr,8,i1)
+ 
+diff --git a/T/rfhead.f b/T/rfhead.f
+index 25b9c58..353a6fe 100644
+--- a/T/rfhead.f
++++ b/T/rfhead.f
+@@ -3,11 +3,11 @@ c******************************************************
+ c
+       subroutine rfhead(iounit,nch,ndmax,nd,nfreqmx,nwin,dr
+      1   ,chid,orient,decl,stcor,irecl)
+-
++ 
+ c       writes header on fm and fg files; header is 20 records
+ c       ( = 160 bytes for fg (i.e. gds) ; = 240 bytes for fm (mt)
+ c          files).  
+-
++ 
+       include '../include/nchmx.inc'
+       integer maxHeaderLength
+       parameter (maxHeaderLength = 20*(nchmx*8+4))
+@@ -17,12 +17,12 @@ c          files).
+       character*1 ctemp(maxHeaderLength)
+       character*6 chid(*)
+       character*12 cr
+-
++   
+       do 200 i = 1,ndmax
+       nwin(i) = 0
+       dr(i) = 0.0
+ 200   continue
+-
++ 
+       do 30 i = 1,20
+       i1 = (i-1)*irecl + 1
+       i2 = i1 + irecl-1
+@@ -39,22 +39,22 @@ c      write(6,'(16a1)') (ctemp(j),j=i1,i2)
+       read(cr,102) nd
+ 102   format(2x,i6)
+ 
+-      call movec(ctemp,cr,10,i1)
+-      read(cr,103) nfreqmx
+-103   format(4x,i6)
++      call movec(ctemp,cr,8,i1)      
++      read(cr,103) nfreqmx 
++103   format(4x,i4)
+ 
+       i1 = i1 + 4
+       do 10 i = 1,nd
+-      call movec(ctemp,cr,2,i1)
+-      read(cr,'(i2)') idl(i)
+-      call movec(ctemp,cr,6,i1)
+-      read(cr,'(i6)') nwin(idl(i))
++      call movec(ctemp,cr,4,i1)
++      read(cr,'(i4)') idl(i)
++      call movec(ctemp,cr,4,i1)
++      read(cr,'(i4)') nwin(idl(i))
+ 10    continue
+ 
+-      i1 = i1 + 4
++      i1 = i1 + 4                
+       do i = 1,nd
+-         call movec(ctemp,cr,12,i1)
+-         read(cr,'(1pe12.6)') dr(idl(i))
++         call movec(ctemp,cr,12,i1)    
++         read(cr,'(e12.4)') dr(idl(i))
+       enddo
+ 
+       i1 = i1 + 8
+@@ -66,15 +66,15 @@ c      write(6,'(16a1)') (ctemp(j),j=i1,i2)
+       enddo
+ 
+       i1 = i1 + 4
+-      call movec(ctemp,cr,10,i1)
+-      read(cr,'(f10.5)') stcor(1)
+-
+-      call movec(ctemp,cr,10,i1)
+-      read(cr,'(f10.5)') stcor(2)
++      call movec(ctemp,cr,8,i1)
++      read(cr,'(f8.4)') stcor(1)
+ 
+-      i1 = i1 + 4
+       call movec(ctemp,cr,8,i1)
+-      read(cr,'(f8.4)') decl
++      read(cr,'(f8.4)') stcor(2)
+ 
++      i1 = i1 + 4                                   
++      call movec(ctemp,cr,8,i1)
++      read(cr,'(f8.4)') decl  
++ 
+       return
+       end
+diff --git a/T/tranmt.f b/T/tranmt.f
+index e766167..8eb15e6 100644
+--- a/T/tranmt.f
++++ b/T/tranmt.f
+@@ -232,7 +232,7 @@ c**************** LOOP EXECUTED ONCE FOR EACH FREQUENCY BAND *******
+ c*******************************************************************
+       write(*,*) 
+       write(*,*) 
+-     & 'IBAND D-Lev   Period   IBAND(1) IBAND(2) INITIAL FINAL ITER'
++     & 'IBAND  D-Lev  Period  IBAND(1) IBAND(2) INITIAL  FINAL   ITER'
+       do 100 ib=1,nbt
+          if(lprint) then
+             print*,'frequencies',iband(1,ib),'  to   '
+@@ -287,16 +287,16 @@ c..........coherence presort
+             call rxspclev(xx,nfreq,nchstk,z(1,ib),ldf(ib),rdf(1,ib),tol
+      &      ,lrbst,w,ncht,lrref,iiter)
+          end if
+-         write(*,900) ib,idl(ib),period(ib),
+-     &        iband(1,ib), iband(2,ib),nfreq,ldf(ib),iiter
+- 900     format(1x,i4,3x,i3,1x,1pe12.6,1x,i6,3x,i6,3x,i5,2x,i5,1x,i4)
++         write(*,'(i4,i7,f12.4,i5,3x,i5,3x,i8,i8,i6)') ib,idl(ib),
++     &        period(ib),iband(1,ib), iband(2,ib),nfreq,ldf(ib),iiter
++
+ 100     continue
+ 
+       close(2)
+       close(21)
+       if(lrref) close(22)
+       write(*,*) 
+-     & 'IBAND D-Lev   Period   IBAND(1) IBAND(2) INITIAL FINAL ITER'
++     &     'IBAND  D-Lev  Period  IBAND(1) IBAND(2) INITIAL  FINAL'
+ 
+ c************END OF FREQUENCY BAND STACKING LOOP *********************
+ ccc   output transfer functions with error covariance info
+diff --git a/T/wrt_z.f b/T/wrt_z.f
+index 8478620..4a4cd56 100644
+--- a/T/wrt_z.f
++++ b/T/wrt_z.f
+@@ -132,10 +132,9 @@ c...     SIGMA R (residual covariance matrix)
+ 105   format('coordinate ',f10.5,1x,f10.5,1x,' declination ',f8.2)
+ 110   format('number of channels ',i3,2x,' number of frequencies ',i4)
+ 115   format(i5,1x,f8.2,1x,f8.2,1x,a7,2x,a6)
+-120   format('period : ',1pe12.6,3x,' decimation level ',i3,3x,
+-     +       ' freq. band from ',i6,' to ',i6)
+-125   format('number of data point ',i6,
+-     +       ' sampling freq. ',1pe12.6,' Hz')
+-140   format(16es12.4)
++120   format('period : ',f12.5,3x,' decimation level ',i3,3x,
++     +       ' freq. band from ',i4,' to ',i4)
++125   format('number of data point ',i6,' sampling freq. ',f7.3,' Hz')
++140   format(16e12.4)
+       return
+       end ! of wrt_z.f

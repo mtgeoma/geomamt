@@ -1,0 +1,46 @@
+#!/bin/bash
+usage ()
+{
+    printf "check-clock-lemi will check if there is gaps in lemi time series\n\n"
+    printf "usage: %s lemi_file.t*\n" $1
+    printf "\t\t\tif input is only one file, will check all gaps in time serie\n"
+    printf "\t\t\tif there is more than one file, will check only the first gap\n"
+    printf "\t\t\tdo nothing if there isn't any gap in time serie\n"
+    echo
+    exit 1
+}
+
+if [[ ${#} == 0 ]] ; then
+    usage $0
+fi
+
+if [[ ${#} == 1 ]] ; then
+    all=1
+else
+    all=0
+fi
+
+while [[ -n $1 ]] ; do
+    file=$1
+    if [[ !($file) ]] ; then
+	echo "couldn't find file $file"
+	echo
+	exit 1
+    fi
+
+    awk '{printf "%d-%02d-%02dT%02d:%02d:%05.2f\n",$1,$2,$3,$4,$5,$6}' $file | \
+	gmtconvert -fi0T -fo0t --TIME_SYSTEM=UNIX | \
+       	awk -v f=$file -v all=$all '{
+          if(NR==2) {
+            inc=$1-t0
+          }
+          if (NR>2 && (inc!=($1-t0)) ) {
+            printf "%s sample period changed from %f to %f at line %d\n",f,inc,$1-t0,NR
+            if (all==0) {
+              nextfile
+            }
+          }
+          t0=$1
+        }'
+    shift
+done

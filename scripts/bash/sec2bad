@@ -1,0 +1,38 @@
+#!/bin/bash
+if [[ $# -ne 2 ]] ;then
+    echo "usage: $0 file.sec file_bad_selection"
+    echo "where file.sec was created by egb2tss"
+    echo "and file_bad_selection was two columns"
+    echo "marking begin and end of bad data in iso format:"
+    echo "yyyy-mm-ddThh:mm:ss.ss yyyy-mm-ddThh:mm:ss.ss"
+    echo "or key word \"begin\" to begin file"
+    echo "or key word \"end\" to end file"
+    echo
+    exit 1
+fi
+
+file=$1
+date_iso=$2
+N=$(wc -l $file | awk '{print $1}')
+format=$(echo $N | awk '{l=length($1);printf "%%%dd %%%dd 4\\n",l,l}')
+wc -l $date_iso | awk '{print $1}'
+
+exec 6<&0 # liga o arquivo #6 com stdin (cópia de segurança)
+exec < $date_iso # stdin substituído pelo arquivo $arquivo_selecao
+while read -a col ; do
+    if [[ ${col[0]} == "begin" ]] ; then
+	b=1
+    else
+	sec=$(echo ${col[0]} | gmtconvert -fi0T -fo0t --TIME_SYSTEM=UNIX --D_FORMAT=%.6f)
+	b=$(awk -v s=$sec 'BEGIN{e=1e999}{d=$1-s;d=sqrt(d*d);if(d<e){e=d;n=NR}}END{print n}' $file)
+    fi
+
+    if [[ ${col[1]} == "end" ]] ; then
+	e=$N
+    else
+	sec=$(echo ${col[1]} | gmtconvert -fi0T -fo0t --TIME_SYSTEM=UNIX --D_FORMAT=%.6f)
+	e=$(awk -v s=$sec 'BEGIN{e=1e999}{d=$1-s;d=sqrt(d*d);if(d<e){e=d;n=NR}}END{print n}' $file)
+    fi
+    printf "$format" $b $e
+done
+exec 0<&6 6<&- # restaura stdin do arquivo #6 e o fecha

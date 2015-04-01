@@ -1,0 +1,7 @@
+*A.asc 65536 ss;bs1
+*B.asc 65536 ss
+*B.asc  8192 ss
+*C.asc   256 ss
+*C.asc   128 ss
+*D.asc   128 ss
+*D.asc    64 ss

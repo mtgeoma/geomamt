@@ -1,0 +1,2 @@
+g++ -o ~/bin/rebocc_mdl2gmt rebocc_mdl2gmt.cpp
+g++ -o ~/bin/rebocc_rsp2gmt rebocc_rsp2gmt.cpp

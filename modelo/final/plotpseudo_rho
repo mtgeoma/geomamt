@@ -1,0 +1,59 @@
+#!/bin/bash
+PERFIL=perfil-ufb1.dat
+PAR=rhoa
+ARQUIVO_PS=pseudo_${PAR}.ps
+GRDXY=${PAR}_xy.grd
+GRDYX=${PAR}_yx.grd
+RMIN=$(grdinfo -C $GRDXY | awk '{print $2}')
+RMAX=$(grdinfo -C $GRDXY | awk '{print $3}')
+TMIN=$(grdinfo -C $GRDXY | awk '{print $4}')
+TMAX=$(grdinfo -C $GRDXY | awk '{print $5}')
+ANOTX=$(grdinfo -C $GRDXY | awk '{printf "a%.0ff%.0f\n",$8*6,$8}')
+ANOTY=$(grdinfo -C $GRDXY | awk '{printf "a%.0ff%.1f\n",$9*10,$9*2}')
+
+gmtset HEADER_FONT_SIZE 14p LABEL_FONT_SIZE 12p ANOT_FONT_SIZE_PRIMARY 9p
+gmtset HEADER_OFFSET 0.2c LABEL_OFFSET 0.0c
+
+# escala
+makecpt -Cno_green -Qi -T-0.5/3.0/0.25 -I > rho.cpt
+psscale -X2c -Y1.5c -D8.5c/1.5c/12c/0.5ch -Ba1pf3:"resistividade Log(@~W@~m)":wSne -Crho.cpt -Q -K -P > $ARQUIVO_PS
+
+# pseudo secao YX
+grdimage $GRDYX -X1c -Y3.5c -Crho.cpt -JX16c/-9c -R$RMIN/$RMAX/$TMIN/$TMAX -K -O >> $ARQUIVO_PS
+psbasemap -J -R -B${ANOTX}:."fase YX"::"dist\342ncia (km)":/${ANOTY}:"Log(T)":WSne -K -O >> $ARQUIVO_PS
+
+# plota a posicao das estacoes
+awk -v y=$TMIN '{printf "%f %s\n",$1,y}' $PERFIL | \
+psxy -J -R -N -Si10p -G0 -D0p/5p -K -O >> $ARQUIVO_PS
+
+# identifica as estacoes
+awk -v y=$TMIN '{printf "%f %s 10 90 0 MC %s\n",$1,y,substr($2,5,2)}' $PERFIL | \
+pstext -J -R -N -D0p/0.5c -K -O >> $ARQUIVO_PS
+
+# pseudo secao YX
+grdimage $GRDXY -Y11.5c -Crho.cpt -JX16c/-9c -R$RMIN/$RMAX/$TMIN/$TMAX -K -O >> $ARQUIVO_PS
+psbasemap -J -R -B${ANOTX}:."fase XY":/${ANOTY}:"Log(T)":WSne -K -O >> $ARQUIVO_PS
+
+# plota a posicao das estacoes
+awk -v y=$TMIN '{printf "%f %s\n",$1,y}' $PERFIL | \
+psxy -J -R -N -Si10p -G0 -D0p/5p -K -O >> $ARQUIVO_PS
+
+# identifica as estacoes
+awk -v y=$TMIN '{printf "%f %s 10 90 0 MC %s\n",$1,y,substr($2,5,2)}' $PERFIL | \
+pstext -J -R -N -D0p/0.5c -K -O >> $ARQUIVO_PS
+
+# título geral
+awk -v x=$RMIN -v y=$TMIN -v p=$PAR '{printf "%s %s 14 0 0 MC %s %s\n",x,y,substr($2,1,4),p}' $PERFIL |\
+pstext -J -R -N -D8c/2.0c -O >> $ARQUIVO_PS
+
+#------------------------------------------------------------------------------
+
+# retorna aos valores defaults
+rm -f .gmtcommands4 .gmtdefaults4
+
+# define programas para visualizar figuras
+source visualizadores
+
+ARQUIVO_PNG=${ARQUIVO_PS/.ps/.png}
+ps2raster $ARQUIVO_PS -A -P -Tg
+$VIEWER_PNG $ARQUIVO_PNG &

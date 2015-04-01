@@ -1,0 +1,8 @@
+if [[ $(getconf LONG_BIT) == 32 ]]
+then
+	echo "processador de 32 bits"
+	gfortran -fdefault-integer-8 -o ~/bin/rhoplus rhoplus.f
+else
+	echo "processador de 64 bits"
+	gfortran -o ~/bin/rhoplus rhoplus.f
+fi

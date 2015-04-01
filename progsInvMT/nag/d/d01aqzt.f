@@ -1,0 +1,14 @@
+      DOUBLE PRECISION FUNCTION D01AQZ(X,C,P2,P3,P4,KP)
+C     MARK 13 RE-ISSUE. NAG COPYRIGHT 1988.
+C     BASED ON QUADPACK ROUTINE  QWGTC.
+C
+C        THIS FUNCTION SUBPROGRAM IS USED IN CONJUNCTION
+C        WITH  D01AQY,  AND DEFINES THE WEIGHT FUNCTION.
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION                 C, P2, P3, P4, X
+      INTEGER                          KP
+C     .. Executable Statements ..
+      D01AQZ = 1.0D+00/(X-C)
+      RETURN
+      END

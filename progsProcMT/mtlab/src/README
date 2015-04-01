@@ -1,0 +1,32 @@
+invariantes <arquivo-impedancia> [--formato,f <formato>] <invariante>
+<invariante-wal> --bahr <invariante-bahr>
+
+<arquivo-impedancia>: formato jones, egbert, edi.
+<invariante>: I1-I7,Q,kappa,mu,sigma, eta [T valor erro]
+
+parametros-mt ARQUIVO PARAMETRO-COMPONENTE [azimute=AZIMUTE]
+	      [--formato,f FORMATO]
+
+ARQUIVO é o arquivo com os tensores de impedância
+PARAMETRO: rho, phi, ZReal, ZImag, rhoReal, rhoImag
+COMPONENTE: xx, xy, yx, yy, mean, eff[ective]
+AZIMUTE=angulo de rotação do tensor em relação ao sistema de coordenada da
+        medida: Z=R*Z*R^T
+FORMATO: egbert, jones, edi
+SAIDA:
+  parametro rho: [T rho rho_minimo rho rho rho_maximo]
+     é o formato esperado pelo GMT com a opção -EY "box-and-whisker":
+     The y coordinate is then taken as the median value, and 4 more columns
+     are expected to contain the minimum (0% quartile), the 25% quartile, the
+     75% quartile, and the maximum (100% quartile) values.
+
+  demais parametros: [T valor-parametro erro-parametro]
+    inclusive rhoReal e rhoImag
+
+definições:
+rhoComplexo=rhoReal+i*rhoImag=Z/sqrt(omega*mu)
+
+componentes "mean" e "eff[ective]" são obtidas do seguinte elemento invariante
+do tensor
+Zmean=(Zxy-Zyx)/2
+Zeffective=sqrt(Zxx*Zyy-Zxy*Zyx)

@@ -1,0 +1,66 @@
+      SUBROUTINE E02GBY(KCNT,K,NCOL,F,RES,INDX,ALPHA,PTA,MPL1)
+C     MARK 7 RELEASE. NAG COPYRIGHT 1978.
+C     MARK 8A REVISED. IER-256 (AUG 1980).
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     ***************
+C     COMPUTE THE RESIDUALS
+C     (E(.,IX)-TRANSP)*X - F(IX)
+C     FOR  IX  CORRESPONDING TO  INDX(K+1),...,INDX(NCOL).
+C     THE OTHER RESIDUALS ARE KNOWN TO BE ZERO.
+C     THE RESIDUALS ARE STORED IN THE ARRAY  RES,
+C     IF UNEXPECTED ZERO RESIDUALS ARE FOUND,  INDX IS
+C     REARRANGED SO THAT THESE NEW ZERO RESIDUALS CORRESPOND
+C     TO  INDX(K+1),...,INDX(KCNT)
+C
+C     THE RESIDUAL VALUES ARE OBTAINED BY UPDATING PREVIOUS
+C     RESIDUAL VALUES USING THE INFORMATION IN ALPHA AND PTA.
+C
+C     EPS  IS THE SMALLEST POSITIVE NUMBER WHICH
+C     SATISFIES  (1.0 + EPS) .GT. 1.0  IN THE
+C     PRECISION OF THE ARITHMETIC BEING USED.
+C     ***************
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  ALPHA
+      INTEGER           K, KCNT, MPL1, NCOL
+C     .. Array Arguments ..
+      DOUBLE PRECISION  F(MPL1), PTA(MPL1), RES(MPL1)
+      INTEGER           INDX(MPL1)
+C     .. Scalars in Common ..
+      DOUBLE PRECISION  EPS
+C     .. Local Scalars ..
+      DOUBLE PRECISION  TEMP, ZERO
+      INTEGER           I, IX, KP1
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS
+C     .. Common blocks ..
+      COMMON            /AE02GB/EPS
+C     .. Data statements ..
+      DATA              ZERO/0.0D+00/
+C     .. Executable Statements ..
+      IF (1.GT.K) GO TO 40
+      DO 20 I = 1, K
+         IX = INDX(I)
+         RES(IX) = ZERO
+   20 CONTINUE
+   40 CONTINUE
+      KP1 = K + 1
+      KCNT = KP1
+      IF (KP1.GT.NCOL) GO TO 100
+      DO 80 I = KP1, NCOL
+         IX = INDX(I)
+         TEMP = RES(IX) + ALPHA*PTA(IX)
+         IF (ABS(TEMP).LE.EPS*ABS(F(IX))) GO TO 60
+         RES(IX) = TEMP
+         GO TO 80
+   60    CONTINUE
+         INDX(I) = INDX(KCNT)
+         INDX(KCNT) = IX
+         KCNT = KCNT + 1
+         RES(IX) = ZERO
+   80 CONTINUE
+  100 CONTINUE
+      KCNT = KCNT - 1
+      RETURN
+      END

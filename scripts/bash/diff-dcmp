@@ -1,0 +1,22 @@
+#!/bin/bash
+if [[ $# != 2 ]] ; then
+    echo "usage: $(basename $0) file1.dcmp file2.dcmp"
+    exit 1
+fi
+
+DIRTMP=$(mktemp -d /tmp/dcmp.XXXXXX)
+for opt in $(echo "azim sh ch tw rhoa rhob phia phib err skew anis phidif")
+do
+    dcmp2gmt -I$1 -D$opt | awk '{print $2}' > $DIRTMP/tmp1
+    dcmp2gmt -I$2 -D$opt | awk '{print $2}' > $DIRTMP/tmp2
+    diff $DIRTMP/tmp1 $DIRTMP/tmp2 > /dev/null 2>&1
+    if [[ $? == 0 ]]
+    then
+	echo "$opt in $1 and $2 are equals"
+    else
+	MINMAX=$(paste $DIRTMP/tmp1 $DIRTMP/tmp2 |\
+                 awk '{print $2-$1}' | minmax -C)
+	echo "$opt in $1 and $2 differ: ($MINMAX)"
+    fi
+done
+rm -rf $DIRTMP

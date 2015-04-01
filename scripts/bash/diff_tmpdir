@@ -1,0 +1,35 @@
+#!/bin/bash
+
+if [[ ${#} -lt 2 || ${#} -gt 4 ]] ; then
+    printf "usage: $0 \'gmt\.......\' file1 file2 [sort_it]\n"
+    printf "don't forget to skip /: '\/'\n\n"
+    exit 1
+fi
+
+# input files
+regex="$1"
+F1=$2
+F2=$3
+
+sort_it=""
+if [[ -n $4 ]] ; then
+    if [[ $4 == "sort_it" ]] ; then
+	sort_it="sort_it"
+    else
+	echo "it must be \"sort_it\""
+	exit 1
+    fi
+fi
+
+export TMPDIR=$(mktemp -d /tmp/diff_tmpdir.XXXXXX)
+
+if [[ -z $sort_it ]] ; then
+    sed "s/$regex/tmpdir/g" $F1 > $TMPDIR/F1
+    sed "s/$regex/tmpdir/g" $F2 > $TMPDIR/F2
+else
+    sed "s/$regex/tmpdir/g" $F1 | sort > $TMPDIR/F1
+    sed "s/$regex/tmpdir/g" $F2 | sort > $TMPDIR/F2
+fi
+diff $TMPDIR/F1 $TMPDIR/F2
+
+rm -rf $TMPDIR

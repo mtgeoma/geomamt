@@ -1,0 +1,118 @@
+      SUBROUTINE G13AJF(MR,PAR,NPAR,C,KFC,X,NX,RMS,ST,IST,NST,NFV,FVA,
+     *                  FSD,IFV,ISF,W,IW,IFAIL)
+C     MARK 10 RELEASE. NAG COPYRIGHT 1982.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     G13AJF APPLIES A SEASONAL ARIMA MODEL TO AN OBSERVED
+C     TIME SERIES AND DERIVES THE STATE SET FOR USE IN
+C     FORECASTING, AND ANY SPECIFIED NUMBER OF FORECASTS
+C     WITH STANDARD ERRORS.
+C
+C     CONTRIBUTORS - G. TUNNICLIFFE WILSON, C. DALY (LANCASTER
+C     UNIV. )
+C     VALIDATOR    - T. LAMBERT (NAG CENTRAL OFFICE)
+C
+C     USES NAG LIBRARY ROUTINES G13AHZ, G13AJY, G13AJZ, P01AAF
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='G13AJF')
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  C, RMS
+      INTEGER           IFAIL, IFV, IST, IW, KFC, NFV, NPAR, NST, NX
+C     .. Array Arguments ..
+      DOUBLE PRECISION  FSD(IFV), FVA(IFV), PAR(NPAR), ST(IST), W(IW),
+     *                  X(NX)
+      INTEGER           ISF(4), MR(7)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  CC, S, ZERO
+      INTEGER           I, IERROR, IWA, KQ, KQA, KVAL, KVEX, KVEXR, KVG,
+     *                  KVH, KVPH, KVSP, KVST, KVTH, KVWA, KWQ, ND, NDD,
+     *                  NDF, NDS, NEX, NGH, NGHP, NP, NPAR1, NPD, NPS,
+     *                  NQ, NQD, NQS, NS
+C     .. Local Arrays ..
+      INTEGER           MPQS(4)
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      INTEGER           P01ABF
+      EXTERNAL          P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          G13AHZ, G13AJY, G13AJZ
+C     .. Intrinsic Functions ..
+      INTRINSIC         MAX, DBLE
+C     .. Data statements ..
+      DATA              ZERO/0.0D0/
+C     .. Executable Statements ..
+C
+C     EXTRACT ORDERS AND GENERALISED ORDERS FROM MR ARRAY
+C
+      CALL G13AJY(MR,NP,ND,NQ,NPS,NDS,NQS,NS,NPD,NDD,NQD,MPQS,NPAR1)
+C
+C     CHECK FOR ERRORS IN MR, NPAR, AND KFC
+C
+      IERROR = 1
+      DO 20 I = 1, 7
+         IF (MR(I).LT.0) GO TO 60
+   20 CONTINUE
+      IF (NPAR.LT.1) GO TO 60
+      IF (NPAR.NE.NPAR1) GO TO 60
+      IF (NS.EQ.1) GO TO 60
+      IF (NS.EQ.0 .AND. NPS+NDS+NQS.NE.0) GO TO 60
+      IF (NS.NE.0 .AND. NPS+NDS+NQS.EQ.0) GO TO 60
+      IF (KFC.NE.0 .AND. KFC.NE.1) GO TO 60
+C
+C     CHECK FOR OVER-PARAMETERISATION
+C
+      IERROR = 2
+      NDF = NX - NDD - NPAR - KFC
+      IF (NDF.LE.0) GO TO 60
+      IF (KFC.EQ.1) CC = C
+      IF (KFC.EQ.0) CC = ZERO
+      NEX = NX + NQD
+      NGH = MAX(1,NQD)
+      NGHP = NGH + 1
+C
+C     CHECK WORK ARRAY SIZE
+C
+      IERROR = 3
+      KWQ = 3*(NEX+NPD+1)
+      KQA = 3*NEX + NGH*(NGH+2)
+      IWA = KWQ + 5*NPAR + NGH
+      KQ = IWA + KQA
+      IF (IW.LT.KQ) GO TO 60
+      KVEX = 1
+      KVEXR = KVEX + NEX
+      KVAL = KVEXR + NEX
+      KVG = KVAL + NEX
+      KVH = KVG + NGH
+      KVWA = KVH + NGH*NGHP
+      IERROR = 0
+C
+C     DERIVE THE STATE SET
+C
+      CALL G13AJZ(MR,PAR,NPAR,CC,X,NX,W(KVEX),W(KVEXR),W(KVAL)
+     *            ,NEX,W(KVG),W(KVH),S,ST,IST,NST,W(KVWA)
+     *            ,IWA,NGH,NGHP,ISF,IERROR)
+      IF (IERROR.NE.0) GO TO 60
+      RMS = S/DBLE(NDF)
+      IF (NFV.LE.0) GO TO 40
+      KVPH = KWQ + KVWA
+      KVTH = KVPH + NPAR
+      KVSP = KVTH + NPAR
+      KVST = KVSP + NPAR
+      IERROR = 7
+C
+C     CHECK FORECAST ARRAY SIZE
+C
+      IF (IFV.LT.NFV) GO TO 60
+C
+C     COMPUTE FORECASTS AND STANDARD ERROR ESTIMATES
+C
+      CALL G13AHZ(ST,NST,NP,ND,NQ,NPS,NDS,NQS,NS,W(KVPH),W(KVTH),W(KVSP)
+     *            ,W(KVST),NPAR,CC,RMS,NFV,FVA,FSD,W(KVEX),W(KVAL)
+     *            ,W(KVEXR))
+   40 IFAIL = 0
+      RETURN
+   60 IFAIL = P01ABF(IFAIL,IERROR,SRNAME,0,P01REC)
+      RETURN
+      END

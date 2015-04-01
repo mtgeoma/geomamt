@@ -1,0 +1,38 @@
+      SUBROUTINE E02GBZ(K,N,ZZ,IZR,MPL1,DD,RR,IRR,INDX,IXINDX)
+C     MARK 7 RELEASE. NAG COPYRIGHT 1978.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     ***************
+C     CL1  VERSION OF  E02GBZ.
+C     THIS ROUTINE ADMINISTERS THE DELETION OF A COLUMN
+C     (NUMBERED  INDX(IXINDX)  IN SOME EXTERNAL ARRAY)
+C     FROM AN  N BY K   Z*D*R   DECOMPOSITION.
+C     THE COLUMN TO BE REMOVED CORRESPONDS TO COLUMN NUMBER
+C     IXINDX  IN THE  Z*D*R  DECOMPOSITION.
+C     THE VECTOR  INDX   IS REARRANGED BY
+C     PERMUTING ITS  IXINDX   ELEMENT OUT TO THE
+C     K-TH  POSITION.
+C     K  IS DECREASED BY ONE.
+C     ***************
+C
+C     .. Scalar Arguments ..
+      INTEGER           IRR, IXINDX, IZR, K, MPL1, N
+C     .. Array Arguments ..
+      DOUBLE PRECISION  DD(N), RR(IRR), ZZ(IZR,N)
+      INTEGER           INDX(MPL1)
+C     .. Local Scalars ..
+      INTEGER           I, ITMP, IX
+C     .. External Subroutines ..
+      EXTERNAL          E02GBQ
+C     .. Executable Statements ..
+      ITMP = INDX(IXINDX)
+      IX = IXINDX + 1
+      IF (IX.GT.K) GO TO 40
+      DO 20 I = IX, K
+         INDX(I-1) = INDX(I)
+   20 CONTINUE
+   40 CONTINUE
+      INDX(K) = ITMP
+      CALL E02GBQ(K,N,ZZ,IZR,IRR,DD,RR,IXINDX)
+      RETURN
+      END

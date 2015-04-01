@@ -1,0 +1,41 @@
+c       include file PARAMS1.INC
+c
+c       define all general parameters for the processing. There are
+c       three more parameters set in PARAMS2.INC
+c
+c       This include file is included by:
+c       dnff
+
+c#####################################################################
+c       these parameters may need to be changed if window lengths,
+c       number of decimation levels, decimation factors,
+c       filter corrections, length of time series etc. are changed
+
+c       PARAMETERS:
+c
+c       NWMX:   Maximum length of windows to be fft'd (in samples)
+c       NSMAX:  Maximum number of sets to allow for (this is the sum
+c               over all sets in all decimation levels)
+c       NBADMX: Maximum number of bad record segments
+c       NBYTES: storage format of binary time series
+c               depending on NBYTES the reclen is set and 
+c               RDBLK reads data into different arrays       
+c                       NBYTES = 4: integer*4
+c                       NBYTES = 2: integer*2
+c               the user can change the storage format using
+c               the command line option -b(2or4)
+c       LPACK:  logical parameter to control packing of FCs in
+c                output file.  If LPACK = .TRUE. each complex FC
+c                is packed into a 4 byte integer.
+
+        parameter (nwmx = 4096)
+        parameter (nsmax = 48240)
+        parameter (nbadmx = 2)
+        parameter (NBYTES = 2)
+
+        character*3 BINASC
+ccc     set BINASC = 'BIN' for binary files by default, = 'ASC' for ascii
+        parameter (BINASC = 'BIN')
+
+        logical lpack
+        parameter (lpack = .false.)

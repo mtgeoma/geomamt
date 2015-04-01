@@ -1,0 +1,5 @@
+cd src
+make tslr2egb
+make clean
+mv tslr2egb ~/bin/
+cd ..

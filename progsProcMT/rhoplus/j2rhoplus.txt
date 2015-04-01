@@ -1,0 +1,28 @@
+[marcelo@localhost rhoplus]$ diff j2rhoplus.f  j2rhoplus0.f
+14,15d13
+<       implicit none
+<
+18,19d15
+<        real PI
+<        parameter ( PI = 3.141592 )
+26d21
+<        real errmin,errmin_rho,errmin_pha
+34c29
+< c       character*80 bands
+---
+>        character*80 bands
+101c96
+<          errmin_pha = (180./PI)*atan(errmin/200.)
+---
+>          errmin_pha = atand(errmin/200.)
+354,355c349
+<        integer nfreq
+<        real freq(nfreq)
+---
+>        integer nfreq,freq(nfreq)
+520a515
+>        integer nfreq
+611c606
+<        integer nfyx
+---
+>        integer nfreq,nfyx

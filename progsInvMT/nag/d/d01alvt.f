@@ -1,0 +1,511 @@
+      SUBROUTINE D01ALV(F,A,B,NPTS2,POINTS,PTS,EPSABS,EPSREL,ALIST,
+     *                  BLIST,ELIST,RLIST,LIMIT,IORD,LIORD,LEVEL,NDIN,
+     *                  RESULT,ABSERR,NEVAL,IER)
+C     MARK 13 RE-ISSUE. NAG COPYRIGHT 1988.
+C     BASED ON QUADPACK ROUTINE  QAGP.
+C     ..................................................................
+C
+C        PURPOSE
+C           THE ROUTINE CALCULATES AN APPROXIMATION  RESULT  TO A GIVEN
+C           DEFINITE INTEGRAL   I = INTEGRAL OF  F  OVER (A,B),
+C           HOPEFULLY SATISFYING FOLLOWING CLAIM FOR ACCURACY
+C           ABS(I-RESULT).LE.MAX(EPSABS,EPSREL*ABS(I)).
+C           INTERIOR BREAK POINTS  OF THE INTEGRATION INTERVAL,
+C           WHERE LOCAL DIFFICULTIES OF THE INTEGRAND MAY OCCUR (E.G.
+C           SINGULARITIES, DISCONTINUITIES), ARE PROVIDED BY THE USER.
+C
+C        PARAMETERS
+C         ON ENTRY
+C            F      - REAL
+C                     FUNCTION SUBPROGRAM DEFINING THE INTEGRAND
+C                     FUNCTION F(X). THE ACTUAL NAME FOR F NEEDS TO BE
+C                     DECLARED E X T E R N A L IN THE DRIVER PROGRAM.
+C
+C            A      - REAL
+C                     LOWER LIMIT OF INTEGRATION
+C
+C            B      - REAL
+C                     UPPER LIMIT OF INTEGRATION
+C
+C            NPTS2  - INTEGER
+C                     NUMBER EQUAL TO TWO MORE THAN THE NUMBER OF
+C                     USER-SUPPLIED BREAK POINTS WITHIN THE INTEGRATION
+C                     RANGE, NPTS2.GE.2.
+C                     IF NPTS2.LT.2, THE ROUTINE WILL END WITH IER = 6.
+C
+C            POINTS - REAL
+C                     VECTOR OF DIMENSION NPTS2, THE FIRST (NPTS2-2)
+C                     ELEMENTS OF WHICH ARE THE USER PROVIDED INTERIOR
+C                     BREAK POINTS. IF THESE POINTS DO NOT
+C                     CONSTITUTE AN ASCENDING SEQUENCE THERE WILL BE AN
+C                     AUTOMATIC SORTING.
+C
+C            PTS    - REAL
+C                     VECTOR OF DIMENSION NPTS2
+C
+C            EPSABS - REAL
+C                     ABSOLUTE ACCURACY REQUESTED
+C            EPSREL - REAL
+C                     RELATIVE ACCURACY REQUESTED
+C
+C            ALIST,BLIST,ELIST,RLIST
+C                   - REAL WORK ARRAYS (FUNCTIONS DESCRIBED BELOW)
+C
+C            LIMIT  - INTEGER
+C                     GIVES AN UPPERBOUND ON THE NUMBER OF SUBINTERVALS
+C                     IN THE PARTITION OF (A,B), LIMIT.GE.1.
+C
+C            IORD   - INTEGER
+C                     WORK ARRAY OF DIMENSION LIORD
+C
+C            LIORD  - INTEGER
+C                     LENGTH OF IORD (=LIMIT)
+C
+C            LEVEL  - INTEGER
+C                     ARRAY OF DIMENSION LIMIT
+C
+C            NDIN   - INTEGER
+C                     ARRAY OF DIMENSION NPTS2
+C
+C         ON RETURN
+C            RESULT - REAL
+C                     APPROXIMATION TO THE INTEGRAL
+C
+C            ABSERR - REAL
+C                     ESTIMATE OF THE MODULUS OF THE ABSOLUTE ERROR,
+C                     WHICH SHOULD EQUAL OR EXCEED ABS(I-RESULT)
+C
+C            NEVAL  - INTEGER
+C                     NUMBER OF INTEGRAND EVALUATIONS
+C
+C            IER    - INTEGER
+C                     IER = 0 NORMAL AND RELIABLE TERMINATION OF THE
+C                             ROUTINE. IT IS ASSUMED THAT THE REQUESTED
+C                             ACCURACY HAS BEEN ACHIEVED.
+C                     IER.GT.0 ABNORMAL TERMINATION OF THE ROUTINE.
+C                             THE ESTIMATES FOR INTEGRAL AND ERROR ARE
+C                             LESS RELIABLE. IT IS ASSUMED THAT THE
+C                             REQUESTED ACCURACY HAS NOT BEEN ACHIEVED.
+C                     IER = 1 MAXIMUM NUMBER OF SUBDIVISIONS ALLOWED
+C                             HAS BEEN ACHIEVED. ONE CAN ALLOW MORE
+C                             SUBDIVISIONS BY INCREASING THE DATA VALUE
+C                         OF LIMIT IN D01ALV(AND TAKING THE ACCORDING
+C                             DIMENSION ADJUSTMENTS INTO ACCOUNT).
+C                             HOWEVER, IF THIS YIELDS NO IMPROVEMENT
+C                             IT IS ADVISED TO ANALYZE THE INTEGRAND
+C                             IN ORDER TO DETERMINE THE INTEGRATION
+C                             DIFFICULTIES. IF THE POSITION OF A LOCAL
+C                             DIFFICULTY CAN BE DETERMINED (I.E.
+C                             SINGULARITY, DISCONTINUITY WITHIN THE
+C                             INTERVAL), IT SHOULD BE SUPPLIED TO THE
+C                             ROUTINE AS AN ELEMENT OF THE VECTOR
+C                             POINTS. IF NECESSARY, AN APPROPRIATE
+C                             SPECIAL-PURPOSE INTEGRATOR MUST BE USED,
+C                             WHICH IS DESIGNED FOR HANDLING THE TYPE
+C                             OF DIFFICULTY INVOLVED.
+C                         = 2 THE OCCURRENCE OF ROUNDOFF ERROR IS
+C                             DETECTED, WHICH PREVENTS THE REQUESTED
+C                             TOLERANCE FROM BEING ACHIEVED.
+C                             THE ERROR MAY BE UNDER-ESTIMATED.
+C                         = 3 EXTREMELY BAD INTEGRAND BEHAVIOUR OCCURS
+C                             AT SOME POINTS OF THE INTEGRATION
+C                             INTERVAL.
+C                         = 4 THE ALGORITHM DOES NOT CONVERGE. ROUNDOFF
+C                             ERROR IS DETECTED IN THE EXTRAPOLATION
+C                             TABLE. IT IS PRESUMED THAT THE REQUESTED
+C                             TOLERANCE CANNOT BE ACHIEVED, AND THAT
+C                             THE RETURNED RESULT IS THE BEST WHICH
+C                             CAN BE OBTAINED.
+C                         = 5 THE INTEGRAL IS PROBABLY DIVERGENT, OR
+C                             SLOWLY CONVERGENT. IT MUST BE NOTED THAT
+C                             DIVERGENCE CAN OCCUR WITH ANY OTHER VALUE
+C                             OF IER.GT.0.
+C                         = 6 THE INPUT IS INVALID BECAUSE
+C                             NPTS2.LT.2 OR
+C                             BREAK POINTS ARE SPECIFIED OUTSIDE
+C                             THE INTEGRATION RANGE OR LIMIT.LT.NPTS2.
+C                             RESULT, ABSERR, NEVAL ARE SET TO ZERO.
+C
+C     ..................................................................
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  A, ABSERR, B, EPSABS, EPSREL, RESULT
+      INTEGER           IER, LIMIT, LIORD, NEVAL, NPTS2
+C     .. Array Arguments ..
+      DOUBLE PRECISION  ALIST(LIMIT), BLIST(LIMIT), ELIST(LIMIT),
+     *                  POINTS(NPTS2), PTS(NPTS2), RLIST(LIMIT)
+      INTEGER           IORD(LIORD), LEVEL(LIMIT), NDIN(NPTS2)
+C     .. Function Arguments ..
+      DOUBLE PRECISION  F
+      EXTERNAL          F
+C     .. Local Scalars ..
+      DOUBLE PRECISION  A1, A2, ABSEPS, AREA, AREA1, AREA12, AREA2, B1,
+     *                  B2, CORREC, DEFAB1, DEFAB2, DEFABS, DRES,
+     *                  EPMACH, ERLARG, ERLAST, ERRBND, ERRMAX, ERRO12,
+     *                  ERROR1, ERROR2, ERRSUM, ERTEST, OFLOW, RESA,
+     *                  RESABS, RESEPS, SIGN, TEMP, UFLOW
+      INTEGER           I, ID, IERRO, IERS, IND1, IND2, IP1, IROFF1,
+     *                  IROFF2, IROFF3, J, JLOW, JUPBND, K, KSGN, KTMIN,
+     *                  LAST, LEVCUR, LEVMAX, MAXERR, NERR, NINT, NPTS,
+     *                  NRES, NRMAX, NUMRL2
+      LOGICAL           EXTRAP, NOEXT
+C     .. Local Arrays ..
+      DOUBLE PRECISION  RES3LA(3), RLIST2(52)
+      CHARACTER*80      REC(2)
+C     .. External Functions ..
+      DOUBLE PRECISION  X02AJF, X02AMF
+      EXTERNAL          X02AJF, X02AMF
+C     .. External Subroutines ..
+      EXTERNAL          D01AJX, D01AJY, D01AJZ, X04AAF, X04BAF
+C     .. Intrinsic Functions ..
+      INTRINSIC         ABS, MAX, MIN
+C     .. Executable Statements ..
+C
+C            THE DIMENSION OF RLIST2 IS DETERMINED BY THE VALUE OF
+C            LIMEXP IN SUBROUTINE D01AJY (RLIST2 SHOULD BE OF DIMENSION
+C            (LIMEXP+2) AT LEAST).
+C
+C            LIST OF MAJOR VARIABLES
+C            -----------------------
+C
+C           ALIST     - LIST OF LEFT END POINTS OF ALL SUBINTERVALS
+C                       CONSIDERED UP TO NOW
+C           BLIST     - LIST OF RIGHT END POINTS OF ALL SUBINTERVALS
+C                       CONSIDERED UP TO NOW
+C           RLIST(I)  - APPROXIMATION TO THE INTEGRAL OVER
+C                       (ALIST(I),BLIST(I))
+C           RLIST2    - ARRAY OF DIMENSION AT LEAST LIMEXP+2
+C                       CONTAINING THE PART OF THE EPSILON TABLE WHICH
+C                       IS STILL NEEDED FOR FURTHER COMPUTATIONS
+C           ELIST(I)  - ERROR ESTIMATE APPLYING TO RLIST(I)
+C           MAXERR    - POINTER TO THE INTERVAL WITH LARGEST ERROR
+C                       ESTIMATE
+C           ERRMAX    - ELIST(MAXERR)
+C           ERLAST    - ERROR ON THE INTERVAL CURRENTLY SUBDIVIDED
+C                       (BEFORE THAT SUBDIVISION HAS TAKEN PLACE)
+C           AREA      - SUM OF THE INTEGRALS OVER THE SUBINTERVALS
+C           ERRSUM    - SUM OF THE ERRORS OVER THE SUBINTERVALS
+C           ERRBND    - REQUESTED ACCURACY MAX(EPSABS,EPSREL*
+C                       ABS(RESULT))
+C           *****1    - VARIABLE FOR THE LEFT SUBINTERVAL
+C           *****2    - VARIABLE FOR THE RIGHT SUBINTERVAL
+C           LAST      - INDEX FOR SUBDIVISION
+C           NRES      - NUMBER OF CALLS TO THE EXTRAPOLATION ROUTINE
+C           NUMRL2    - NUMBER OF ELEMENTS IN RLIST2. IF AN APPROPRIATE
+C                       APPROXIMATION TO THE COMPOUNDED INTEGRAL HAS
+C                       OBTAINED, IT IS PUT IN RLIST2(NUMRL2) AFTER
+C                       NUMRL2 HAS BEEN INCREASED BY ONE.
+C           ERLARG    - SUM OF THE ERRORS OVER THE INTERVALS LARGER
+C                       THAN THE SMALLEST INTERVAL CONSIDERED UP TO NOW
+C           EXTRAP    - LOGICAL VARIABLE DENOTING THAT THE ROUTINE
+C                       IS ATTEMPTING TO PERFORM EXTRAPOLATION. I.E.
+C                       BEFORE SUBDIVIDING THE SMALLEST INTERVAL WE
+C                       TRY TO DECREASE THE VALUE OF ERLARG.
+C           NOEXT     - LOGICAL VARIABLE DENOTING THAT EXTRAPOLATION IS
+C                       NO LONGER ALLOWED (TRUE-VALUE)
+C
+      EPMACH = X02AJF()
+      UFLOW = X02AMF()
+      OFLOW = 1.0D+00/UFLOW
+C
+C            TEST ON VALIDITY OF PARAMETERS
+C            -----------------------------
+C
+      IERS = IER
+      IER = 0
+      NEVAL = 0
+      LAST = 0
+      RESULT = 0.0D+00
+      ABSERR = 0.0D+00
+      ALIST(1) = A
+      BLIST(1) = B
+      RLIST(1) = 0.0D+00
+      ELIST(1) = 0.0D+00
+      IORD(1) = 0
+      LEVEL(1) = 0
+      NPTS = NPTS2 - 2
+      IF (NPTS2.LT.2 .OR. LIMIT.LE.NPTS) IER = 6
+      IF (IER.EQ.6) GO TO 520
+C
+C            IF ANY BREAK POINTS ARE PROVIDED, SORT THEM INTO AN
+C            ASCENDING SEQUENCE.
+C
+      SIGN = 1.0D+00
+      IF (A.GT.B) SIGN = -1.0D+00
+      PTS(1) = MIN(A,B)
+      IF (NPTS.EQ.0) GO TO 40
+      DO 20 I = 1, NPTS
+         PTS(I+1) = POINTS(I)
+   20 CONTINUE
+   40 PTS(NPTS+2) = MAX(A,B)
+      NINT = NPTS + 1
+      A1 = PTS(1)
+      IF (NPTS.EQ.0) GO TO 100
+      DO 80 I = 1, NINT
+         IP1 = I + 1
+         DO 60 J = IP1, NPTS2
+            IF (PTS(I).LE.PTS(J)) GO TO 60
+            TEMP = PTS(I)
+            PTS(I) = PTS(J)
+            PTS(J) = TEMP
+   60    CONTINUE
+   80 CONTINUE
+      IF (PTS(1).NE.MIN(A,B) .OR. PTS(NPTS2).NE.MAX(A,B)) IER = 6
+      IF (IER.EQ.6) GO TO 520
+C
+C            COMPUTE FIRST INTEGRAL AND ERROR APPROXIMATIONS.
+C            ------------------------------------------------
+C
+  100 RESABS = 0.0D+00
+      DO 120 I = 1, NINT
+         B1 = PTS(I+1)
+         CALL D01AJZ(F,A1,B1,AREA1,ERROR1,DEFABS,RESA)
+         ABSERR = ABSERR + ERROR1
+         RESULT = RESULT + AREA1
+         NDIN(I) = 0
+         IF (ERROR1.EQ.RESA .AND. ERROR1.NE.0.0D+00) NDIN(I) = 1
+         RESABS = RESABS + DEFABS
+         LEVEL(I) = 0
+         ELIST(I) = ERROR1
+         ALIST(I) = A1
+         BLIST(I) = B1
+         RLIST(I) = AREA1
+         IORD(I) = I
+         A1 = B1
+  120 CONTINUE
+      ERRSUM = 0.0D+00
+      DO 140 I = 1, NINT
+         IF (NDIN(I).EQ.1) ELIST(I) = ABSERR
+         ERRSUM = ERRSUM + ELIST(I)
+  140 CONTINUE
+C
+C           TEST ON ACCURACY.
+C
+      LAST = NINT
+      NEVAL = 21*NINT
+      DRES = ABS(RESULT)
+      ERRBND = MAX(EPSABS,EPSREL*DRES)
+      IF (ABSERR.LE.ERRBND) GO TO 500
+      IF (ABSERR.LE.1.0D+02*EPMACH*RESABS .AND. ABSERR.GT.ERRBND)
+     *    IER = 2
+      DO 180 I = 1, NPTS
+         JLOW = I + 1
+         IND1 = IORD(I)
+         DO 160 J = JLOW, NINT
+            IND2 = IORD(J)
+            IF (ELIST(IND1).GT.ELIST(IND2)) GO TO 160
+            IND1 = IND2
+            K = J
+  160    CONTINUE
+         IF (IND1.EQ.IORD(I)) GO TO 180
+         IORD(K) = IORD(I)
+         IORD(I) = IND1
+  180 CONTINUE
+      IF (IER.NE.0) GO TO 500
+C
+C           INITIALIZATION
+C           --------------
+C
+      RLIST2(1) = RESULT
+      MAXERR = IORD(1)
+      ERRMAX = ELIST(MAXERR)
+      AREA = RESULT
+      NRMAX = 1
+      NRES = 0
+      NUMRL2 = 1
+      KTMIN = 0
+      EXTRAP = .FALSE.
+      NOEXT = .FALSE.
+      ERLARG = ERRSUM
+      ERTEST = ERRBND
+      LEVMAX = 1
+      IROFF1 = 0
+      IROFF2 = 0
+      IROFF3 = 0
+      IERRO = 0
+      ABSERR = OFLOW
+      KSGN = -1
+      IF (DRES.GE.(1.0D+00-5.0D+01*EPMACH)*RESABS) KSGN = 1
+C
+C           MAIN DO-LOOP
+C           ------------
+C
+      DO 380 LAST = NPTS2, LIMIT
+C
+C           BISECT THE SUBINTERVAL WITH THE NRMAX-TH LARGEST ERROR
+C           ESTIMATE.
+C
+         LEVCUR = LEVEL(MAXERR) + 1
+         A1 = ALIST(MAXERR)
+         B1 = 5.0D-01*(ALIST(MAXERR)+BLIST(MAXERR))
+         A2 = B1
+         B2 = BLIST(MAXERR)
+         ERLAST = ERRMAX
+         CALL D01AJZ(F,A1,B1,AREA1,ERROR1,RESA,DEFAB1)
+         CALL D01AJZ(F,A2,B2,AREA2,ERROR2,RESA,DEFAB2)
+C
+C           IMPROVE PREVIOUS APPROXIMATIONS TO INTEGRAL AND ERROR
+C           AND TEST FOR ACCURACY.
+C
+         NEVAL = NEVAL + 42
+         AREA12 = AREA1 + AREA2
+         ERRO12 = ERROR1 + ERROR2
+         ERRSUM = ERRSUM + ERRO12 - ERRMAX
+         AREA = AREA + AREA12 - RLIST(MAXERR)
+         IF (DEFAB1.EQ.ERROR1 .OR. DEFAB2.EQ.ERROR2) GO TO 220
+         IF (ABS(RLIST(MAXERR)-AREA12).GT.1.0D-05*ABS(AREA12)
+     *       .OR. ERRO12.LT.9.9D-01*ERRMAX) GO TO 200
+         IF (EXTRAP) IROFF2 = IROFF2 + 1
+         IF ( .NOT. EXTRAP) IROFF1 = IROFF1 + 1
+  200    IF (LAST.GT.10 .AND. ERRO12.GT.ERRMAX) IROFF3 = IROFF3 + 1
+  220    LEVEL(MAXERR) = LEVCUR
+         LEVEL(LAST) = LEVCUR
+         RLIST(MAXERR) = AREA1
+         RLIST(LAST) = AREA2
+         ERRBND = MAX(EPSABS,EPSREL*ABS(AREA))
+C
+C           APPEND THE NEWLY-CREATED INTERVALS TO THE LIST.
+C
+         IF (ERROR2.GT.ERROR1) GO TO 240
+         ALIST(LAST) = A2
+         BLIST(MAXERR) = B1
+         BLIST(LAST) = B2
+         ELIST(MAXERR) = ERROR1
+         ELIST(LAST) = ERROR2
+         GO TO 260
+  240    ALIST(MAXERR) = A2
+         ALIST(LAST) = A1
+         BLIST(LAST) = B1
+         RLIST(MAXERR) = AREA2
+         RLIST(LAST) = AREA1
+         ELIST(MAXERR) = ERROR2
+         ELIST(LAST) = ERROR1
+C
+C           CALL SUBROUTINE D01AJX TO MAINTAIN THE DESCENDING ORDERING
+C           IN THE LIST OF ERROR ESTIMATES AND SELECT THE SUBINTERVAL
+C           WITH NRMAX-TH LARGEST ERROR ESTIMATE (TO BE BISECTED NEXT).
+C
+  260    CALL D01AJX(LIMIT,LAST,MAXERR,ERRMAX,ELIST,IORD,NRMAX)
+C        ***JUMP OUT OF DO-LOOP
+         IF (ERRSUM.LE.ERRBND) GO TO 460
+C
+C           SET ERROR FLAG IN THE CASE THAT THE NUMBER OF SUBINTERVALS
+C           EQUALS LIMIT.
+C
+         IF (LAST.EQ.LIMIT) IER = 1
+C
+C           TEST FOR ROUNDOFF ERROR AND EVENTUALLY SET ERROR FLAG.
+C
+         IF (IROFF1+IROFF2.GE.10 .OR. IROFF3.GE.20) IER = 2
+         IF (IROFF2.GE.5) IERRO = 3
+C
+C           SET ERROR FLAG IN THE CASE OF BAD INTEGRAND BEHAVIOUR
+C           AT A POINT OF THE INTEGRATION RANGE
+C
+         IF (MAX(ABS(A1),ABS(B2)).LE.(1.0D+00+1.0D+03*EPMACH)*(ABS(A2)
+     *       +1.0D+03*UFLOW)) IER = 4
+C        ***JUMP OUT OF DO-LOOP
+         IF (IER.GT.1) GO TO 400
+         IF (NOEXT) GO TO 380
+         ERLARG = ERLARG - ERLAST
+         IF (LEVCUR+1.LE.LEVMAX) ERLARG = ERLARG + ERRO12
+         IF (EXTRAP) GO TO 280
+C
+C           TEST WHETHER THE INTERVAL TO BE BISECTED NEXT IS THE
+C           SMALLEST INTERVAL.
+C
+         IF (LEVEL(MAXERR)+1.LE.LEVMAX) GO TO 380
+         EXTRAP = .TRUE.
+         NRMAX = 2
+  280    IF (IERRO.EQ.3 .OR. ERLARG.LE.ERTEST) GO TO 320
+C
+C           THE SMALLEST INTERVAL HAS THE LARGEST ERROR.
+C           BEFORE BISECTING DECREASE THE SUM OF THE ERRORS OVER THE
+C           LARGER INTERVALS (ERLARG) AND PERFORM EXTRAPOLATION.
+C
+         ID = NRMAX
+         JUPBND = LAST
+         IF (LAST.GT.(2+LIMIT/2)) JUPBND = LIMIT + 3 - LAST
+         DO 300 K = ID, JUPBND
+            MAXERR = IORD(NRMAX)
+            ERRMAX = ELIST(MAXERR)
+C           ***JUMP OUT OF DO-LOOP
+            IF (LEVEL(MAXERR)+1.LE.LEVMAX) GO TO 380
+            NRMAX = NRMAX + 1
+  300    CONTINUE
+C
+C           PERFORM EXTRAPOLATION.
+C
+  320    NUMRL2 = NUMRL2 + 1
+         RLIST2(NUMRL2) = AREA
+         IF (NUMRL2.LE.2) GO TO 360
+         CALL D01AJY(NUMRL2,RLIST2,RESEPS,ABSEPS,RES3LA,NRES)
+         KTMIN = KTMIN + 1
+         IF (KTMIN.GT.5 .AND. ABSERR.LT.1.0D-03*ERRSUM) IER = 5
+         IF (ABSEPS.GE.ABSERR) GO TO 340
+         KTMIN = 0
+         ABSERR = ABSEPS
+         RESULT = RESEPS
+         CORREC = ERLARG
+         ERTEST = MAX(EPSABS,EPSREL*ABS(RESEPS))
+C        ***JUMP OUT OF DO-LOOP
+         IF (ABSERR.LE.ERTEST) THEN
+            IF (IER.EQ.1) IER = 0
+            GO TO 400
+         END IF
+C
+C           PREPARE BISECTION OF THE SMALLEST INTERVAL.
+C
+  340    IF (NUMRL2.EQ.1) NOEXT = .TRUE.
+         IF (IER.GE.5 .OR. IER.EQ.1) GO TO 400
+  360    MAXERR = IORD(1)
+         ERRMAX = ELIST(MAXERR)
+         NRMAX = 1
+         EXTRAP = .FALSE.
+         LEVMAX = LEVMAX + 1
+         ERLARG = ERRSUM
+  380 CONTINUE
+      LAST = LIMIT
+C
+C           SET THE FINAL RESULT.
+C           ---------------------
+C
+  400 IF (ABSERR.EQ.OFLOW) GO TO 460
+      IF ((IER+IERRO).EQ.0) GO TO 440
+      IF (IERRO.EQ.3) ABSERR = ABSERR + CORREC
+      IF (IER.EQ.0) IER = 3
+      IF (RESULT.NE.0.0D+00 .AND. AREA.NE.0.0D+00) GO TO 420
+      IF (ABSERR.GT.ERRSUM) GO TO 460
+      IF (AREA.EQ.0.0D+00) GO TO 500
+      GO TO 440
+  420 IF (ABSERR/ABS(RESULT).GT.ERRSUM/ABS(AREA)) GO TO 460
+C
+C           TEST ON DIVERGENCE.
+C
+  440 IF (KSGN.EQ.(-1) .AND. MAX(ABS(RESULT),ABS(AREA))
+     *    .LE.RESABS*1.0D-02) GO TO 500
+      IF (1.0D-02.GT.(RESULT/AREA) .OR. (RESULT/AREA)
+     *    .GT.1.0D+02 .OR. ERRSUM.GT.ABS(AREA)) IER = 6
+      GO TO 500
+C
+C           COMPUTE GLOBAL INTEGRAL SUM.
+C
+  460 RESULT = 0.0D+00
+      DO 480 K = 1, LAST
+         RESULT = RESULT + RLIST(K)
+  480 CONTINUE
+      ABSERR = ERRSUM
+  500 IF (IER.GT.2) IER = IER - 1
+      RESULT = RESULT*SIGN
+  520 LEVEL(1) = LAST
+      IF (IER.EQ.3 .AND. IERS.NE.1) THEN
+         CALL X04AAF(0,NERR)
+         WRITE (REC,FMT=99999) A1, B2
+         CALL X04BAF(NERR,REC(1))
+         CALL X04BAF(NERR,REC(2))
+      END IF
+      RETURN
+C
+99999 FORMAT (' ** Extremely bad integrand behaviour occurs around the',
+     *       ' subinterval',/'    (',1P,D15.7,' , ',1P,D15.7,' )')
+      END

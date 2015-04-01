@@ -1,0 +1,199 @@
+      SUBROUTINE G13BHZ(MR,PARA,NPARA,STTF,NSTTF,MT,NXSP,MRX,PARX,IPARX,
+     *                  XXYN,IXXYN,RMSXY,NFV,KZEF,FVA,FSD,PSI,AEX,AAL,
+     *                  ZN,IPS,WA,IWA,NPXY)
+C     MARK 11 RELEASE. NAG COPYRIGHT 1983.
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     G13BHZ IS THE MAIN AUXILIARY ROUTINE CALLED BY G13BHF
+C     TO DO THE CALCULATIONS INVOLVED IN DERIVING FORECAST
+C     VALUES IN A TRANSFER FUNCTION CONTEXT
+C
+C     .. Scalar Arguments ..
+      INTEGER           IPARX, IPS, IWA, IXXYN, KZEF, NFV, NPARA, NPXY,
+     *                  NSTTF, NXSP
+C     .. Array Arguments ..
+      DOUBLE PRECISION  AAL(IPS), AEX(IPS), FSD(NFV), FVA(NFV),
+     *                  PARA(NPARA), PARX(IPARX,NXSP), PSI(IPS),
+     *                  RMSXY(NXSP), STTF(NSTTF), WA(IWA),
+     *                  XXYN(IXXYN,NXSP), ZN(NFV)
+      INTEGER           MR(7), MRX(7,NXSP), MT(4,NXSP)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  C, D, RMS, TMP, ZERO
+      INTEGER           I, J, K, KPPA, KPST, LEX, LST, LXC, LZC, ND,
+     *                  NDD, NDS, NGW, NNB, NNP, NNQ, NNR, NP, NPAR,
+     *                  NPARQ, NPD, NPS, NPX, NQ, NQD, NQS, NS, NST,
+     *                  NWD, NXS
+C     .. Local Arrays ..
+      INTEGER           MPQS(4)
+C     .. External Subroutines ..
+      EXTERNAL          G13AEZ, G13AJY, G13BEL, G13BEX, G13BHX, G13BHY
+C     .. Intrinsic Functions ..
+      INTRINSIC         MAX, SQRT
+C     .. Data statements ..
+      DATA              ZERO/0.0D0/
+C     .. Executable Statements ..
+C
+C     STORE MR TEMPORARILY IN LAST COLUMN OF MRX
+C
+      DO 20 J = 1, 7
+         MRX(J,NXSP) = MR(J)
+   20 CONTINUE
+C
+C     DERIVE RESIDUAL MEAN SQUARE, CONSTANT, MISCELLANEOUS
+C     ORDERS AND NST AND LST WHICH DEFINE THE LENGTH AND THE
+C     START POINT OF THE ST COMPONENT OF STTF
+C
+      RMS = RMSXY(NXSP)
+      C = PARA(NPARA)
+      CALL G13AJY(MR,NP,ND,NQ,NPS,NDS,NQS,NS,NPD,NDD,NQD,MPQS,NPAR)
+      NST = NDD + (NS*NPS) + NQ + MAX(NP,(NS*NQS))
+      LST = NSTTF - NST + 1
+C
+C     STORE PHI VALUES IN WA(1), THETA VALUES IN WA(NPAR+1),
+C     SPHI VALUES IN WA(2*NPAR+1), STHETA VALUES
+C     IN WA(3*NPAR+1) - EACH ARRAY OF LENGTH NPAR
+C
+      DO 40 J = 1, IWA
+         WA(J) = ZERO
+   40 CONTINUE
+      NPARQ = MAX(NPAR,1)
+      IF (NPAR.LE.0) GO TO 60
+      CALL G13AEZ(PARA,NPAR,MPQS,WA,IWA,1)
+C
+C     DERIVE FORECAST VALUES AND S.D. S
+C
+   60 CALL G13BHY(STTF(LST),NST,NP,ND,NQ,NPS,NDS,NQS,NS,WA(1),WA(NPAR+1)
+     *            ,WA(2*NPAR+1),WA(3*NPAR+1)
+     *            ,NPARQ,C,RMS,NFV,FVA,FSD,1,AEX,AAL,PSI)
+C
+C     PUT ERROR VARIANCES INTO FSD AND PUT E INTO LAST
+C     COLUMN OF XXYN
+C
+      K = NPXY
+      DO 80 J = 1, NFV
+         FSD(J) = FSD(J)**2
+         IF (KZEF.EQ.0) GO TO 80
+         K = K + 1
+         XXYN(K,NXSP) = FVA(J)
+   80 CONTINUE
+C
+C     KPPA AND KPST DEFINE START POINTS(LESS 1) OF BLOCK OF
+C     OMEGAS AND DELTAS IN PARA, AND BLOCK OF XS AND ZS
+C     IN STTF
+C
+      KPPA = NPAR
+      KPST = 0
+      NXS = NXSP - 1
+      IF (NXS.LE.0) GO TO 340
+C
+C     LOOP OVER EACH INPUT(X)SERIES
+C
+      DO 320 I = 1, NXS
+C
+C        DERIVE B, Q, P, ETC. AND LENGTHS(+1) OF CURRENT X
+C        BLOCK IN STTF AND CURRENT Z BLOCK
+C        PUT NEW X VALUES INTO PSI
+C
+         CALL G13BEX(MT,I,NXSP,NNB,NNP,NNQ,NNR,NWD,NGW,NPX)
+         LXC = NNB + NNQ + 1
+         LZC = NNP + 1
+         K = NPXY
+         DO 100 J = 1, NFV
+            K = K + 1
+            PSI(J) = XXYN(K,I)
+  100    CONTINUE
+C
+C        DERIVE Z VALUES CORRESPONDING TO NEW VALUES OF X
+C
+         CALL G13BHX(STTF,NSTTF,KPST,NWD,AEX,LXC,AAL,LZC,PARA,NPARA,
+     *               KPPA,PSI,ZN,NFV,0)
+         RMS = RMSXY(I)
+C
+C        SKIP OUT IF RMS IS ZERO
+C
+         IF (RMS.LE.ZERO) GO TO 280
+C
+C        DERIVE MISCELLANEOUS PARAMETERS ASSOCIATED WITH ORDERS
+C        ARRAY FOR THIS INPUT(X)SERIES
+C
+         DO 120 J = 1, 7
+            MR(J) = MRX(J,I)
+  120    CONTINUE
+         CALL G13AJY(MR,NP,ND,NQ,NPS,NDS,NQS,NS,NPD,NDD,NQD,MPQS,NPAR)
+C
+C        PUT PHI, THETA, SPHI AND STHETA VALUES INTO FOUR
+C        COMPONENT ARRAYS OF WA, EACH OF LENGTH NPAR,FOR
+C        THIS INPUT(X)SERIES
+C
+         NPARQ = MAX(NPAR,1)
+         DO 140 J = 1, IWA
+            WA(J) = ZERO
+  140    CONTINUE
+         IF (NPAR.LE.0) GO TO 180
+         DO 160 J = 1, NPAR
+            PSI(J) = PARX(J,I)
+  160    CONTINUE
+         CALL G13AEZ(PSI,NPAR,MPQS,WA,IWA,1)
+C
+C        DERIVE VALUES OF PSI
+C
+  180    TMP = 0.0D0
+         CALL G13BHY(WA,IPS,NP,ND,NQ,NPS,NDS,NQS,NS,WA(1),WA(NPAR+1)
+     *               ,WA(2*NPAR+1),WA(3*NPAR+1)
+     *               ,NPARQ,TMP,0.0D0,NFV,FVA,PSI,0,AEX,AAL,WA(4*NPAR+1)
+     *               )
+C
+C        DERIVE VALUES OF NU AND STORE IN PSI
+C
+         IF (NPX.LE.0) GO TO 220
+         DO 200 J = 1, NPX
+            AEX(J) = ZERO
+  200    CONTINUE
+  220    CALL G13BEL(PSI,NFV,AEX,IPS,PARA(KPPA+1)
+     *               ,NWD,NNB,NNP,NNQ,NNR,NPX,LEX,WA,AAL,IPS)
+         K = NPX
+         DO 240 J = 1, NFV
+            K = K + 1
+            PSI(J) = AAL(K)
+  240    CONTINUE
+C
+C        ACCUMULATE ERROR VARIANCES IN FSD
+C
+         D = ZERO
+         DO 260 J = 1, NFV
+            D = D + PSI(J)**2
+            FSD(J) = FSD(J) + (RMS*D)
+  260    CONTINUE
+C
+C        ACCUMULATE E + Z1 + Z2 ,ETC. IN FVA AND PUT Z VALUES
+C        IN XXYN IF KZEF IS NOT ZERO
+C
+  280    K = NPXY
+         DO 300 J = 1, NFV
+            FVA(J) = FVA(J) + ZN(J)
+            IF (KZEF.EQ.0) GO TO 300
+            K = K + 1
+            XXYN(K,I) = ZN(J)
+  300    CONTINUE
+C
+C        UPDATE KPST AND KPPA
+C
+         KPST = KPST + NNB + NNQ + NNP
+         KPPA = KPPA + NWD
+  320 CONTINUE
+C
+C     RESTORE ORDERS ARRAY FOR Y SERIES TO MR AND CALCULATE
+C     THE S.D. S OF THE FORECAST VALUES
+C
+  340 DO 360 J = 1, 7
+         MR(J) = MRX(J,NXSP)
+  360 CONTINUE
+      K = NPXY
+      DO 380 J = 1, NFV
+         FSD(J) = SQRT(FSD(J))
+         IF (KZEF.NE.0) GO TO 380
+         K = K + 1
+         XXYN(K,NXSP) = FVA(J)
+  380 CONTINUE
+      RETURN
+      END

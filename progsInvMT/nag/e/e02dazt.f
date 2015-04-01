@@ -1,0 +1,600 @@
+      SUBROUTINE E02DAZ(M,PX,PY,X,Y,F,W,LAMDA,MU,POINT,NPOINT,DL,C,NC,
+     *                  DIAG,B,T,A,BW,DTILDE,LAM,RTILDE,EPS,SIGMA,RANK,
+     *                  IFAIL)
+C     MARK 6 RELEASE. NAG COPYRIGHT 1977
+C     MARK 7 REVISED IER-142 (DEC 1978)
+C     MARK 10A REVISED. IER-395 (OCT 1982).
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C
+C     THIS SUBROUTINE FORMS THE MINIMAL, WEIGHTED LEAST-SQUARES
+C     BICUBIC SPLINE SURFACE FIT (HAYES, J.G. AND HALLIDAY,J., THE
+C     LEAST-SQUARES FITTING OF CUBIC SPLINE SURFACES TO GENERAL
+C     DATA SETS, NPL DIVISIONAL REPORT DNAC 22 (1972)) WITH
+C     PRESCRIBED NON-DECREASING KNOTS LAMDA(Q), Q= 1(1)PX AND
+C     MU(R), R= 1(1)PY TO THE M DATA POINTS X(L), Y(L), F(L),
+C     L= 1(1)M.   THE FORM OF THE FIT IS
+C     F(X,Y)= C(I,J)*MI(X)*NJ(Y),
+C     SUMMED FOR I= 1,2,...PX-4 AND J= 1,2,...PY-4, WHERE MI(X) AND
+C     NJ(Y) ARE THE NORMALISED B-SPLINES DEFINED ON THE KNOT SETS
+C     LAMDA AND MU RESPECTIVELY. (DEBOOR, C., ON CALCULATING WITH
+C     B-SPLINES, J. APPROX. THEORY, VOL 6 (1972), COX, M.G., THE
+C     NUMERICAL EVALUATION OF B-SPLINES, NPL DIVISIONAL REPORT DNAC
+C     4 (1971)). THE KNOTS WITH Q= 5,6,...,PX-4 AND R= 5,6,...,PY-4
+C     SHOULD BE CHOSEN INTERIOR TO THE X AND Y DATA VALUES, RESP.
+C     THE REMAINING KNOTS, FOUR AT EACH END OF EACH DATA RANGE, ARE
+C     CHOSEN BY THE SUBROUTINE TO COINCIDE AT THE APPROPRIATE
+C     EXTREME DATA VALUE OF X OR Y. TWO, OR THREE, COINCIDENT KNOTS
+C     INTERIOR TO THE RANGE OF AN INDEPENDENT VARIABLE CAUSE LOSS
+C     OF CONTINUITY OF THE FIT IN, RESPECTIVELY, THE SECOND AND
+C     FIRST DERIVATIVE WITH RESPECT TO THAT VARIABLE. THE ARRAY
+C     POINT CONTAINS INDEXING INFORMATION SO THAT THE DATA POINTS
+C     CAN BE ACCESSED IN SUCH AN ORDER THAT, IF THE (X,Y)-PLANE IS
+C     THOUGHT OF AS BEING DIVIDED INTO RECTANGULAR PANELS BY THE
+C     TWO SETS OF KNOTS, ALL DATA IN A PANEL OCCURS BEFORE DATA IN
+C     SUCCEEDING PANELS, WHERE THE PANELS ARE NUMBERED FROM BOTTOM
+C     TO TOP AND THEN LEFT TO RIGHT WITH THE USUAL ARRANGEMENT OF
+C     AXES. A DATA POINT AT A KNOT IS CONSIDERED TO BE IN THE
+C     HIGHER NUMBERED PANEL, WITH OBVIOUS EXCEPTIONS AT THE UPPER
+C     ENDS OF THE RANGES OF THE INDEPENDENT VARIABLES. A FORTRAN
+C     SUBROUTINE E02ZAF IS AVAILABLE TO SET UP POINT IN THIS WAY.
+C     THE OBSERVATION MATRIX IS REDUCED TO UPPER TRIANGULAR FORM BY
+C     GIVENS TRANSFORMATIONS WITHOUT SQUARE ROOTS (GENTLEMAN,
+C     W.M., LEAST SQUARES COMPUTATIONS BY GIVENS TRANSFORMATIONS
+C     WITHOUT SQUARE ROOTS, J. INST. MATH. APPLICS. VOL 12 NO 3
+C     (1973)), EACH ROW BEING ROTATED INTO THE TRIANGLE AS IT IS
+C     FORMED, THUS AVOIDING THE NEED TO STORE THE ENTIRE
+C     OBSERVATION MATRIX. THE RANK OF THE SYSTEM IS DETERMINED AS
+C     THE NUMBER OF DIAGONAL ELEMENTS OF THE REDUCED TRIANGLE WHOSE
+C     SQUARES, DIVIDED BY THE MEAN SQUARED WEIGHT, ARE NOT LESS
+C     THAN EPS. IF THE NUMBER OF DECIMAL DIGITS IN THE COMPUTER
+C     REPRESENTATION OF A REAL NUMBER IS T, THEN 10**(-T) IS A
+C     SUITABLE VALUE FOR EPS IN MOST PRACTICAL APPLICATIONS.
+C     THE SUBROUTINE CHECKS THAT
+C     1) EACH SET OF KNOTS IS IN NON-DECREASING ORDER,
+C     2) NO KNOT HAS MULTIPLICITY GREATER THAN 4,
+C     3) THE DATA IS ORDERED IN PANELS AS DESCRIBED ABOVE,
+C     4) MY>1, PX AND PY ARE EACH EQUAL TO AT LEAST 8,
+C     NC = (PX-4)*(PY-4) AND NWS AND NPOINT ARE LARGE ENOUGH.
+C     5) NOT ALL THE WEIGHTS ARE ZERO
+C     IF ANY OF THE CHECKS FAILS THE SUBROUTINE EXITS IMMEDIATELY
+C     WITH THE INTEGER IFAIL SET EQUAL TO THE NUMBER OF THE CHECK
+C     WHICH HAS FAILED.   ON NORMAL EXIT IFAIL EQUALS ZERO.
+C
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION  EPS, SIGMA
+      INTEGER           BW, IFAIL, M, NC, NPOINT, PX, PY, RANK
+C     .. Array Arguments ..
+      DOUBLE PRECISION  A(BW), B(NC), C(NC), DIAG(NC), DL(NC),
+     *                  DTILDE(NC), F(M), LAM(NC), LAMDA(PX), MU(PY),
+     *                  RTILDE(NC,BW), T(NC,BW), W(M), X(M), Y(M)
+      INTEGER           POINT(NPOINT)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  BCOL, BROW, COSINE, D, DPRIME, DX4, DX5, DX6,
+     *                  DX7, DX8, DX9, DY4, DY5, DY6, DY7, DY8, DY9, E2,
+     *                  E3, E4, E5, LAMDA1, LAMDA2, LAMDA3, LAMDA4,
+     *                  LAMDA5, LAMDA6, M1, M2, M3, MNW, MU1, MU2, MU3,
+     *                  MU4, MU5, MU6, MXL, ROWEL, S, SINE, SQ, TCOL,
+     *                  TROW, WI, XI, YI
+      INTEGER           BW1, BWMINL, I, IADRES, II, IITEMP, ITEMP, J,
+     *                  JJ, JPLUSL, JX, JXOLD, JY, K, K4, K7, L, L4, L7,
+     *                  LL, LPLUSU, NP, R, ROWNUM, S1, S2, T2, U, WN
+C     .. Local Arrays ..
+      DOUBLE PRECISION  MX(4), MY(4)
+C     .. Executable Statements ..
+      K4 = PX - 4
+      L4 = PY - 4
+      K7 = PX - 7
+      L7 = PY - 7
+      NP = K7*L7
+      BW1 = BW - 1
+      IFAIL = 4
+      IF (M.LE.1 .OR. PX.LT.8 .OR. PY.LT.8 .OR. NC.NE.K4*L4 .OR.
+     *    NPOINT.LT.M+NP) RETURN
+C
+C     SET THE FOUR KNOTS AT  EACH END OF EACH DATA
+C     RANGE EQUAL TO THE APPROPRIATE EXTREME DATA VALUE.
+C
+      M1 = X(1)
+      M2 = M1
+      DO 20 I = 1, M
+         XI = X(I)
+         IF (XI.GT.M1) M1 = XI
+         IF (XI.LT.M2) M2 = XI
+   20 CONTINUE
+      DO 40 I = 1, 4
+         LAMDA(I) = M2
+         ITEMP = PX - I + 1
+         LAMDA(ITEMP) = M1
+   40 CONTINUE
+      M1 = Y(1)
+      M2 = M1
+      DO 60 I = 1, M
+         YI = Y(I)
+         IF (YI.GT.M1) M1 = YI
+         IF (YI.LT.M2) M2 = YI
+   60 CONTINUE
+      DO 80 I = 1, 4
+         MU(I) = M2
+         ITEMP = PY - I + 1
+         MU(ITEMP) = M1
+   80 CONTINUE
+C
+C     CHECK THAT EACH KNOT SET IS IN NON-DECREASING ORDER.
+C
+      IFAIL = 1
+      DO 100 I = 2, PX
+         IF (LAMDA(I-1).GT.LAMDA(I)) RETURN
+  100 CONTINUE
+      DO 120 I = 2, PY
+         IF (MU(I-1).GT.MU(I)) RETURN
+  120 CONTINUE
+C
+C     CHECK THAT NO KNOT HAS MULTIPLICITY GREATER THAN FOUR
+C
+      IFAIL = 2
+      DO 140 I = 1, K4
+         IF (LAMDA(I).EQ.LAMDA(I+4)) RETURN
+  140 CONTINUE
+      DO 160 I = 1, L4
+         IF (MU(I).EQ.MU(I+4)) RETURN
+  160 CONTINUE
+C
+C     CHECK THAT NOT ALL THE WEIGHTS ARE ZERO
+C
+      IFAIL = 5
+      DO 180 I = 1, M
+         IF (W(I).NE.0.0D0) IFAIL = 0
+  180 CONTINUE
+      IF (IFAIL.NE.0) RETURN
+      IFAIL = 3
+C
+C     INITIALISE UPPER TRIANGLE AND DIAGONAL TO ZERO
+C
+      DO 220 I = 1, NC
+         DIAG(I) = 0
+         B(I) = 0
+         DO 200 J = 2, BW
+            T(I,J) = 0
+  200    CONTINUE
+  220 CONTINUE
+      SQ = 0
+      JXOLD = 0
+      MNW = 0
+      S1 = 0
+C
+C     ROWNUM RECORDS THE COLUMN NUMBER OF THE FIRST
+C     NON-ZERO ELEMENT IN THIS ROW OF THE OBSERVATION MATRIX,
+C     I.E. THE NUMBER OF THE FIRST ROW OF THE TRIANGLE WITH
+C     WHICH IT IS TO BE ROTATED
+C
+      DO 440 I = 1, NP
+         IADRES = I + M
+         IF (POINT(IADRES).LE.0) GO TO 440
+         JX = (I-1)/L7
+         JY = I - JX*L7
+         JX = JX + 1
+         ROWNUM = (JX-1)*L4 + JY
+         IF (JX.EQ.JXOLD) GO TO 240
+         LAMDA1 = LAMDA(JX+1)
+         LAMDA2 = LAMDA(JX+2)
+         LAMDA3 = LAMDA(JX+3)
+         LAMDA4 = LAMDA(JX+4)
+         LAMDA5 = LAMDA(JX+5)
+         LAMDA6 = LAMDA(JX+6)
+         DX4 = 1.0D0/(LAMDA4-LAMDA1)
+         DX5 = 1.0D0/(LAMDA5-LAMDA2)
+         DX6 = 1.0D0/(LAMDA6-LAMDA3)
+         DX7 = 1.0D0/(LAMDA4-LAMDA2)
+         DX8 = 1.0D0/(LAMDA5-LAMDA3)
+         DX9 = 1.0D0/(LAMDA4-LAMDA3)
+         JXOLD = JX
+  240    MU1 = MU(JY+1)
+         MU2 = MU(JY+2)
+         MU3 = MU(JY+3)
+         MU4 = MU(JY+4)
+         MU5 = MU(JY+5)
+         MU6 = MU(JY+6)
+         DY4 = 1.0D0/(MU4-MU1)
+         DY5 = 1.0D0/(MU5-MU2)
+         DY6 = 1.0D0/(MU6-MU3)
+         DY7 = 1.0D0/(MU4-MU2)
+         DY8 = 1.0D0/(MU5-MU3)
+         DY9 = 1.0D0/(MU4-MU3)
+  260    IADRES = POINT(IADRES)
+         IF (IADRES.LE.0) GO TO 440
+C
+C        INITIALISE CURRENT ROW OF OBSERVATION MATRIX TO ZERO
+C
+         DO 280 J = 1, BW
+            A(J) = 0
+  280    CONTINUE
+C
+C        FETCH CURRENT DATA POINT XI, YI
+C
+         WI = W(IADRES)**2
+         IF (WI.EQ.0.0D+0) GO TO 260
+         XI = X(IADRES)
+         YI = Y(IADRES)
+         BROW = F(IADRES)
+         S1 = S1 + 1
+         MNW = MNW + WI
+C
+C        CHECK THAT DATA POINTS ARE ACCESSED IN PANEL ORDER
+C
+         IF (XI.LT.LAMDA3 .OR. XI.GT.LAMDA4 .OR.
+     *       (XI.EQ.LAMDA4 .AND. JX.NE.K7)
+     *       .OR. YI.LT.MU3 .OR. YI.GT.MU4 .OR.
+     *       (YI.EQ.MU4 .AND. JY.NE.L7)) RETURN
+C
+C        EVALUATE THE FOUR NON-ZERO CUBIC B-SPLINES AT XI,
+C        AND STORE IN MX(1) TO MX(4)
+C
+         E5 = LAMDA5 - XI
+         E4 = LAMDA4 - XI
+         E3 = XI - LAMDA3
+         E2 = XI - LAMDA2
+         M2 = E3*DX8*DX9
+         M1 = E4*DX7*DX9
+         M3 = E3*M2*DX6
+         M2 = (E2*M1+E5*M2)*DX5
+         M1 = E4*M1*DX4
+         MX(4) = E3*M3
+         MX(3) = E2*M2 + (LAMDA6-XI)*M3
+         MX(2) = (XI-LAMDA1)*M1 + E5*M2
+         MX(1) = E4*M1
+C
+C        EVALUATE THE FOUR NON-ZERO CUBIC B-SPLINES AT YI,
+C        AND STORE IN MY(1) TO MY(4)
+C
+         E5 = MU5 - YI
+         E4 = MU4 - YI
+         E3 = YI - MU3
+         E2 = YI - MU2
+         M2 = E3*DY8*DY9
+         M1 = E4*DY7*DY9
+         M3 = E3*M2*DY6
+         M2 = (E2*M1+E5*M2)*DY5
+         M1 = E4*M1*DY4
+         MY(4) = E3*M3
+         MY(3) = E2*M2 + (MU6-YI)*M3
+         MY(2) = (YI-MU1)*M1 + E5*M2
+         MY(1) = E4*M1
+         K = 0
+C
+C        EVALUATE ELEMENTS OF THIS ROW OF OBSERVATION MATRIX
+C        WHICH ARE BICUBIC B-SPLINES FORMED AS PRODUCTS OF
+C        CUBIC B-SPLINES IN XI AND YI RESPECTIVELY
+C
+         DO 320 L = 1, 4
+            MXL = MX(L)
+            DO 300 J = 1, 4
+               IITEMP = K + J
+               A(IITEMP) = MXL*MY(J)
+  300       CONTINUE
+            K = K + L4
+  320    CONTINUE
+C
+C        ROTATE THIS ROW OF OBSERVATION MATRIX INTO THE
+C        TRIANGLE BY GIVENS TRANSFORMATIONS WITHOUT SQUARE ROOTS
+C
+         J = ROWNUM
+C
+C        L INDEXES ELEMENTS IN BAND
+C
+         DO 420 LL = 1, BW
+            L = LL - 1
+C
+C           NO ROTATION IS PERFORMED IF CURRENT ELEMENT
+C           OF OBSERVATION MATRIX IS ZERO
+C
+            IF (WI.EQ.0.0D+0) GO TO 260
+            ROWEL = A(L+1)
+            S = WI*ROWEL
+            IF (S*ROWEL.EQ.0.0D+0) GO TO 420
+            JPLUSL = J + L
+            BWMINL = BW - L
+            D = DIAG(JPLUSL)
+            IF (D.NE.0.0D+0) GO TO 340
+            DIAG(JPLUSL) = S*ROWEL
+            COSINE = 0
+            SINE = 1.0D0/ROWEL
+            GO TO 360
+  340       DPRIME = D + S*ROWEL
+            DIAG(JPLUSL) = DPRIME
+            COSINE = D/DPRIME
+            SINE = S/DPRIME
+  360       WI = WI*COSINE
+            IF (BWMINL.LT.2) GO TO 400
+            DO 380 U = 2, BWMINL
+               LPLUSU = L + U
+               TCOL = T(JPLUSL,U)
+               TROW = A(LPLUSU)
+               T(JPLUSL,U) = COSINE*TCOL + SINE*TROW
+               A(LPLUSU) = TROW - ROWEL*TCOL
+  380       CONTINUE
+C
+C           APPLY SAME TRANSFORMATIONS TO RIGHT HAND SIDE
+C
+  400       BCOL = B(JPLUSL)
+            B(JPLUSL) = COSINE*BCOL + SINE*BROW
+            BROW = BROW - ROWEL*BCOL
+  420    CONTINUE
+C
+C        ADD CONTRIBUTION OF THIS ROW TO SUM OF SQUARES
+C        OF RESIDUAL RIGHT HAND SIDES
+C
+         SQ = SQ + WI*BROW**2
+         GO TO 260
+  440 CONTINUE
+C
+C     FORM MEAN SQUARED WEIGHT
+C
+      M1 = S1
+      MNW = MNW/M1
+      R = 0
+C
+C     DETERMINE RANK DEFICIENCY R AS NUMBER OF
+C     SUFFICIENTLY SMALL DIAGONAL ELEMENTS OF REDUCED
+C     TRIANGLE, AND ROTATE THE CORRESPONDING ROW, WITH
+C     THE DIAGONAL TERM MADE ZERO, INTO THE REMAINDER
+C     OF THE TRIANGLE
+C
+      DO 660 I = 1, NC
+         WI = DIAG(I)
+         DL(I) = WI/MNW
+         IF (WI.GT.EPS*MNW) GO TO 660
+         DIAG(I) = 0
+         R = R + 1
+         BROW = B(I)
+         DO 460 L = 2, BW
+            A(L-1) = T(I,L)
+  460    CONTINUE
+         A(BW) = 0
+         IF (I.EQ.NC) GO TO 640
+         II = I + 1
+         DO 620 L = II, NC
+            IF (WI.EQ.0.0D+0) GO TO 660
+            ROWEL = A(1)
+            S = WI*ROWEL
+            WN = NC - L + 1
+            IF (WN.GT.BW) WN = BW
+            IF (S*ROWEL.EQ.0.0D+0) GO TO 560
+            D = DIAG(L)
+            IF (D.NE.0.0D+0) GO TO 480
+            DIAG(L) = S*ROWEL
+            COSINE = 0
+            SINE = 1.0D0/ROWEL
+            GO TO 500
+  480       DPRIME = D + S*ROWEL
+            DIAG(L) = DPRIME
+            COSINE = D/DPRIME
+            SINE = S/DPRIME
+  500       WI = WI*COSINE
+            IF (WN.LT.2) GO TO 540
+            DO 520 U = 2, WN
+               TCOL = T(L,U)
+               TROW = A(U)
+               T(L,U) = COSINE*TCOL + SINE*TROW
+               A(U-1) = TROW - ROWEL*TCOL
+  520       CONTINUE
+  540       BCOL = B(L)
+            B(L) = COSINE*BCOL + SINE*BROW
+            BROW = BROW - ROWEL*BCOL
+            GO TO 600
+  560       DO 580 U = 2, WN
+               A(U-1) = A(U)
+  580       CONTINUE
+  600       A(WN) = 0
+  620    CONTINUE
+  640    SQ = SQ + WI*BROW**2
+  660 CONTINUE
+      RANK = NC - R
+C
+C     IF MATRIX IS RANK DEFICIENT, FIND MINIMUM NORM SOLUTION
+C
+      IFAIL = 5
+      IF (RANK.EQ.0) RETURN
+      IF (R.EQ.0) GO TO 1280
+C
+C     FORM IN RTILDE THE TRANSPOSE OF THE MATRIX
+C     OBTAINED FROM THE REDUCED TRIANGLE BY REMOVING ROWS AND
+C     COLUMNS WITH SUFFICIENTLY SMALL DIAGONAL ELEMENTS, AND
+C     THEN REVERSING THE ORDERING OF THE REMAINING ROWS AND
+C     COLUMNS
+C
+      DO 700 I = 1, RANK
+         DTILDE(I) = 1.0D0
+         DO 680 J = 2, BW
+            RTILDE(I,J) = 0
+  680    CONTINUE
+  700 CONTINUE
+      S1 = 0
+      WN = 0
+      ITEMP = NC - 1
+      DO 740 II = 1, ITEMP
+         I = NC - II
+         IF (DIAG(I).EQ.0.0D+0) GO TO 740
+         WN = II + 1
+         IF (WN.GT.BW) WN = BW
+         S2 = S1 + 1
+         S1 = S2
+         T2 = 2
+         DO 720 J = 2, WN
+            IITEMP = I + J - 1
+            IF (DIAG(IITEMP).EQ.0.0D+0) GO TO 720
+            RTILDE(S2,T2) = T(I,J)
+            S2 = S2 - 1
+            T2 = T2 + 1
+  720    CONTINUE
+         IF (S2.EQ.S1) S1 = S1 - 1
+  740 CONTINUE
+C
+C     FORM NEW RIGHT HAND SIDE IN LAM BY REMOVING
+C     ELEMENTS OF OLD RIGHT HAND SIDE WHICH CORRESPOND TO A
+C     DELETED ROW AND REVERSING ORDERING OF REMAINING ELEMENTS
+C
+      S1 = 0
+      DO 760 II = 1, NC
+         I = NC + 1 - II
+         IF (DIAG(I).EQ.0.0D+0) GO TO 760
+         S1 = S1 + 1
+         LAM(S1) = B(I)
+  760 CONTINUE
+C
+C     FORM SUCCESSIVELY IN A THOSE ROWS OF TRANSPOSE
+C     OF REDUCED TRIANGLE WHICH HAD SUFFICIENTLY SMALL
+C     DIAGONAL ELEMENTS
+C
+      WN = 0
+      DO 780 I = 1, NC
+         IF (DIAG(I).EQ.0.0D+0) GO TO 780
+         II = I
+         GO TO 800
+  780 CONTINUE
+  800 S1 = RANK + II
+      DO 1000 I = II, ITEMP
+         IF (DIAG(I+1).NE.0.0D+0) GO TO 1000
+         S2 = 1
+         WN = BW
+         IF (I.LT.BW) WN = I + 1
+         DO 820 J = 2, WN
+            IITEMP = I - J + 2
+            IF (DIAG(IITEMP).EQ.0.0D+0) GO TO 820
+            A(S2) = T(IITEMP,J)
+            S2 = S2 + 1
+  820    CONTINUE
+         DO 840 J = S2, BW
+            A(J) = 0
+  840    CONTINUE
+C
+C        ROTATE THIS ROW INTO RTILDE BY GIVENS
+C        TRANSFORMATIONS WITHOUT SQUARE ROOTS
+C
+         J = S1 - I
+         S1 = S1 + 1
+         WI = 1.0D0
+         DO 980 L = J, RANK
+            IF (WI.EQ.0.0D0) GO TO 1000
+            ROWEL = A(1)
+            S = WI*ROWEL
+            IF (S*ROWEL.EQ.0.0D+0) GO TO 920
+            WN = RANK - L + 1
+            IF (WN.GT.BW) WN = BW
+            D = DTILDE(L)
+            IF (D.NE.0.0D+0) GO TO 860
+            DTILDE(L) = S*ROWEL
+            COSINE = 0
+            SINE = 1.0D0/ROWEL
+            GO TO 880
+  860       DPRIME = D + S*ROWEL
+            DTILDE(L) = DPRIME
+            COSINE = D/DPRIME
+            SINE = S/DPRIME
+  880       WI = WI*COSINE
+            IF (WN.LT.2) GO TO 960
+            DO 900 U = 2, WN
+               TCOL = RTILDE(L,U)
+               TROW = A(U)
+               RTILDE(L,U) = COSINE*TCOL + SINE*TROW
+               A(U-1) = TROW - ROWEL*TCOL
+  900       CONTINUE
+            GO TO 960
+  920       WN = RANK - L + 1
+            IF (WN.GT.BW) WN = BW
+            IF (WN.LT.2) GO TO 960
+            DO 940 U = 2, WN
+               A(U-1) = A(U)
+  940       CONTINUE
+  960       A(WN) = 0
+  980    CONTINUE
+ 1000 CONTINUE
+      L = 0
+C
+C     FORWARD SUBSTITUTION
+C
+      DO 1060 I = 1, RANK
+         IF (L.LT.BW) L = I
+         S = LAM(I)
+         S1 = I
+         IF (L.LT.2) GO TO 1040
+         DO 1020 J = 2, L
+            S1 = S1 - 1
+            S = S - RTILDE(S1,J)*LAM(S1)
+ 1020    CONTINUE
+ 1040    LAM(I) = S
+ 1060 CONTINUE
+C
+C     BACKWARD SUBSTITUTION
+C
+      L = 0
+      DO 1120 JJ = 1, RANK
+         J = RANK + 1 - JJ
+         IF (L.LT.BW) L = L + 1
+         S1 = J - 1
+         S = LAM(J)/DTILDE(J)
+         IF (L.LT.2) GO TO 1100
+         DO 1080 I = 2, L
+            IITEMP = I + S1
+            S = S - RTILDE(J,I)*LAM(IITEMP)
+ 1080    CONTINUE
+ 1100    LAM(J) = S
+ 1120 CONTINUE
+C
+C     PREMULTIPLY LAM BY RTILDE
+C
+      S1 = RANK + 1
+      WN = 0
+      DO 1200 I = 1, NC
+         S2 = S1
+         S = 0
+         IF (DIAG(I).EQ.0.0D0) GO TO 1140
+         S1 = S1 - 1
+         S = LAM(S1)
+ 1140    IF (WN.LT.BW) WN = I
+         IF (WN.LT.2) GO TO 1180
+         DO 1160 J = 2, WN
+            IITEMP = I - J + 1
+            IF (DIAG(IITEMP).EQ.0.0D+0) GO TO 1160
+            S = S + T(IITEMP,J)*LAM(S2)
+            S2 = S2 + 1
+ 1160    CONTINUE
+ 1180    C(I) = S
+ 1200 CONTINUE
+C
+C     ADD TO RESIDUAL SUM OF SQUARES THE CONTRIBUTION
+C     OF DISCARDED SMALL DIAGONAL ELEMENTS OF THE REDUCED
+C     TRIANGLE
+C
+      DO 1260 I = 1, NC
+         IF (DIAG(I).NE.0.0D+0) GO TO 1260
+         S = B(I)
+         IF (I.EQ.NC) GO TO 1240
+         WN = NC - I + 1
+         IF (WN.GT.BW) WN = BW
+         DO 1220 J = 2, WN
+            ITEMP = I + J - 1
+            S = S - C(ITEMP)*T(I,J)
+ 1220    CONTINUE
+ 1240    SQ = SQ + MNW*DL(I)*C(I)*(C(I)-2.0D+0*S)
+ 1260 CONTINUE
+      GO TO 1360
+C
+C     BACKWARD SUBSTITUTION FOR FULL RANK CASE
+C
+ 1280 L = 0
+      DO 1340 JJ = 1, NC
+         J = NC + 1 - JJ
+         IF (L.LT.BW) L = L + 1
+         U = J - 1
+         S = B(J)
+         IF (L.LT.2) GO TO 1320
+         DO 1300 I = 2, L
+            IITEMP = I + U
+            S = S - T(J,I)*C(IITEMP)
+ 1300    CONTINUE
+ 1320    C(J) = S
+ 1340 CONTINUE
+ 1360 IFAIL = 0
+      SIGMA = SQ
+      RETURN
+      END

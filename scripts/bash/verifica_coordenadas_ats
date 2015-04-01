@@ -1,0 +1,35 @@
+#!/bin/bash
+# $1: diretórios com os arquivos ats
+# exemplo: ./verifica_coordenadas_ats "niq/niq016a/gms06"
+dir=$1
+if [[ !(-d $dir) ]] ; then
+    echo "$dir não é um diretório válido"
+    exit 1
+fi
+
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+for file in $(ls ${dir}/*.ats) ; do
+    output=($(atsheader $file Longitude Latitude FileName))
+    if [[ ${output[0]} == 0 && ${output[1]} == 0 ]] ; then
+	echo ${output[*]} >> $GMT_TMPDIR/zero
+    else
+	echo ${output[*]} >> $GMT_TMPDIR/coord
+    fi
+done
+
+median=($(gawk '{print $1,$2}' $GMT_TMPDIR/coord | gmtmath -S -Ca STDIN MED =))
+# os comandos:
+# gawk -v lon0=${median[0]} -v lat0=${median[1]} '{printf "%s %s %s %s\n",lat0,lon0,$2,$1}' $GMT_TMPDIR/coord |\
+# geod +ellps=WGS84 +units=m -f %.4f -I |\
+# gawk '{print $NF}' > $GMT_TMPDIR/dist
+# paste $GMT_TMPDIR/dist $GMT_TMPDIR/coord | sort -g | cat -n
+# equivale a:
+mapproject $GMT_TMPDIR/coord -G${median[0]}/${median[1]}/e | sort -g -k 4 |\
+awk '{printf "%d\t%s\t%s\t%s\t%s\n",NR,$4,$1,$2,$3}'
+if [[ (-f $GMT_TMPDIR/zero) ]] ; then
+    cat -n $GMT_TMPDIR/zero
+fi
+ls ${dir}/*.ats | wc -l
+echo ${median[*]}
+# Clean up all temporary files and the temporary directory
+rm -rf $GMT_TMPDIR

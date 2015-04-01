@@ -1,0 +1,53 @@
+      DOUBLE PRECISION FUNCTION G05DAF(A,B)
+C     MARK 6 RELEASE  NAG COPYRIGHT 1976
+C     MARK 6B REVISED  IER-115 (MAR 1978)
+C     MARK 7 REVISED IER-135 (DEC 1978)
+C     MARK 7C REVISED IER-188 (MAY 1979)
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     WRITTEN BY N.M.MACLAREN
+C     UNIVERSITY OF CAMBRIDGE COMPUTER LABORATORY
+C     THIS RETURNS A REAL NUMBER, UNIFORMLY DISTRIBUTED
+C     BETWEEN A AND B.
+C     THE CONTORTED PROGRAMMING IS TO GIVE CORRECT RESULTS AND TO
+C     AVOID DIAGNOSTICS IN CASES WHERE ROUNDING CAUSES OVERFLOW OF
+C     THE RANGE (A,B).
+C     .. Scalar Arguments ..
+      DOUBLE PRECISION                 A, B
+C     .. Local Scalars ..
+      DOUBLE PRECISION                 ONE, X, Y, Z
+C     .. External Functions ..
+      DOUBLE PRECISION                 G05CAF
+      EXTERNAL                         G05CAF
+C     .. Intrinsic Functions ..
+      INTRINSIC                        MAX, MIN
+C     .. Data statements ..
+      DATA                             ONE/1.0D0/
+C     .. Executable Statements ..
+      X = G05CAF(X)
+C     ON A MACHINE WHICH OVERFLOWS WHEN COMPARING THE LARGEST (MOST
+C     POSITIVE) AND SMALLEST (MOST NEGATIVE) REAL NUMBERS, THE
+C     FOLLOWING STATEMENTS SHOULD BE INSERTED HERE:
+C     IF (A) 50, 140, 55
+C     50 IF (B) 140, 60, 60
+C     55 IF (B) 80, 80, 140
+C     60 Y = A
+C     Z = B
+C     GO TO 100
+C     80 Y = B
+C     Z = A
+C     100 X = Y*(ONE-X) + Z*X
+C     IF (X.GT.0.0) GO TO 120
+C     G05DAF = AMAX1(X,Y)
+C     RETURN
+C     120 G05DAF = AMIN1(X,Z)
+C     RETURN
+C     140 CONTINUE
+      IF (A.GT.B) GO TO 20
+      Y = A
+      Z = B
+      GO TO 40
+   20 Y = B
+      Z = A
+   40 G05DAF = MIN(MAX(Y*(ONE-X)+Z*X,Y),Z)
+      RETURN
+      END

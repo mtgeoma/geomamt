@@ -1,0 +1,230 @@
+      SUBROUTINE G13BJF(MR,NSER,MT,PARA,NPARA,KFC,NEV,NFV,XXY,IXXY,KZEF,
+     *                  RMSXY,MRX,PARX,IPARX,FVA,FSD,STTF,ISTTF,NSTTF,
+     *                  WA,IWA,MWA,IMWA,IFAIL)
+C     MARK 11 RELEASE. NAG COPYRIGHT 1983.
+C     MARK 11A REVISED. IER-455 (JUN 1984).
+C     MARK 11.5(F77) REVISED. (SEPT 1985.)
+C     MARK 13 REVISED. USE OF MARK 12 X02 FUNCTIONS (APR 1988).
+C
+C     G13BJF PRODUCES FORECASTS WHEN NO STATE SET
+C     IS AVAILABLE. IT REQUIRES A FULLY SPECIFIED
+C     MODEL AND A SET OF OBSERVATIONS OF INPUT AND
+C     OUTPUT SERIES.
+C
+C     .. Parameters ..
+      CHARACTER*6       SRNAME
+      PARAMETER         (SRNAME='G13BJF')
+C     .. Scalar Arguments ..
+      INTEGER           IFAIL, IMWA, IPARX, ISTTF, IWA, IXXY, KFC, KZEF,
+     *                  NEV, NFV, NPARA, NSER, NSTTF
+C     .. Array Arguments ..
+      DOUBLE PRECISION  FSD(NFV), FVA(NFV), PARA(NPARA),
+     *                  PARX(IPARX,NSER), RMSXY(NSER), STTF(ISTTF),
+     *                  WA(IWA), XXY(IXXY,NSER)
+      INTEGER           MR(7), MRX(7,NSER), MT(4,NSER), MWA(IMWA)
+C     .. Local Scalars ..
+      DOUBLE PRECISION  C, D, S, ZERO
+      INTEGER           I, ICM, IERR, IH, IPS, IPXS, ITC, IWAE, IWAQ,
+     *                  IWDS, J, JSTTF, K, KEF, KPRIV, KQ, KSAAL, KSAEX,
+     *                  KSPSI, KSZN, L, LBETA, LBETAC, LBF, LDELT, LGC,
+     *                  LHC, LLG, LLH, LPXS, LWAE, LWDS, MXA, MXB, MXC,
+     *                  MXD, MXE, NBF, NBFQ, NBSS, NBV, ND, NDD, NDF,
+     *                  NDS, NGH, NGW, NIT, NNB, NNP, NNQ, NNR, NP,
+     *                  NPAR, NPARX, NPD, NPE, NPS, NPX, NPXV, NQ, NQD,
+     *                  NQS, NS, NSW, NWD, NWDV, NXS, NXY
+C     .. Local Arrays ..
+      DOUBLE PRECISION  ZSP(4)
+      INTEGER           MPQS(4)
+      CHARACTER*1       P01REC(1)
+C     .. External Functions ..
+      DOUBLE PRECISION  X02AJF
+      INTEGER           P01ABF
+      EXTERNAL          X02AJF, P01ABF
+C     .. External Subroutines ..
+      EXTERNAL          G13AJY, G13BEX, G13BEZ, G13BFX, G13BFY, G13BHZ
+C     .. Intrinsic Functions ..
+      INTRINSIC         MAX, DBLE
+C     .. Data statements ..
+      DATA              ZERO/0.0D0/
+C     .. Executable Statements ..
+C
+C     ZEROISE THE WORKING ARRAYS.
+C
+      DO 20 I = 1, IWA
+         WA(I) = ZERO
+   20 CONTINUE
+      DO 40 I = 1, IMWA
+         MWA(I) = 0
+   40 CONTINUE
+C
+C     TEST FOR TYPE 1 ERROR.
+C
+      IERR = 1
+      NPE = NPARA - 1
+      IF (KFC.LT.0 .OR. KFC.GT.1) GO TO 220
+      IF (IXXY.LT.(NEV+NFV) .OR. NFV.LE.0) GO TO 220
+C
+C     TEST FOR TYPE 2 ERROR AND DERIVE MISCELLANEOUS INTEGERS
+C     WHICH DEFINE LENGTHS OF COMPONENT ARRAYS OF WA AND MWA.
+C
+      IERR = 2
+      CALL G13AJY(MR,NP,ND,NQ,NPS,NDS,NQS,NS,NPD,NDD,NQD,MPQS,NPAR)
+      NXS = NSER - 1
+      MXB = 0
+      MXC = 0
+      MXD = 0
+      JSTTF = NS*NPS + NDD + NQ + MAX(NP,(NS*NQS))
+      IPXS = 1
+      IWDS = 1
+      NSW = 0
+      NWDV = 0
+      NPXV = 0
+      IF (NXS.LE.0) GO TO 120
+      DO 100 I = 1, NXS
+         IF (MT(4,I).LT.1 .OR. MT(4,I).GT.3) GO TO 220
+         CALL G13BEX(MT,I,NSER,NNB,NNP,NNQ,NNR,NWD,NGW,NPX)
+         KQ = NNB + NNQ + NNP
+         NPARX = MRX(1,I) + MRX(3,I) + MRX(4,I) + MRX(6,I)
+         IF (IPARX.LT.NPARX) GO TO 220
+         MXD = MAX(MXD,NPARX)
+         MXB = MAX(MXB,NPX)
+         MXC = MAX(MXC,KQ)
+         MXE = MAX(MRX(1,I),(MRX(7,I)*MRX(6,I)))
+         MXE = MXE + MRX(7,I)*(MRX(4,I)+MRX(5,I)) + MRX(2,I) + MRX(3,I)
+         JSTTF = MAX(JSTTF,MXE)
+         IF (NNR.NE.1) GO TO 60
+         NSW = NSW + 1
+   60    NWDV = NWDV + NWD
+         NPXV = NPXV + NPX
+         IF (NPX.LE.IPXS) GO TO 80
+         IPXS = NPX
+   80    IF (NWD.LE.IWDS) GO TO 100
+         IWDS = NWD
+  100 CONTINUE
+  120 IF (NPARA.NE.(NPAR+NWDV+1)) GO TO 220
+C
+C     DEFINE VALUES OF ZSP (G13BEF DEFAULT VALUES).
+C
+      ZSP(1) = 0.01D0
+      ZSP(2) = 10.0D0
+      ZSP(3) = 1000.0D0
+      ZSP(4) = MAX(100.0D0*X02AJF(),1.0D-07)
+C
+C     DERIVE INTEGER VARIABLES WHICH DEFINE LENGTHS
+C     OF A(T) AND B(T) SETS
+C
+      CALL G13BEZ(NXS,MT,NP,NQ,NPS,NQS,NS,NDD,NQD,1,NBSS,NBV,NBF,NSER)
+      NBFQ = MAX(NBF,1)
+C
+C     THE CONSTANT IS ASSUMED TO BE FIXED
+C
+      IH = NPARA + NBF + NPXV
+      NGH = IH - 1
+      NDF = NEV - NDD - NGH + NBF
+C
+C     DEFINE THE START POINTS OF THE COMPONENT ARRAYS OF WA
+C
+      LWDS = 1
+      LBF = LWDS + IWDS*NSER
+      LPXS = LBF + NBFQ
+      LBETA = LPXS + IPXS*NSER
+      LBETAC = LBETA + NGH
+      LLG = LBETAC + NGH
+      LGC = LLG + NGH
+      LLH = LGC + NGH
+      LHC = LLH + IH*NGH
+      LDELT = LHC + IH*NGH
+      LWAE = LDELT + NGH
+      IWAE = IWA - LWAE + 1
+      MWA(1) = LWAE - 1
+C
+C     TEST FOR TYPE 5 ERROR
+C
+      IERR = 5
+      IF (IWAE.LE.0) GO TO 220
+      IF (NXS.LE.0) GO TO 180
+      L = NPAR
+      DO 160 I = 1, NXS
+         CALL G13BEX(MT,I,NSER,NNB,NNP,NNQ,NNR,NWD,NGW,NPX)
+         IERR = 2
+         IF (NWD.LE.0) GO TO 220
+C
+C        COLLECT OMEGAS AND DELTAS IN WDS AND CONSTANT IN C.
+C
+         DO 140 J = 1, NWD
+            K = IWDS*(I-1) + J
+            L = L + 1
+            WA(K) = PARA(L)
+  140    CONTINUE
+  160 CONTINUE
+  180 C = PARA(NPARA)
+C
+C     TEST FOR TYPE 7 ERROR
+C
+      IERR = 7
+      I = 30 + 16*NSER + 7*IH + 3*NPE
+      IF (IMWA.GE.I) GO TO 200
+      MWA(1) = I
+      IF (IFAIL.NE.0) GO TO 220
+C
+C     PRINT OUT MESSAGE ABOUT REQUISITE LENGTH OF MWA
+C     IF IFAIL=0
+C
+      CALL G13BFX(KFC,WA(1),WA(1),PARA,NPARA,IMWA,MWA,MWA,7,I)
+      GO TO 220
+C
+C     DEFINE INTEGER VALUES NEEDED WHEN USING G13BFY WITH G13BJF
+C
+  200 NXY = 1
+      KEF = 1
+      ITC = -NEV
+      ICM = 1
+      KPRIV = 0
+      NIT = 0
+C
+C     G13BFY CARRIES OUT PRELIMINARY ESTIMATION (EQUIVALENT TO NIT=0)
+C
+      CALL G13BFY(MR,NPARA,PARA,NPE,NXY,XXY,IXXY,NSER,MT,KEF,NIT,ZSP,
+     *            ITC,WA,WA,1,S,D,KZEF,WA,MWA,IMWA,WA(LBETA),WA(LBETAC)
+     *            ,NGH,WA(LLG),WA(LGC),IH,WA(LLH),WA(LHC),WA(LDELT)
+     *            ,IWDS,WA(LWDS),NBFQ,WA(LBF),IPXS,WA(LPXS),WA(LWAE)
+     *            ,IWAE,C,KPRIV,STTF,ISTTF,NSTTF,IERR)
+C
+C     TEST FOR ERRORS IN G13BFY
+C
+      IF (IERR.NE.0) GO TO 220
+C
+C     CALCULATE RESIDUAL MEAN SQUARE FOR OUTPUT SERIES, TAKING INTO
+C     ACCOUNT WHETHER C HAD PREVIOUSLY BEEN ESTIMATED OR NOT.
+C
+      RMSXY(NSER) = S*DBLE(NDF)/DBLE(NDF-KFC)
+      MXA = MAX(NPAR,MXD)
+      MXB = MXB + NFV
+      MXC = MXC + 1
+      IPS = MAX(JSTTF,MXA,MXB,MXC)
+      IWAQ = MAX(JSTTF+4*MXA,IPS)
+      KQ = IWAQ + 3*IPS + NFV
+C
+C     TEST FOR TYPE 4 ERROR
+C
+      IERR = 4
+      IF (IWA.LT.KQ) GO TO 220
+C
+C     DEFINE START POINTS OF NEW COMPONENT ARRAYS OF WA
+C
+      KSPSI = IWAQ + 1
+      KSAEX = KSPSI + IPS
+      KSAAL = KSAEX + IPS
+      KSZN = KSAAL + IPS
+C
+C     G13BHZ IS THE AUXILIARY WHICH CARRIES OUT ALL
+C     THE FORECASTING CALCULATIONS
+C
+      CALL G13BHZ(MR,PARA,NPARA,STTF,NSTTF,MT,NSER,MRX,PARX,IPARX,XXY,
+     *            IXXY,RMSXY,NFV,KZEF,FVA,FSD,WA(KSPSI),WA(KSAEX)
+     *            ,WA(KSAAL),WA(KSZN),IPS,WA,IWAQ,NEV)
+      IFAIL = 0
+      RETURN
+  220 IFAIL = P01ABF(IFAIL,IERR,SRNAME,0,P01REC)
+      RETURN
+      END

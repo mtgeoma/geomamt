@@ -1,0 +1,569 @@
+#!/bin/bash
+# script para plotar rho e phi das componentes xy e yx
+# mais as componentes da parte real e imaginária do tensor de impedância
+# e função de transferência magnética
+source sysexits
+
+leaving ()
+{
+    rm -rf $GMT_TMPDIR
+    exit $1
+}
+
+# configura tamanho das letras
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+gmtset HEADER_FONT_SIZE 12p ANNOT_FONT_SIZE_PRIMARY 8p LABEL_FONT_SIZE 10p \
+    TICK_LENGTH -0.2c GRID_PEN_PRIMARY 0.25p,128 ANNOT_OFFSET_PRIMARY 0.1c \
+    LABEL_OFFSET 0.0c
+
+source gmt_defaults
+
+# default optional arguments
+declare -A options=(
+    ['TMIN']=1e-4
+    ['NDT']=7
+    ['RHOMIN']=1e-1
+    ['PHIMIN']=0
+    ['BASE_PHI']=-10
+    ['NDRHO']=6
+    ['FS']=2
+    ['ps']=cmp.ps
+    ['COR']=blue,red,black,green
+    ['shift_fase']=0,180
+)
+
+# função que descreve como usar o script
+modo_de_usar ()
+# $1: nome do script
+{
+  echo "uso:" $1 "arquivos_de_impedândia[,angulo_rotação][,[inicio-fim]] [parametro=valor]"
+  echo
+  echo "  arquivos_de_impedância: arquivos com dados do tensor de impedância"
+  echo "                          que o programa parametros-mt conheça."
+  echo "      pode-se acrescentar parâmetros separados com uma vírgula:"
+  echo "      pode ser uma seleção de dados no formato [inicio-fim]"
+  echo "      ou será interpretado como um ângulo de rotação."
+  echo
+  echo "  pode-se alterar os seguintes parâmetros por linha de comando:"
+  echo "  TMIN=período mínimo [${options[TMIN]}]"
+  echo "  NDT=número de décadas de períodos [${options[NDT]}]"
+  echo "  RHOMIN=resistividade aparente mínima [${options[RHOMIN]}]"
+  echo "  PHIMIN=fase mínima [${options[PHIMIN]}]"
+  echo "  BASE_PHI=fase abaixo desse valor será deslocada de 360 [${options[BASE_PHI]}]"
+  echo "  NDRHO=número de décadas de rho [${options[NDRHO]}]"
+  echo "  FS=fator de escala da fase [${options[FS]}]"
+  echo "  ps=arquivo de saída para o GMT [${options[ps]}]"
+  echo "  COR=cores para identificar cada arquivo [${options[COR]}]"
+  echo "  shift_fase=deslocamento das fases xy e yx [${options[shift_fase]}]"
+  leaving $EX_USAGE
+}
+
+# assume que nenhum arquivo terá número de períodos maior que MAXIMO_REGISTRO
+MAXIMO_REGISTRO=2147483647
+
+# verifica se há parâmetros de entrada:
+if [[ -z "$1" ]]
+then
+    modo_de_usar $0
+fi
+
+# lê parâmetros de entrada
+Ndata=0
+until [[ -z "$1" ]]
+do
+    # parâmetros que possuam o caracter "=" são para alterar variáveis internas
+    if [[ $(expr index "$1" "=") != 0 ]]
+    then
+	option=($(echo $1 | tr '=' ' '))
+	if [[ ${#option[*]} -eq 2 ]] ; then
+        # check if is a valid option
+            if [[ -z ${options[${option[0]}]} ]] ; then
+		if [[ -z ${gmt_defaults[${option[0]}]} ]] ; then
+                    echo "'${option[0]}' isn't a valid option"
+                    usage $0
+		else
+                    gmt_defaults[${option[0]}]=${option[1]}
+		fi
+            else
+		options[${option[0]}]=${option[1]}
+            fi
+	else
+            echo "error in option:$1"
+            usage $0
+	fi
+    else
+    # se não é  para alterar variáveis internas (não tem caracter "="),
+    # verifica se há parâmetros separados por vírgula. Se o parâmetro tiver o
+    # caracter "[" será usado para determinar a seleção dos dados,
+    # senão será considerado a rotação a ser aplicada.
+    # ATENÇÃO! se houver um arquivo cujo nome seja o número usado na seleção
+    # o script falha. Veja a saída o seguinte comando:
+    # > echo [1-10] && touch 0 1 && echo [1-10]
+    # [1-10]
+    # 0
+	args=($(echo $1 | tr ',' ' '))
+	arquivo=${args[0]}
+        # verifica se arquivo existe e tem permissão de leitura
+	check-file "$arquivo"
+	data[$Ndata]="$arquivo"
+	selecao=""
+	angulo=""
+	for (( i=1; i < ${#args[*]}; i++ )) ; do
+	    if [[ $(expr index "${args[i]}" "[") != 0 ]]
+	    then
+		selecao=($(selection.py ${args[i]}))
+		if [[ $? -ne 0 ]] ; then
+		    echo ${selecao[*]}
+		    leaving 1
+		fi
+	    else
+		angulo=${args[i]}
+	    fi
+	done
+
+	if [[ -n $selecao ]]
+	then
+	    inicio_data[$Ndata]=${selecao[0]}
+	    fim_data[$Ndata]=${selecao[1]}
+	else
+	    inicio_data[$Ndata]=1
+	    fim_data[$Ndata]=$MAXIMO_REGISTRO
+	fi
+
+        # não sei como verificar se $angulo é um número float válido
+	if [[ -n $angulo ]]
+	then
+	    azimute[$Ndata]=$angulo
+	else
+	    azimute[$Ndata]=0
+	fi
+	((Ndata++))
+    fi
+    shift
+done
+
+TMIN=${options[TMIN]}
+NDT=${options[NDT]}
+RHOMIN=${options[RHOMIN]}
+PHIMIN=${options[PHIMIN]}
+BASE_PHI=${options[BASE_PHI]}
+NDRHO=${options[NDRHO]}
+FS=${options[FS]}
+ps=${options[ps]}
+shift_fase=($(echo ${options[shift_fase]} | tr ',' ' '))
+
+COR=($(echo ${options[COR]} | tr ',' ' '))
+# verifica se há cores para todos os arquivos de entrada
+if (( ${#data[*]} > ${#COR[*]} ))
+then
+    COR=($(makecpt -Cno_green -T0/${#data[*]}/1 | grep -v \# | head -n ${#data[*]} | awk '{printf " %s/%s/%s",$2,$3,$4}'))
+fi
+
+# CONFIGURAÇÕES:
+# VARIÁVEIS PRIMÁRIAS não modificáveis por linha de comando
+cor_legenda=80 # usado na idendificação das componentes
+comp=(xy yx) # componentes a serem plotadas em rho e phi
+simbolos=(S5p C5p) # símbolos para identificar as componentes
+
+# TAMANHO DOS GRÁFICOS
+# para manter-se a igualdade entre os tamanhos das décadas de rho e T, cria-se
+# um vínculo entre as dimensões dos eixos X e Y. Também é desejável uma
+# proporção entre rho e phi, além de clareza na apresentação das legendas e uma
+# boa distribuição dos gráficos no papel.
+# Para isso, define-se uma distribuição dos gráficos nos eixos X e Y, calcula-se
+# os tamanhos de uma década em cada eixo, escolhe-se o menor valor e
+# recalcula-se as margens para garantir a centralidade dos gráficos.
+
+# campos no eixo Y (de baixo para cima):
+#margem+legenda T+gráfico phi+rótulos+gráfico rho+rótulos+1linhas títulos+margem
+#  Y0  +  DELTAY +  YLEN     +DELTAY + YLEN      +DELTAY + 1*pos_legenda + Y0
+# Y_PAPEL=2*YLEN+2*Y0+3*DELTAY+pos_legenda
+Y_PAPEL=21.0 # tamanho do papel em Y (formato paisagem)
+Y0=1.5 # margem mínima
+DELTAY=0.8 # espaçamento vertical entre gráficos (espaço para legenda/rótulos)
+pos_legenda=0.3 # espaçamento entre as legendas
+YLEN=$(echo "($Y_PAPEL-(2*$Y0+3*$DELTAY+$pos_legenda))/2.0" | bc -l)
+YDLEN=$(echo "$YLEN/$NDRHO" | bc -l)
+
+# campos no eixo X (da esquerda para direita):
+# margem+rótulos+gráfico phi/rho+rótulos+tensorHx+rótulos+tensorHy+margem
+# X0    +DELTAX + XLEN          +DELTAX + XLEN   +DELTAX + XLEN   + X0
+# X_PAPEL=3*XLEN+2*X0+3*DELTAX
+X_PAPEL=29.7 # tamanho do papel em X (formato paisagem)
+X0=1.5 # margem mínima
+DELTAX=0.8 # espaçamento horizontal entre gráficos (espaço para legenda/rótulos)
+XLEN=$(echo "($X_PAPEL-(2*$X0+3*$DELTAX))/3" | bc -l)
+XDLEN=$(echo "$XLEN/$NDT" | bc -l)
+
+# comprimento de uma década
+DLEN=$(echo $XDLEN $YDLEN | awk '{if($1<$2){print $1}else{print $2}}')
+
+# LY= comprimento do eixo Y em cm
+# baseado no rho
+YLEN=$(echo "$DLEN*$NDRHO" | bc -l)
+TLEN=$(echo "$DLEN*$NDT" | bc -l)
+PHILEN=$YLEN
+RHOLEN=$YLEN
+XSHIFT=$(echo "$TLEN+$DELTAX" | bc -l)
+YSHIFT=$(echo "$YLEN+$DELTAY" | bc -l)
+X0=$(echo "($X_PAPEL-3*$XSHIFT)/2" | bc -l)
+
+Y0=$(echo "($Y_PAPEL-(2*$YLEN+3*$DELTAY+$pos_legenda))/2" | bc -l)
+Y0=$(echo "$Y0+$YLEN+2*$DELTAY" | bc -l) # desloca para a base do gráfico rho
+
+# VARIÁVEIS DERIVADAS
+# 10^x=exp(x*ln(10))
+TMAX=$(awk 'BEGIN{printf "%e\n",exp(('$NDT'+log('$TMIN')/log(10))*log(10))}')
+RHOMAX=$(awk 'BEGIN{printf "%e\n",exp(('$NDRHO'\
+                                        +log('$RHOMIN')/log(10))*log(10))}')
+
+# 1 década de rho equivale a 2*log10(e) de phi
+# FS*2*log10(e)=FS*2/ln(10)
+# onde FS é um fator de escala
+#   quando FS=1 barras de erro de rho e phi são iguais mas a amplitude
+#   entre o mínimo e máximo de rho é maior que o mínimo e máximo de phi
+#   com FS=2 a amplitude entre rho e phi são similares, mas o erro de phi dobra
+# PHIMAX=PHIMIN+$NDRHO*(180/(PI*(FS*2/log(10))))
+# PHIMAX=PHIMIN+$NDRHO*(90*log(10)/(FS*PI))
+PI=$(awk 'BEGIN{print atan2(0,-1)}')
+PHIMAX=$(awk 'BEGIN{printf "%e\n",'$PHIMIN'\
+                                   +'$NDRHO'*(90*log(10)/('$FS'*'$PI'))}')
+
+# GRÁFICO RHO
+psbasemap -X${X0}c -Y${Y0}c -JX${TLEN}cl/${RHOLEN}cl \
+ -R$TMIN/$TMAX/$RHOMIN/$RHOMAX -Ba1pf3:"T (s)":/a1pf3Wesn -K > $ps
+
+# identifica os arquivos de entrada
+if [[ $Ndata == 1 ]]
+then
+    # havendo apenas um arquivo, rotula-se apenas o nome de arquivo,
+    # sem extensão
+    rotulo=$(basename ${data[0]})
+    rotulo=${rotulo%.*}
+    x=$(echo "(3*$TLEN+2*$DELTAX)/2" | bc -l)
+    y=$DELTAY
+    printf "%s %s 12 0 0 BC %s\n" $TMIN $RHOMAX $rotulo |\
+    pstext -N -R -J -D${x}c/${y}c -G${COR[0]} -K -O >> $ps
+else
+    # havendo mais de um arquivo, rotula-se o nome completo,
+    # incluindo o diretório
+    delta_x=$(echo "(3*$TLEN+2*$DELTAX)/$Ndata" | bc -l)
+    x=$(echo "$delta_x/2" | bc -l)
+    y=$DELTAY
+    for (( i=0; i < Ndata; i++ ))
+    do
+	printf "%s %s 12 0 0 BC %s\n" $TMIN $RHOMAX ${data[$i]} |\
+                pstext -N -R -J -D${x}c/${y}c -G${COR[$i]} -K -O >> $ps
+	x=$(echo "$x+$delta_x" | bc -l)
+    done
+fi
+
+delta_x=$(echo "$TLEN/(${#comp[*]}+1)" | bc -l)
+delta_y=$pos_legenda
+x=$delta_x
+y=$delta_y
+for (( i=0; i < ${#comp[*]}; i++ ))
+do
+    echo "$TMIN $RHOMAX" | psxy -N -J -R -D${x}c/${y}c -S${simbolos[$i]}\
+                                -G$cor_legenda -K -O >> $ps
+    xtexto=$(echo "$x+0.2" | bc -l)
+    printf "%s %s 12 0 0 ML  @~ r@~@-%s\n" $TMIN $RHOMAX ${comp[$i]} |\
+    pstext -N -R -J -D${xtexto}c/${y}c -G$cor_legenda -K -O >> $ps
+    x=$(echo "$x+$delta_x" | bc -l)
+done
+
+for (( i=0; i < Ndata; i++ ))
+do
+  for (( j=0; j < ${#comp[*]}; j++ ))
+  do
+    parametros-mt ${data[$i]} rho-${comp[$j]} --azimute ${azimute[$i]} |\
+    awk -v min=${inicio_data[$i]} -v max=${fim_data[$i]} \
+        '{if(NR>=min&&NR<=max)print $0}' |\
+    psxy -J -R -S${simbolos[$j]} -G${COR[$i]} -W0.5p,white -EY0p/0.5p,${COR[$i]} -K -O \
+    >> $ps
+  done
+done
+
+# GRÁFICO PHI
+psbasemap -Y-${YSHIFT}c -JX${TLEN}cl/${YLEN}c -R$TMIN/$TMAX/$PHIMIN/$PHIMAX \
+          -Ba1pf3:"T (s)":/a30f10WeSn -K -O >> $ps
+
+x=$delta_x
+for (( i=0; i < ${#comp[*]}; i++ ))
+do
+    echo "$TMIN $PHIMAX" | psxy -N -J -R -D${x}c/${y}c -S${simbolos[$i]}\
+                                -G$cor_legenda -K -O >> $ps
+    xtexto=$(echo "$x+0.2" | bc -l)
+    printf "%s %s 12 0 0 ML  @~ f@~@-%s\n" $TMIN $PHIMAX ${comp[$i]} |\
+    pstext -N -R -J -D${xtexto}c/${y}c -G$cor_legenda -K -O >> $ps
+    x=$(echo "$x+$delta_x" | bc -l)
+done
+
+for (( i=0; i < Ndata; i++ ))
+do
+  for (( j=0; j < ${#comp[*]}; j++ ))
+  do
+    parametros-mt ${data[$i]} phi-${comp[$j]} --azimute ${azimute[$i]}|\
+    awk -v min=${inicio_data[$i]} -v max=${fim_data[$i]} -v s=${shift_fase[$j]}\
+        '{if(NR>=min&&NR<=max)print $1,$2+s,$3}' |\
+    awk -v base=$BASE_PHI '{if($2<base){print $1,$2+360,$3}else{print $0}}' |\
+    psxy -J -R -S${simbolos[$j]} -G${COR[$i]} -W0.5p,white -Ey0p/0.5p,${COR[$i]} -K -O \
+    >> $ps
+  done
+done
+
+# o valor de YLEN é recalculado para que as 3 linhas de gráficos do tensor
+# ajustem-se no espaço dos gráficos de rho e phi
+# YLENnovo=(2*YLEN+DELTAY-2*DELTAY)/3
+YLEN=$(echo "(2*$YLEN-$DELTAY)/3" | bc -l)
+YSHIFT=$(echo "$YLEN+$DELTAY" | bc -l)
+
+ZMIN=-1
+ZMAX=1
+# GRÁFICO DA FUNÇÃO DE TRANSFERÊNCIA MAGNÉTICA
+
+# carrega função para identificar formatos de impedância para o transferfunction
+source check-Zformat
+
+# GRÁFICO Tzx
+psbasemap -X${XSHIFT}c -JX${TLEN}cl/${YLEN}c -R$TMIN/$TMAX/$ZMIN/$ZMAX\
+          -Ba1pf3:"T (s)":/a0.2WeSn -K -O >> $ps
+
+comp=('@~ \302@~T@-zx' '@~ \301@~T@-zx')
+x=$delta_x
+for (( i=0; i < ${#comp[*]}; i++ ))
+do
+    echo "$TMIN $ZMAX" | psxy -N -J -R -D${x}c/${y}c -S${simbolos[$i]}\
+                                -G$cor_legenda -K -O >> $ps
+    xtexto=$(echo "$x+0.2" | bc -l)
+    printf "%s %s 12 0 0 ML %s\n" $TMIN $ZMAX "${comp[$i]}" |\
+    pstext -N -R -J -D${xtexto}c/${y}c -G$cor_legenda -K -O >> $ps
+    x=$(echo "$x+$delta_x" | bc -l)
+done
+
+comp=(Rzx Izx)
+for (( i=0; i < Ndata; i++ ))
+do
+  check-Zformat ${data[$i]} zzx
+  form=${Zformats[$?]}
+  for (( j=0; j < ${#comp[*]}; j++ ))
+  do
+    gds2gmt -I${data[$i]} -F$form -D${comp[$j]} |\
+    awk -v min=${inicio_data[$i]} -v max=${fim_data[$i]}\
+        '{if(NR>=min&&NR<=max)print $0}' |\
+    psxy -J -R -S${simbolos[$j]} -G${COR[$i]} -W0.5p,white -Ey0p/0.5p,${COR[$i]} -K -O \
+    >> $ps
+  done
+done
+
+# GRÁFICO Tzy
+psbasemap -X${XSHIFT}c -JX${TLEN}cl/${YLEN}c -R$TMIN/$TMAX/$ZMIN/$ZMAX\
+          -Ba1pf3:"T (s)":/a0.2WeSn -K -O >> $ps
+
+comp=('@~ \302@~T@-zy' '@~ \301@~T@-zy')
+x=$delta_x
+for (( i=0; i < ${#comp[*]}; i++ ))
+do
+    echo "$TMIN $ZMAX" | psxy -N -J -R -D${x}c/${y}c -S${simbolos[$i]}\
+                                -G$cor_legenda -K -O >> $ps
+    xtexto=$(echo "$x+0.2" | bc -l)
+    printf "%s %s 12 0 0 ML %s\n" $TMIN $ZMAX "${comp[$i]}" |\
+    pstext -N -R -J -D${xtexto}c/${y}c -G$cor_legenda -K -O >> $ps
+    x=$(echo "$x+$delta_x" | bc -l)
+done
+
+comp=(Rzy Izy)
+for (( i=0; i < Ndata; i++ ))
+do
+  check-Zformat ${data[$i]} zzx
+  form=${Zformats[$?]}
+  for (( j=0; j < ${#comp[*]}; j++ ))
+  do
+    gds2gmt -I${data[$i]} -F$form -D${comp[$j]} |\
+    awk -v min=${inicio_data[$i]} -v max=${fim_data[$i]}\
+        '{if(NR>=min&&NR<=max)print $0}' |\
+    psxy -J -R -S${simbolos[$j]} -G${COR[$i]} -W0.5p,white -Ey0p/0.5p,${COR[$i]} -K -O \
+    >> $ps
+  done
+done
+
+# é preciso encontrar uma escala para os elementos do tensor
+# para isso, busca-se a máxima variação. Encontra-se o valor inteiro
+# de 10 divisões e calcula-se os mínimos e máximos forçando essa variação
+
+comp=(xx xy yx yy)
+XX=0
+XY=1
+YX=2
+YY=3
+MAX_VAR_Z=0
+for (( j=0; j < ${#comp[*]}; j++ ))
+do
+  for (( i=0; i < Ndata; i++ ))
+  do
+    parametros-mt ${data[$i]} rhoReal-${comp[$j]} --azimute ${azimute[$i]} |\
+    awk -v min=${inicio_data[$i]} -v max=${fim_data[$i]}\
+        '{if(NR>=min&&NR<=max)print $2}' >> $GMT_TMPDIR/Ztmp
+    parametros-mt ${data[$i]} rhoImag-${comp[$j]} --azimute ${azimute[$i]} |\
+    awk -v min=${inicio_data[$i]} -v max=${fim_data[$i]}\
+        '{if(NR>=min&&NR<=max)print $2}' >> $GMT_TMPDIR/Ztmp
+  done
+  MIN_Z[$j]=$(minmax $GMT_TMPDIR/Ztmp -C |awk '{print $1}')
+  MAX_Z[$j]=$(minmax $GMT_TMPDIR/Ztmp -C |awk '{print $2}')
+  rm -f $GMT_TMPDIR/Ztmp
+#   echo ${MIN_Z[$j]} ${MAX_Z[$j]}
+  MAX_VAR_Z=$(echo ${MIN_Z[$j]} ${MAX_Z[$j]} |\
+  awk -v max=$MAX_VAR_Z '{a=$2-$1;if(a>max){print a}else{print max}}')
+done
+ANOTY=$(echo $MAX_VAR_Z | awk '{printf "%.0f",$1/10+0.5}')
+MAX_VAR_Z=$(echo "10*$ANOTY" | bc -l)
+# echo $MAX_VAR_Z $ANOTY
+for (( j=0; j < ${#comp[*]}; j++ ))
+do
+    MIN_Z[$j]=$(echo ${MIN_Z[$j]} $ANOTY | awk '{printf "%.0f",int($1/$2)*$2}')
+    MAX_Z[$j]=$(echo ${MAX_Z[$j]} $ANOTY | awk '{printf "%.0f",int($1/$2)*$2}')
+    VAR_Z=$(echo ${MIN_Z[$j]} ${MAX_Z[$j]} | awk '{printf "%.0f",$2-$1}')
+    while (( $VAR_Z != $MAX_VAR_Z ))
+    do
+	MIN_Z[$j]=$(echo "${MIN_Z[$j]}-$ANOTY" | bc -l)
+	VAR_Z=$(echo ${MIN_Z[$j]} ${MAX_Z[$j]} | awk '{printf "%.0f",$2-$1}')
+	if (( $VAR_Z == $MAX_VAR_Z ))
+	then
+	    break
+	fi
+	MAX_Z[$j]=$(echo "${MAX_Z[$j]}+$ANOTY" | bc -l)
+	VAR_Z=$(echo ${MIN_Z[$j]} ${MAX_Z[$j]} | awk '{printf "%.0f",$2-$1}')
+    done
+done
+
+# for (( j=0; j < ${#comp[*]}; j++ ))
+# do
+#     echo ${MIN_Z[$j]} ${MAX_Z[$j]}
+# done
+
+# GRÁFICO Zyy
+psbasemap -Y${YSHIFT}c -Ba1pf3:"T (s)":/a${ANOTY}Wesn -JX${TLEN}cl/${YLEN}c\
+           -R$TMIN/$TMAX/${MIN_Z[$YY]}/${MAX_Z[$YY]} -K -O >> $ps
+
+comp=('@~ \302@~Z@-yy' '@~ \301@~Z@-yy')
+x=$delta_x
+for (( i=0; i < ${#comp[*]}; i++ ))
+do
+    echo "$TMIN ${MAX_Z[$YY]}" | psxy -N -J -R -D${x}c/${y}c -S${simbolos[$i]}\
+                                -G$cor_legenda -K -O >> $ps
+    xtexto=$(echo "$x+0.2" | bc -l)
+    printf "%s %s 12 0 0 ML %s\n" $TMIN ${MAX_Z[$YY]} "${comp[$i]}" |\
+    pstext -N -R -J -D${xtexto}c/${y}c -G$cor_legenda -K -O >> $ps
+    x=$(echo "$x+$delta_x" | bc -l)
+done
+
+comp=(Real Imag)
+for (( i=0; i < Ndata; i++ ))
+do
+  for (( j=0; j < ${#comp[*]}; j++ ))
+  do
+    parametros-mt ${data[$i]} rho${comp[$j]}-yy --azimute ${azimute[$i]} |\
+    awk -v min=${inicio_data[$i]} -v max=${fim_data[$i]}\
+        '{if(NR>=min&&NR<=max)print $0}' |\
+    psxy -J -R -S${simbolos[$j]} -G${COR[$i]} -W0.5p,white -Ey0p/0.5p,${COR[$i]} -K -O \
+    >> $ps
+  done
+done
+
+# GRÁFICO Zyx
+psbasemap -X-${XSHIFT}c -Ba1pf3:"T (s)":/a${ANOTY}Wesn -JX${TLEN}cl/${YLEN}c\
+           -R$TMIN/$TMAX/${MIN_Z[$YX]}/${MAX_Z[$YX]} -K -O >> $ps
+
+comp=('@~ \302@~Z@-yx' '@~ \301@~Z@-yx')
+x=$delta_x
+for (( i=0; i < ${#comp[*]}; i++ ))
+do
+    echo "$TMIN ${MAX_Z[$YX]}" | psxy -N -J -R -D${x}c/${y}c -S${simbolos[$i]}\
+                                -G$cor_legenda -K -O >> $ps
+    xtexto=$(echo "$x+0.2" | bc -l)
+    printf "%s %s 12 0 0 ML %s\n" $TMIN ${MAX_Z[$YX]} "${comp[$i]}" |\
+    pstext -N -R -J -D${xtexto}c/${y}c -G$cor_legenda -K -O >> $ps
+    x=$(echo "$x+$delta_x" | bc -l)
+done
+
+comp=(Real Imag)
+for (( i=0; i < Ndata; i++ ))
+do
+  for (( j=0; j < ${#comp[*]}; j++ ))
+  do
+    parametros-mt ${data[$i]} rho${comp[$j]}-yx --azimute ${azimute[$i]} |\
+    awk -v min=${inicio_data[$i]} -v max=${fim_data[$i]}\
+        '{if(NR>=min&&NR<=max)print $0}' |\
+    psxy -J -R -S${simbolos[$j]} -G${COR[$i]} -W0.5p,white -Ey0p/0.5p,${COR[$i]} -K -O \
+    >> $ps
+  done
+done
+
+# GRÁFICO Zxx
+psbasemap -Y${YSHIFT}c -Ba1pf3:"T (s)":/a${ANOTY}Wesn -JX${TLEN}cl/${YLEN}c\
+           -R$TMIN/$TMAX/${MIN_Z[$XX]}/${MAX_Z[$XX]} -K -O >> $ps
+
+comp=('@~ \302@~Z@-xx' '@~ \301@~Z@-xx')
+x=$delta_x
+for (( i=0; i < ${#comp[*]}; i++ ))
+do
+    echo "$TMIN ${MAX_Z[$XX]}" | psxy -N -J -R -D${x}c/${y}c -S${simbolos[$i]}\
+                                -G$cor_legenda -K -O >> $ps
+    xtexto=$(echo "$x+0.2" | bc -l)
+    printf "%s %s 12 0 0 ML %s\n" $TMIN ${MAX_Z[$XX]} "${comp[$i]}" |\
+    pstext -N -R -J -D${xtexto}c/${y}c -G$cor_legenda -K -O >> $ps
+    x=$(echo "$x+$delta_x" | bc -l)
+done
+
+comp=(Real Imag)
+for (( i=0; i < Ndata; i++ ))
+do
+  for (( j=0; j < ${#comp[*]}; j++ ))
+  do
+    parametros-mt ${data[$i]} rho${comp[$j]}-xx --azimute ${azimute[$i]} |\
+    awk -v min=${inicio_data[$i]} -v max=${fim_data[$i]}\
+        '{if(NR>=min&&NR<=max)print $0}' |\
+    psxy -J -R -S${simbolos[$j]} -G${COR[$i]} -W0.5p,white -Ey0p/0.5p,${COR[$i]} -K -O \
+    >> $ps
+  done
+done
+
+# GRÁFICO Zxy
+psbasemap -X${XSHIFT}c -Ba1pf3:"T (s)":/a${ANOTY}Wesn -JX${TLEN}cl/${YLEN}c\
+           -R$TMIN/$TMAX/${MIN_Z[$XY]}/${MAX_Z[$XY]} -K -O >> $ps
+
+comp=('@~ \302@~Z@-xy' '@~ \301@~Z@-xy')
+x=$delta_x
+for (( i=0; i < ${#comp[*]}; i++ ))
+do
+    echo "$TMIN ${MAX_Z[$XY]}" | psxy -N -J -R -D${x}c/${y}c -S${simbolos[$i]}\
+                                -G$cor_legenda -K -O >> $ps
+    xtexto=$(echo "$x+0.2" | bc -l)
+    printf "%s %s 12 0 0 ML %s\n" $TMIN ${MAX_Z[$XY]} "${comp[$i]}" |\
+    pstext -N -R -J -D${xtexto}c/${y}c -G$cor_legenda -K -O >> $ps
+    x=$(echo "$x+$delta_x" | bc -l)
+done
+
+comp=(Real Imag)
+for (( i=0; i < Ndata; i++ ))
+do
+  for (( j=0; j < ${#comp[*]}; j++ ))
+  do
+    parametros-mt ${data[$i]} rho${comp[$j]}-xy --azimute ${azimute[$i]} |\
+    awk -v min=${inicio_data[$i]} -v max=${fim_data[$i]}\
+        '{if(NR>=min&&NR<=max)print $0}' |\
+    psxy -J -R -S${simbolos[$j]} -G${COR[$i]} -W0.5p,white -Ey0p/0.5p,${COR[$i]} -K -O \
+    >> $ps
+  done
+done
+# fecha arquivo ps
+psxy -J -R -T -O >> $ps
+
+ps2raster $ps -A -P -Tg
+if [[ -n $VIEWER_PNG ]] ; then
+    $VIEWER_PNG ${ps/.ps/.png}&
+else
+    echo "gerada a figura ${ps/.ps/.png}"
+fi
+
+leaving $EX_OK

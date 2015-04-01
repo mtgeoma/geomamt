@@ -1,0 +1,277 @@
+
+Strike: v4.0 documentation
+Build date: 17-Sept-2004
+
+--------------------------------------------------------------------------------
+
+Documentation version: v1.4
+Date: 17 September 2004
+
+--------------------------------------------------------------------------------
+
+Strike performs Groom-Bailey type tensor decomposition on magnetotelluric data 
+from one or more sites in a specified band of frequency. The user may give a 
+wide band for study, then spcify a smaller bandwidth within that wide band with 
+or without an overlap.
+
+The MT data are to be in J-format or in EDI-format, with one file per station.
+The code will read in a single site of data (required extensions are ".dat" or ".edi"), 
+or a list of data files that can be a mix of J-format and EDI-format files.
+
+The user can specify an impedance relative error floor. If errors read in
+are less than this floor, then the errors are set to that floor. The
+floor is set on impedance, so is consistent between resistivity and
+phase. If the floor is set to zero, then the errors in the data files are
+used. NOTE: Comparison between parametric error estimates using Stodt's
+algorithms (the basis of Geotools errors and most contractors) and jackknife
+error estimates demonstrated that the parameteric errors are too small, by
+factors of up to ten, when the numbers of estimates is large (Chave and Jones, 1997). 
+This typically occurs in the MT "dead-band", of 10 Hz - 10 s, and
+may explain the often poor fits one sees in the literature at these
+frequencies when decomposition procedures are applied.
+
+The user can specify whether realizations should be generated or not, and
+how many. This is for determining statistical bounds on the decomposition
+parameters. A bootstrap approach is used whereby new impedance realization 
+estimates are generated using a random number generator and the variances of 
+the impedance estimates. The variances on the decomposition estimates are
+derived either using a parametric approach (if the number of realizations
+is less than a specified number) or a jackknife approach. If the number of
+realizations is too low, then the extremal values are listed.
+
+The output files contain the decomposition parameters and their standard 
+errors (or extremal values). This file can be converted to a J-format file
+using the supplied code "dcmp2j.f".
+
+
+--------------------------------------------------------------------------------
+
+NAG routines
+
+The current version of strike uses NAG F77 routines. You have to provide
+these yourself. Information is available on web site www.nag.com.
+
+The main minimization routine in v3.1 of strike is E04UPF (html file included 
+in distribution). This routine is available up to and including Version 18 of 
+the F77 NAG library. In version 19 it was replaced by E04UNF (PDF file 
+included in distribution). If you buy ver 19 or higher I can provide you with 
+ver 16a routines for comparison testing. (You will need to provide proof of 
+ownership of a NAG licence before I can send you the ver 16 routines.)
+
+--------------------------------------------------------------------------------
+
+QUESTIONS:
+
+
+>>>>Expert mode (y/n)  [default: N ] >
+
+Unless your name is either Gary McNeice or Alan Jones, you should answer
+NO to this question. Answering YES will allow you to request estimates
+to be written out from the realizations, give to control over certain
+NAG minimization parameters, allow you to specify the starting
+solution and the starting seed integer. Unless you know NAG routines well, 
+we advise you to leave well alone. The other parameters may be useful.
+
+
+>>>>Site list (.dat for single site)?  [default: site.lis ] >
+
+Specify here either the name of a single data file (must end in ".dat"),
+or the name of a file which lists the data files you want to use. The data
+are to be in J-format.
+
+
+>>>>Give impedance relative error floor (in %)  [default: 1.7500 ] >
+
+Specify impedance relative error floor. A value of 1.75% in impedance is
+equivalent to 1 deg in phase and 3.52% in apparent resistivity.
+
+
+>>>>>Give normalization type (? for list)  [default: GAVSD2 ] >
+
+***NEW to v3.1***
+Sets the denominator in the minimization scheme.
+ L2          L2 unweighted normalization
+ MAXSD       maximum s.d. weighted normalization
+ GAVSD       geom. av. s.d. weighted normalization
+ GAVSD2      geom. av. s.d. (Zxx,Zyy) & (Zxy,Zyx) weighted normalization
+ SUMSQ       sqrt(sum squares s.d.) weighted normalization
+ SUMSQ2      sqrt(sum squares s.d. (Zxx,Zyy) & (Zxy,Zyx)) weighted normalization
+
+It is useful to try different normalizations to see how robust the strike
+angle determined is. If it varies greatly with different schemes, then the
+data probably have different strikes over the frequency/site ranges chosen.
+The default seems to give the most consistent results.
+
+
+>>>>Enter minimum period?  [default: 0.10000E-03 ] >
+
+Specify the minimum period to study
+
+
+>>>>Enter maximum period?  [default: 10000. ] >
+
+Specify the maximum period to study
+
+
+>>>>Enter bandwidth (no. of period decades)?  [default: 2.0000 ] >
+
+Specify the bandwidth of the bands that you wish to study. The default is
+the whole bandwidth between the minimum and maximum periods specified. If
+you give a value any less than this, then you will be working with multiple
+bands, each of which will derive independent decomposition parameters. This
+is a good way of studying depth-dependent strike variation.
+
+
+>>>>Enter overlap   (no. of period decades)?  [default: 0.0 ] >
+
+Specify the overlap between bands. The default is for no overlap.
+
+
+>>>>Place bounds on parameters (T or F) ?  [default: Y ] >
+
+Specify whether you wish to bound the decomposition parameters or not.
+
+
+>>>Change bounds from standard bounds (y/n)?  [default: N ] >
+
+The standard bounds are
+
+  Regional azimuth bounds    -360.000     360.000
+             Shear bounds    -45.0000     45.0000
+             Twist bounds    -60.0000     60.0000
+
+You can specify whether you wish to change these bounds if you wish a
+constrained fit.
+NOTE: Often the minimization routine will hit a bound. Once there because the
+default start for minimization is WARM (i.e., use the last parameters found 
+as the new starting solution) then it will stay at the bound.
+
+
+>>>>Do statistics (y/n)  [default: N ] >
+
+Specify whether you wish multiple-realizations to be generated so that the
+bounds on the parameters will be determined using either a parametric approach
+(for number of realizations less than a given minimum number) or a 
+jackknife approach to the bootstrap-generated estimates.
+
+
+If you say YES, then you will be asked:
+>>>>Give number of realizations (default is maximum permitted)  [default: 21 ] >
+
+Specify the number of realizations to generate.
+
+
+--------------------------------------------------------------------------------
+
+size.inc
+
+The user can modify the dimension sizing to be appropriate for the
+problem by editing size.inc. The parameters should be set as small as possible,
+as the requrements of NAG workspace go as the square of the number of data.
+There are six parameters that are user-definable, and are:
+
+MAXS        maximum number of sites
+MAXF        maximum number of frequencies per band
+MAXDAT      maximum number of data frequencies in file
+MAXBND      maximum number of bands
+NREL        maximum number of realizations
+MINREL      minimum number of realizations for jackknife statistics
+
+None of the other parameters should be modified.
+
+The executable becomes really large for large problems. I think I have the
+parameters set properly for the NAG routine, but I may have something set
+incorrectly. If you note an error in the size.inc file, please let me know.
+
+--------------------------------------------------------------------------------
+
+OUTPUT:
+
+The output files are one for each station with the name the same as the
+input file and the extension ".dcmp" (".dcm" on DOS). This file contains
+the decomposition parameters and their ranges. The parameters are listed
+in the order:
+
+   14 regional azimuth
+   14 shear angle
+   14 channelling angle
+   14 twist angle
+   14 app rho a
+   14 app rho b
+   14 imped phase a
+   14 imped phase b
+   14 error 
+   14 skew 
+   14 anis 
+
+
+where the integer ("14" in this case) is the number of periods.
+
+Various codes exist for plotting and reformatting these .dcmp files.
+
+Also, the output files can be converted to J-format using "dcmp2j". Once
+in J-format, they can be converted to EDI using "j2edi" available from
+MTNet.
+
+--------------------------------------------------------------------------------
+
+EXAMPLE:
+
+An example data file is supplied, strike_example.dat. It contains 25 estimates
+in the range 4 - 13653 s. The run is also supplied, (strike_example.run) as
+is the main output file (strike_example.dcmp).
+
+--------------------------------------------------------------------------------
+
+CONDITIONS OF USE:
+
+These are the conditions that you agreed to when you obtained the code:
+
+1. I accept the McNeice-Jones multi-site, multi-frequency
+   magnetotelluric tensor decomposition code, hereinafter called "strike", 
+   on a caveat emptor basis.
+
+2. I will use strike for non-profit purposes only.
+
+3. I will not accept any payment for use of strike.
+
+4. I will not give strike to any other person.
+
+5. I will inform the authors of strike, Gary McNeice and Alan Jones, of
+   any coding errors that I find.
+
+6. I will inform the authors of strike, Gary McNeice and Alan Jones, of
+   any improvements and additions that I make.
+
+7. I will acknowledge the use of strike in any publications and presentations
+   I write or give in which I present results based on strike-based 
+   decomposition or decomposed data.
+
+8. I understand that the current version of strike, v3.0, uses NAG
+   routines that I have to provide myself.
+
+--------------------------------------------------------------------------------
+
+REFERENCE TO USE:
+
+The current reference to use is:
+
+McNeice, G. and A.G. Jones, 2001.
+Multisite, multifrequency tensor decomposition of magnetotelluric data.
+Geophysics, v. 66, p. 158-173.
+
+and the PDF file is included also.
+
+--------------------------------------------------------------------------------
+
+DISTORTION DECOMPOSITION PAPERS:
+
+Jones, A.G. and I. Dumas, 1993.
+Electromagnetic images of a volcanic zone.
+Physics of the Earth and Planetary Interiors, v. 81, p. 289-314.
+(PDF included)
+
+Chave, A.D. and A.G. Jones, 1997.
+Electric and magnetic field distortion decomposition of BC87 data.
+J. Geomagn. Geoelectr., v. 49, p. 767-789.
+

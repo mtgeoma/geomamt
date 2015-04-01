@@ -1,0 +1,14 @@
+# -*- mode: Shell-script; -*-
+
+if [[ ! -d "$scripts_bash_dir" ]] ; then
+    echo "directory \"$scripts_bash_dir\" not found." >&2
+    echo "Is scripts_bash_dir properly set?" >&2
+    exit 1
+fi
+
+. "$scripts_bash_dir"/utilities.bash
+
+declare -a commands_list=($(grep ^'# needed_commands' "$scripts_bash_dir"/* | \
+    awk '{for(c=3;c<=NF;c++){print $c}}' | sort -u))
+
+needed_commands "${commands_list[*]}"

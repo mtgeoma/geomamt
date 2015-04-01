@@ -1,0 +1,8 @@
+Elevation        : deriving from Elevation_cm
+EndDateTime      : deriving from StartDateTime, HeaderLength, data size and FileSize
+EndDateTimeIso   : deriving from EndDateTime
+FileName         : deriving from file name
+FileSize         : deriving from file size
+Latitude         : deriving from Latitude_msec
+Longitude        : deriving from Longitude_msec
+StartDateTimeIso : deriving from StartDateTime

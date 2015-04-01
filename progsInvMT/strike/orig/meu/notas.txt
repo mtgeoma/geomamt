@@ -1,0 +1,6 @@
+O erro:
+/tmp/ccBxLC49.s: Assembler messages:
+/tmp/ccBxLC49.s:1784: Error: attempt to move .org backwards
+
+é corrigido alterando MAXS=21 para MAXS=20
+  (ou outro redimencionamento equivalente)

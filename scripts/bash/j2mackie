@@ -1,0 +1,70 @@
+#!/bin/bash
+
+usage ()
+{
+    printf "\nusage: %s list.txt component [angle]\n" $1
+    printf "where:\n"
+    printf "\tlist.txt\tfile which first column identify a J-format file\n"
+    printf "\t\toptionally, set second column to select data. Format: [begin-end]\n\n"
+    printf "\tcomponet\t could be xy,yx,zx,zy\n\n"
+    printf "\tangle\t optionally, could set an angle of rotation\n\n"
+    exit 1
+}
+
+if [[ ${#} == 0 ]] ; then
+    usage $0
+fi
+
+STATIONS=$1
+CMP=$2
+
+PREFILE=""
+R=""
+if [[ -n $3 ]] ; then
+    R="-A$3"
+fi
+
+CMD="transferfunction"
+if [[ $CMP == "zx" ||  $CMP == "zy" ]] ; then
+    if [[ -n $3 ]] ; then
+	R=$(echo "-1*$3" | bc -l)
+	R="-R$R"
+    fi
+    PREFILE="-I"
+    CMD="gds2gmt"
+    CMP="T"${CMP}
+else
+    CMP="r"${CMP}
+fi
+
+export GMT_TMPDIR=$(mktemp -d /tmp/gmt.XXXXXX)
+
+cat $STATIONS | wc -l
+exec 6<&0 # backup stdin
+exec < $STATIONS # replace stdin by file $STATIONS
+while read -a col
+do
+    Jfile=${col[0]}
+    if [[ -n ${col[1]} ]] ; then
+	sel=${col[1]}
+	begin=${sel#[} # remove "["
+	begin=${begin%\-*]} # remove anything between "-" and "]"
+	end=${sel#[*\-} # remove anything between "[" and "-"
+	end=${end%]} # remove "]"
+	$CMD ${PREFILE}$Jfile -Fjones -D${CMP} $R |\
+        awk -v b=$begin -v e=$end '{if(NR>=b&&NR<=e)print $0}' > $GMT_TMPDIR/data
+    else
+	$CMD ${PREFILE}$Jfile -Fjones -D${CMP} $R > $GMT_TMPDIR/data
+    fi
+    N=$(cat $GMT_TMPDIR/data | wc -l)
+    printf "%-14d1.0000\n" $N
+    if [[ $CMD == "transferfunction" ]] ; then
+	awk -v c=${CMP:1} \
+	    '{ephi=(atan2(1,1)/45)*($7-$6)/2;if(c=="yx"){$5=$5+180};
+        printf "%12.6E  (%12.6E,-%12.6E) %12.6E %12.6E\n",$1,$2,$5,ephi*2,ephi}' $GMT_TMPDIR/data
+    else
+	awk '{printf "%12.6E  (%13.6E,%13.6E) %12.6E\n",$1,$2,-1*$3,$4}' $GMT_TMPDIR/data
+    fi
+done
+exec 0<&6 6<&- # restore stdin from backup and close backup
+rm -rf $GMT_TMPDIR

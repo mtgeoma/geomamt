@@ -1,0 +1,44 @@
+Clark - 
+
+I have placed the newest version of multmtrn on spoon (egbtf/MMTnew).
+I have tested on spoon using data in GOM/mah-ns.  All files needed for
+the test runs, along with some result files are in GOM/mah-ns/MMT.
+I think everything works, but I have not had time to look over the
+output files (I can't look at the binary ones ...)
+
+The changes are documented in the README file. Briefly, there are now four
+default output file types.  These are:
+
+1) SN_**** files :  as before
+
+2) S0**** files : now contain full SDM + incoherent noise variances.
+       matlab input: IN/uev_in.m  IN/sdm_in.m
+
+3) Pw*** files : contain the program's best guess at the "plane wave" response
+       vectors, with error info.  See matlab/README.new and matlab/MISC/Pw.m
+       for info on how to read/use these files.  As we discussed, you should
+       be able to compute any interstation/intercomponent TFs with error bars 
+       using the contents of this file.
+
+4) Z***  files : as before (and as for tranmt) these files give TFs for the
+       last nch-2 channels relative to the first 2 channels for a series of
+       station groups.  By default the grouping of channels into stations is
+       determined by the grouping of channels in the FC files (this used to
+       be the only option).  Now by running the program with the command line
+       option -s<control file name> the default groupings can be changed.
+       For details/examples see the README file in MMTnew, and the cf_grp 
+       files in GOM/mah-ns/MMT.  Note that the maximum number of groupings
+       (ngrpmx) and the maximum number of channels in a station group 
+       (nchemx) to allow for is set in nstamx.h (separately from maximum 
+       number of stations and channels, (nstam and nchmx)).
+
+I have also added new/modifed versions of matlab scripts to the matlab directory
+on spoon, but these have obviously not been tested there.  Let me know
+if I forgot to include anything.  I am also in the process of developing a
+graphical tool for plotting/manipulating the contents of the sdm file (S0***).
+I'll let you know when I have something useable.
+
+Gary
+
+
+
