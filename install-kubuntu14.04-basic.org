@@ -1,0 +1,86 @@
+* pacotes do sistema
+** em uma linha
+sudo apt-get install emacs openssh-server gawk gfortran g++ libboost-all-dev libfftw3-dev libgmm++-dev cmake git python-scipy libgdal-dev netcdf-bin eog
+# dpkg -l | grep -i torrent
+sudo apt-get purge ktorrent ktorrent-data libktorrent-l10n libktorrent5
+* programas processamento
+# pegar com o Marcelo os arquivos progsProcMT.tar.xz, scripts.tar.xz,
+# gmt4.5.13.tar.xz e copiá-los no $HOME
+
+** gmt4
+tar xf gmt4.5.13.tar.xz
+cd /usr/local/share/
+sudo tar xf ~/gmt4.5.13/gshhg-gmt-2.3.4.tar.gz
+cd ~/gmt4.5.13/
+sudo sh -c "sh install_gmt4.sh GMT4param.txt" > install.log 2>&1
+sudo rm -rf gmt-4.5.13
+echo '/usr/local/GMT4.5.13' >> ~/.gmtversions
+/usr/local/GMT4.5.13/bin/gmtswitch
+
+** progsProcMT
+cd ~
+mkdir bin
+tar xf progsProcMT.tar.xz
+cd progsProcMT
+./make-all makeProcMT/
+cp -i ats2asc/src/.ats2asc ~/
+sudo cp -i ats2asc/src/app/ats2asc/IGRF12.COF /usr/local/share/
+# deslogar e logar novamente para incluir o diretório ~/bin no PATH.
+
+** EMTF
+cd emtf-git
+./faz_emtf EMTF v2/lpack_false2984 > emtf.log 2>&1
+# rode o comando:
+dnff65536
+# se retornar killed, tente:
+./faz_emtf EMTF v2/lpack_false1500 > emtf.log 2>&1
+# se retornar:
+ ********************************************************
+ *                                                      *
+ *     DNFF     Version: 5.1.1   Date: 03/10/1998        *
+ *                                                      *
+ ********************************************************
+  
+   Reading from binary data files
+
+   Using integer*2 as binary input 
+
+Enter input file name:
+# então digite Ctrl+c para cancelar o programa e retorne ao $HOME com o comando:
+cd ~
+
+** scripts
+tar xf scripts.tar.xz
+cd bin/
+ln -s ../scripts/bash/* .
+ln -s ../scripts/python/* .
+cd ~
+
+** editar o arquivo ~/.profile:
+# set PATH so it includes user's private bin if it exists
+export GMTHOME=$HOME/this_gmt
+if [ -d "$HOME/bin" ] ; then
+    PATH="$HOME/bin:$GMTHOME/bin:$PATH"
+fi
+
+export LC_NUMERIC=en_US.UTF-8
+export GSHHG_ROOT=/usr/local/share/gshhg-gmt-2.3.4
+export M=-m
+export NETCDFHOME=/usr
+export MANPATH=$MANPATH:$GMTHOME/share/man
+export BIZZI01=$HOME/mapas/bizzi01
+export SRTM=$HOME/topo/srtm/grd
+export VIEWER_PDF=okular
+export VIEWER_PNG=eog
+export EMTF_PATH=$HOME/bin
+
+* programas inversão
+# pegar com o Marcelo o arquivo progsInvMT.tar.xz e copiá-lo no $HOME
+tar xf progsInvMT.tar.xz
+cd progsInvMT
+cd nag/
+./mknag_gfortran
+sudo cp -i libnag.a /usr/local/lib/
+rm libnag.a
+cd ..
+./make-all makeInvMT/
