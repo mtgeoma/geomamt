@@ -1,0 +1,40 @@
+# para práticar os comandos: http://try.github.io
+# fluxo de trabalho: 
+# Working_Directory(contém os arquivos) -> Index(área temporária) -> HEAD(aponta para o ultimo commit)
+## Comandos Básicos
+## Instalar o git
+> sudo apt-get install git
+## Cria um novo repositório
+> git init # crie uma nova pasta, execute o comando para criar um novo repositório
+## Obtenha um novo repositório
+> git clone /caminho/para/o/repositório # cria uma cópia de trabalho em um repositório local
+> git clone usuário@servidor:/caminho/para/o/repositório # quando usar um servidor remoto
+## Adicionar e Confirmar
+# Você pode propor mudanças (adicioná-las ao Index)
+> git add <arquivo>
+# ou
+> git add *
+# confirmar estas mudanças (fazer um commit)
+> git commit -m "comentários das alterações"
+## Enviando alterações
+# enviar as alterações da área de trabalho local para seu repositório remoto
+> git push origin master
+# pode altere master para qualquer (branch) que desejar
+# conectar a um servidor remoto
+> git remote add origin <servidor>
+## Dividindo em vários ramos(branch)
+# cria uma nova branch
+> git checkout -b funcionalidade_x
+# retornar para a master
+> git checkout master
+# remover o branch
+> git branch -d funcionalidade_x
+# enviar o branch para seu repositório remoto
+> git push origin <funcionalidade_x>
+## Atualizar e Mesclar
+# para atualizar o repositório local
+> git pull
+# para fazer merge de outra branch com a sua branch atualizar
+> git merge <branch>
+# pré visualizar as branches antes de fazer merge
+> git diff <branch origem> <branch destino> 
