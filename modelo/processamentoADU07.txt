@@ -1,0 +1,7 @@
+*_65536H.asc 65536 ss
+ *_4096H.asc 65536 ss
+ *_4096H.asc  8192 ss
+  *_128H.asc   256 ss
+  *_128H.asc   128 ss
+    *_4H.asc   128 ss
+    *_4H.asc    64 ss

@@ -562,7 +562,7 @@ configurationOptions()
 {
   po::options_description opt("Configuration");
   opt.add_options()("model-file", po::value<std::string>(),
-		    "IGRF11 model file");
+		    "IGRF model file");
   return opt;
 }
 

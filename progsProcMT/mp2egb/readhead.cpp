@@ -157,7 +157,7 @@ table readhead(string instr) {
         tbl.stime.min=bswap_16(tbl.stime.min);
 
 
-    string model_file="/usr/local/share/IGRF11.COF";
+    string model_file="/usr/local/share/IGRF12.COF";
     tbl.decl=declination(tbl.latg, tbl.lngg, 0., tbl.stime.year, tbl.stime.month, tbl.stime.day, model_file);
 
     if(!magdir) {           // if not in magnetic north (hopefully in true north)
